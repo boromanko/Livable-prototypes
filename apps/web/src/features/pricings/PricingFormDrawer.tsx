@@ -73,6 +73,7 @@ type FormValidationState = {
 
 const tableColumnTemplate = '64px minmax(240px, 1fr) minmax(240px, 1fr) 48px';
 const errorTint = '#FFF1F1';
+const focusTint = '#EEF8F8';
 
 function defaultTier(id: string, maxUnits = ''): TierDraft {
   return {
@@ -909,7 +910,13 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                             py: 0.5,
                             backgroundColor: unitsError ? errorTint : '#FFFFFF',
                             boxShadow: unitsError ? 'inset 0 0 0 1px #D32F2F' : 'none',
-                            transition: 'background-color 120ms ease, box-shadow 120ms ease'
+                            transition: 'background-color 120ms ease, box-shadow 120ms ease',
+                            '&:focus-within': {
+                              backgroundColor: unitsError ? errorTint : focusTint,
+                              boxShadow: unitsError
+                                ? 'inset 0 0 0 1.5px #D32F2F'
+                                : 'inset 0 0 0 2px #009299'
+                            }
                           }}
                         >
                           <InputBase
@@ -941,7 +948,13 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                             py: 0.5,
                             backgroundColor: priceError ? errorTint : '#FFFFFF',
                             boxShadow: priceError ? 'inset 0 0 0 1px #D32F2F' : 'none',
-                            transition: 'background-color 120ms ease, box-shadow 120ms ease'
+                            transition: 'background-color 120ms ease, box-shadow 120ms ease',
+                            '&:focus-within': {
+                              backgroundColor: priceError ? errorTint : focusTint,
+                              boxShadow: priceError
+                                ? 'inset 0 0 0 1.5px #D32F2F'
+                                : 'inset 0 0 0 2px #009299'
+                            }
                           }}
                         >
                           <Stack direction="row" alignItems="center" spacing={0.75}>
