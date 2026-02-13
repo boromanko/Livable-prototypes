@@ -102,6 +102,14 @@ function buildPropertyAddress(accountIndex: number, propertyIndex: number): stri
   return `${streetNo} ${streetNames[propertyIndex % streetNames.length]}, ${cityNames[accountIndex % cityNames.length]}`;
 }
 
+function buildBillableUnits(accountIndex: number, propertyIndex: number): number {
+  const minUnits = 5;
+  const maxUnits = 50;
+  const span = maxUnits - minUnits + 1;
+
+  return ((accountIndex * 17 + propertyIndex * 11 + 7) % span) + minUnits;
+}
+
 async function main(): Promise<void> {
   await prisma.pricingTier.deleteMany();
   await prisma.subscriptionPricing.deleteMany();
@@ -126,7 +134,8 @@ async function main(): Promise<void> {
         id: `prop-${account.id}-${String(propertyIndex + 1).padStart(2, '0')}`,
         accountId: account.id,
         name: `${account.companyName} Property ${propertyIndex + 1}`,
-        address: buildPropertyAddress(accountIndex, propertyIndex)
+        address: buildPropertyAddress(accountIndex, propertyIndex),
+        billableUnits: buildBillableUnits(accountIndex, propertyIndex)
       }))
     });
 

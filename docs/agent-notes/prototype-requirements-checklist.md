@@ -63,6 +63,10 @@
 - [x] Tiered pricing: додавання tier-рівнів
 - [x] Tiered rule: останній tier може бути open-ended
 - [x] Відображення tier-структури в UI
+- [x] Tier editor: вводимо `max units` для кожного tier; останній tier має `∞`
+- [x] Валідація на submit: `max` кожного tier не може бути меншим за старт діапазону
+- [x] Inputs суми в UI вводяться в доларах (конвертація в cents на submit)
+- [x] Numeric inputs дозволяють тимчасово порожнє значення без автопідстановки `0`
 
 ## 8) Account/Customer Views
 - [ ] Account subscriptions table (read-only)
@@ -135,3 +139,15 @@
 - [x] `POST /api/admin/subscriptions`
 - [x] `PATCH /api/admin/subscriptions/:id`
 - [x] `POST /api/admin/subscriptions/bulk` (delete/add pricing/replace/delete pricing)
+
+## 13) Pricing/Tiered Logic Hardening (next)
+Reference: `docs/agent-notes/pricing-tier-requirements-v1.md`
+
+- [x] Зафіксувати окремий детальний requirements-документ по Pricing/Tiers
+- [x] Додати `billable_units` у `properties`
+- [x] Оновити seed/backfill для `billable_units`
+- [x] Віддати `billableUnits` у `GET /api/admin/properties`
+- [x] Додати endpoint редагування units на property-рівні (API only, без UI edit-flow)
+- [x] Додати `totalBillableUnits` у `GET /api/admin/accounts`
+- [x] Зафіксувати та імплементувати tier mode `VOLUME` для v1
+- [x] Показати `billableUnits` у subscription UI flow (filters/rows/form selects)

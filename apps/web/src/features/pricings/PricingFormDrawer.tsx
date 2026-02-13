@@ -1,4 +1,3 @@
-import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import {
@@ -7,11 +6,10 @@ import {
   Button,
   Divider,
   Drawer,
-  FormControlLabel,
   IconButton,
+  InputAdornment,
   MenuItem,
   Stack,
-  Switch,
   TextField,
   Typography
 } from '@mui/material';
@@ -27,20 +25,16 @@ import {
 
 type TierDraft = {
   id: string;
-  fromUnit: number;
-  toUnit: string;
-  unitAmountCents: number;
+  maxUnits: string;
+  unitAmountUsd: string;
 };
 
 type PricingFormState = {
   productId: string;
   internalName: string;
   type: PricingType;
-  fixedAmountCents: string;
-  minimumPriceCents: string;
-  currency: string;
-  billingInterval: string;
-  isActive: boolean;
+  fixedAmountUsd: string;
+  minimumPriceUsd: string;
   tiers: TierDraft[];
 };
 
@@ -51,24 +45,203 @@ type PricingFormDrawerProps = {
   onClose: () => void;
 };
 
-function defaultTier(id: string): TierDraft {
+type TierDraftErrors = {
+  maxUnits?: string;
+  unitAmountUsd?: string;
+};
+
+type TierValidation = {
+  errors: TierDraftErrors[];
+  payload: Array<{
+    fromUnit: number;
+    toUnit: number | null;
+    unitAmountCents: number;
+  }>;
+  hasErrors: boolean;
+};
+
+function defaultTier(id: string, maxUnits = ''): TierDraft {
   return {
     id,
-    fromUnit: 1,
-    toUnit: '',
-    unitAmountCents: 0
+    maxUnits,
+    unitAmountUsd: ''
   };
 }
 
-function parseNumber(value: string): number | null {
-  if (value.trim() === '') {
+function parsePositiveInteger(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
     return null;
   }
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
+
+  if (!/^\d+$/.test(trimmed)) {
     return null;
   }
+
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
   return parsed;
+}
+
+function sanitizeIntegerInput(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function sanitizeMoneyInput(value: string): string {
+  const normalized = value.replace(',', '.');
+  let sanitized = '';
+  let hasDot = false;
+
+  for (const character of normalized) {
+    if (/\d/.test(character)) {
+      sanitized += character;
+      continue;
+    }
+
+    if (character === '.' && !hasDot) {
+      sanitized += '.';
+      hasDot = true;
+    }
+  }
+
+  if (sanitized.startsWith('.')) {
+    sanitized = `0${sanitized}`;
+  }
+
+  if (!sanitized.includes('.')) {
+    return sanitized;
+  }
+
+  const [integerPart, decimalPart = ''] = sanitized.split('.');
+  return `${integerPart}.${decimalPart.slice(0, 2)}`;
+}
+
+function parseUsdToCents(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return null;
+  }
+
+  const normalized = trimmed.replace(',', '.');
+  if (!/^\d+(\.\d{0,2})?$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return Math.round(parsed * 100);
+}
+
+function formatCentsToUsdInput(valueCents: number | null): string {
+  if (valueCents === null) {
+    return '';
+  }
+
+  const dollars = (valueCents / 100).toFixed(2);
+  return dollars.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+
+function getTierStartUnits(tiers: TierDraft[]): number[] {
+  const starts: number[] = [];
+  let currentStart = 1;
+
+  for (let index = 0; index < tiers.length; index += 1) {
+    starts.push(currentStart);
+
+    if (index === tiers.length - 1) {
+      continue;
+    }
+
+    const maxUnits = parsePositiveInteger(tiers[index]?.maxUnits ?? '');
+    if (maxUnits !== null && maxUnits >= currentStart) {
+      currentStart = maxUnits + 1;
+    }
+  }
+
+  return starts;
+}
+
+function getMinAllowedMaxUnits(tiers: TierDraft[], index: number): number {
+  let currentStart = 1;
+
+  for (let i = 0; i < index; i += 1) {
+    const previousMax = parsePositiveInteger(tiers[i]?.maxUnits ?? '');
+    if (previousMax !== null && previousMax >= currentStart) {
+      currentStart = previousMax + 1;
+    }
+  }
+
+  return currentStart;
+}
+
+function validateTiers(tiers: TierDraft[]): TierValidation {
+  const errors: TierDraftErrors[] = tiers.map(() => ({}));
+  const payload: TierValidation['payload'] = [];
+
+  let currentFromUnit = 1;
+
+  for (let index = 0; index < tiers.length; index += 1) {
+    const tier = tiers[index];
+    const isLastTier = index === tiers.length - 1;
+
+    const unitAmountCents = parseUsdToCents(tier.unitAmountUsd);
+    if (unitAmountCents === null) {
+      errors[index].unitAmountUsd = 'Unit price is required (USD).';
+    }
+
+    const maxUnits = parsePositiveInteger(tier.maxUnits);
+
+    if (isLastTier && maxUnits === null) {
+      payload.push({
+        fromUnit: currentFromUnit,
+        toUnit: null,
+        unitAmountCents: unitAmountCents ?? 0
+      });
+      continue;
+    }
+
+    if (maxUnits === null) {
+      errors[index].maxUnits = 'Max units is required.';
+      payload.push({
+        fromUnit: currentFromUnit,
+        toUnit: currentFromUnit,
+        unitAmountCents: unitAmountCents ?? 0
+      });
+      continue;
+    }
+
+    if (maxUnits < currentFromUnit) {
+      errors[index].maxUnits = `Must be greater than or equal to ${currentFromUnit}.`;
+      payload.push({
+        fromUnit: currentFromUnit,
+        toUnit: currentFromUnit,
+        unitAmountCents: unitAmountCents ?? 0
+      });
+      continue;
+    }
+
+    payload.push({
+      fromUnit: currentFromUnit,
+      toUnit: maxUnits,
+      unitAmountCents: unitAmountCents ?? 0
+    });
+
+    currentFromUnit = maxUnits + 1;
+  }
+
+  const hasErrors = errors.some((item) => Boolean(item.maxUnits || item.unitAmountUsd));
+
+  return {
+    errors,
+    payload,
+    hasErrors
+  };
 }
 
 function getErrorMessage(error: unknown): string {
@@ -95,11 +268,8 @@ function buildInitialState(pricing?: PricingItem | null): PricingFormState {
       productId: '',
       internalName: '',
       type: 'FIXED',
-      fixedAmountCents: '',
-      minimumPriceCents: '',
-      currency: 'usd',
-      billingInterval: 'month',
-      isActive: true,
+      fixedAmountUsd: '',
+      minimumPriceUsd: '',
       tiers: [defaultTier(crypto.randomUUID())]
     };
   }
@@ -108,19 +278,14 @@ function buildInitialState(pricing?: PricingItem | null): PricingFormState {
     productId: pricing.product.id,
     internalName: pricing.internalName,
     type: pricing.type,
-    fixedAmountCents: pricing.fixedAmountCents === null ? '' : String(pricing.fixedAmountCents),
-    minimumPriceCents:
-      pricing.minimumPriceCents === null ? '' : String(pricing.minimumPriceCents),
-    currency: pricing.currency,
-    billingInterval: pricing.billingInterval,
-    isActive: pricing.isActive,
+    fixedAmountUsd: formatCentsToUsdInput(pricing.fixedAmountCents),
+    minimumPriceUsd: formatCentsToUsdInput(pricing.minimumPriceCents),
     tiers:
       pricing.tiers.length > 0
         ? pricing.tiers.map((tier) => ({
             id: tier.id,
-            fromUnit: tier.fromUnit,
-            toUnit: tier.toUnit === null ? '' : String(tier.toUnit),
-            unitAmountCents: tier.unitAmountCents
+            maxUnits: tier.toUnit === null ? '' : String(tier.toUnit),
+            unitAmountUsd: formatCentsToUsdInput(tier.unitAmountCents)
           }))
         : [defaultTier(crypto.randomUUID())]
   };
@@ -131,6 +296,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
 
   const [formState, setFormState] = useState<PricingFormState>(() => buildInitialState(null));
   const [formError, setFormError] = useState<string | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
 
   const productsQuery = useProductsQuery();
   const createMutation = useCreatePricingMutation();
@@ -138,47 +304,125 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isEdit = mode === 'edit';
 
+  const tierValidation = useMemo(() => validateTiers(formState.tiers), [formState.tiers]);
+  const tierStartUnits = useMemo(() => getTierStartUnits(formState.tiers), [formState.tiers]);
+
   useEffect(() => {
     if (!open) {
       return;
     }
+
     setFormState(buildInitialState(initialPricing));
     setFormError(null);
+    setShowValidation(false);
   }, [initialPricing, open]);
-
-  const canSubmit = useMemo(() => {
-    if (!formState.productId || !formState.internalName.trim()) {
-      return false;
-    }
-    if (formState.type === 'FIXED') {
-      const fixedAmount = parseNumber(formState.fixedAmountCents);
-      return fixedAmount !== null && fixedAmount >= 0;
-    }
-    if (formState.tiers.length === 0) {
-      return false;
-    }
-    return formState.tiers.every((tier) => tier.fromUnit > 0 && tier.unitAmountCents >= 0);
-  }, [formState]);
-
-  function addTier(): void {
-    setFormState((prev) => ({
-      ...prev,
-      tiers: [...prev.tiers, defaultTier(crypto.randomUUID())]
-    }));
-  }
 
   function removeTier(tierId: string): void {
     setFormState((prev) => ({
       ...prev,
-      tiers: prev.tiers.filter((tier) => tier.id !== tierId)
+      tiers: (() => {
+        const nextTiers = prev.tiers.filter((tier) => tier.id !== tierId);
+        if (nextTiers.length === 0) {
+          return [defaultTier(crypto.randomUUID())];
+        }
+
+        const lastTier = nextTiers[nextTiers.length - 1];
+        if (parsePositiveInteger(lastTier.maxUnits) !== null) {
+          return [...nextTiers, defaultTier(crypto.randomUUID())];
+        }
+
+        return nextTiers;
+      })()
     }));
   }
 
+  function updateTierMaxUnits(tierId: string, value: string): void {
+    const sanitizedValue = sanitizeIntegerInput(value);
+
+    setFormState((prev) => {
+      const tierIndex = prev.tiers.findIndex((tier) => tier.id === tierId);
+      if (tierIndex === -1) {
+        return prev;
+      }
+
+      const isEditingLastTier = tierIndex === prev.tiers.length - 1;
+      const nextTiers = prev.tiers.map((tier) =>
+        tier.id === tierId ? { ...tier, maxUnits: sanitizedValue } : tier
+      );
+
+      if (isEditingLastTier && parsePositiveInteger(sanitizedValue) !== null) {
+        nextTiers.push(defaultTier(crypto.randomUUID()));
+      }
+
+      return {
+        ...prev,
+        tiers: nextTiers
+      };
+    });
+  }
+
+  function normalizeTierMaxUnitsOnBlur(tierId: string): void {
+    setFormState((prev) => {
+      const tierIndex = prev.tiers.findIndex((tier) => tier.id === tierId);
+      if (tierIndex === -1) {
+        return prev;
+      }
+
+      const currentValue = prev.tiers[tierIndex]?.maxUnits ?? '';
+      const parsedCurrent = parsePositiveInteger(currentValue);
+      if (parsedCurrent === null) {
+        return prev;
+      }
+
+      const minAllowed = getMinAllowedMaxUnits(prev.tiers, tierIndex);
+      if (parsedCurrent >= minAllowed) {
+        return prev;
+      }
+
+      const nextTiers = prev.tiers.map((tier, index) =>
+        index === tierIndex ? { ...tier, maxUnits: String(minAllowed) } : tier
+      );
+
+      return {
+        ...prev,
+        tiers: nextTiers
+      };
+    });
+  }
+
   async function handleSubmit(): Promise<void> {
+    setShowValidation(true);
     setFormError(null);
 
-    const minimumPrice = parseNumber(formState.minimumPriceCents);
-    const fixedAmount = parseNumber(formState.fixedAmountCents);
+    if (!formState.productId || !formState.internalName.trim()) {
+      setFormError('Product and internal pricing name are required.');
+      return;
+    }
+
+    const minimumPriceCents = parseUsdToCents(formState.minimumPriceUsd);
+    if (formState.minimumPriceUsd.trim() !== '' && minimumPriceCents === null) {
+      setFormError('Minimum price must be a valid USD amount.');
+      return;
+    }
+
+    const fixedAmountCents = parseUsdToCents(formState.fixedAmountUsd);
+
+    if (formState.type === 'FIXED' && fixedAmountCents === null) {
+      setFormError('Fixed amount must be a valid USD amount.');
+      return;
+    }
+
+    if (formState.type === 'TIERED') {
+      if (formState.tiers.length === 0) {
+        setFormError('Add at least one tier.');
+        return;
+      }
+
+      if (tierValidation.hasErrors) {
+        setFormError('Fix tier errors before saving.');
+        return;
+      }
+    }
 
     try {
       if (isEdit && initialPricing) {
@@ -188,19 +432,10 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
             internalName: formState.internalName.trim(),
             type: formState.type,
             fixedAmountCents:
-              formState.type === 'FIXED' ? (fixedAmount ?? undefined) : null,
-            minimumPriceCents: minimumPrice,
-            currency: formState.currency.toLowerCase(),
-            billingInterval: formState.billingInterval,
-            isActive: formState.isActive,
-            tiers:
-              formState.type === 'TIERED'
-                ? formState.tiers.map((tier) => ({
-                    fromUnit: tier.fromUnit,
-                    toUnit: tier.toUnit === '' ? null : Number(tier.toUnit),
-                    unitAmountCents: tier.unitAmountCents
-                  }))
-                : []
+              formState.type === 'FIXED' ? (fixedAmountCents ?? undefined) : null,
+            minimumPriceCents:
+              formState.minimumPriceUsd.trim() === '' ? null : minimumPriceCents,
+            tiers: formState.type === 'TIERED' ? tierValidation.payload : []
           }
         });
       } else {
@@ -209,19 +444,10 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           internalName: formState.internalName.trim(),
           type: formState.type,
           fixedAmountCents:
-            formState.type === 'FIXED' ? (fixedAmount ?? undefined) : null,
-          minimumPriceCents: minimumPrice,
-          currency: formState.currency.toLowerCase(),
-          billingInterval: formState.billingInterval,
-          isActive: formState.isActive,
-          tiers:
-            formState.type === 'TIERED'
-              ? formState.tiers.map((tier) => ({
-                  fromUnit: tier.fromUnit,
-                  toUnit: tier.toUnit === '' ? null : Number(tier.toUnit),
-                  unitAmountCents: tier.unitAmountCents
-                }))
-              : []
+            formState.type === 'FIXED' ? (fixedAmountCents ?? undefined) : null,
+          minimumPriceCents:
+            formState.minimumPriceUsd.trim() === '' ? null : minimumPriceCents,
+          tiers: formState.type === 'TIERED' ? tierValidation.payload : []
         });
       }
 
@@ -316,136 +542,119 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
 
           {formState.type === 'FIXED' ? (
             <TextField
-              label="Fixed Amount (cents)"
-              type="number"
-              value={formState.fixedAmountCents}
+              label="Fixed Amount (USD)"
+              value={formState.fixedAmountUsd}
               onChange={(event) =>
                 setFormState((prev) => ({
                   ...prev,
-                  fixedAmountCents: event.target.value
+                  fixedAmountUsd: sanitizeMoneyInput(event.target.value)
                 }))
               }
+              error={showValidation && parseUsdToCents(formState.fixedAmountUsd) === null}
+              helperText={
+                showValidation && parseUsdToCents(formState.fixedAmountUsd) === null
+                  ? 'Fixed amount is required (USD).'
+                  : undefined
+              }
+              inputProps={{ inputMode: 'decimal', placeholder: '0.00' }}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>
+              }}
             />
           ) : (
             <Stack spacing={1}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                 Tier Rules
               </Typography>
-              {formState.tiers.map((tier, index) => (
-                <Stack key={tier.id} direction={{ xs: 'column', md: 'row' }} spacing={1}>
-                  <TextField
-                    label="From"
-                    type="number"
-                    value={tier.fromUnit}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        tiers: prev.tiers.map((row) =>
-                          row.id === tier.id
-                            ? { ...row, fromUnit: Number(event.target.value || 0) }
-                            : row
-                        )
-                      }))
-                    }
-                    sx={{ flex: 1 }}
-                  />
-                  <TextField
-                    label="To (empty = open-ended)"
-                    type="number"
-                    value={tier.toUnit}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        tiers: prev.tiers.map((row) =>
-                          row.id === tier.id ? { ...row, toUnit: event.target.value } : row
-                        )
-                      }))
-                    }
-                    sx={{ flex: 1 }}
-                  />
-                  <TextField
-                    label="Unit Amount (cents)"
-                    type="number"
-                    value={tier.unitAmountCents}
-                    onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        tiers: prev.tiers.map((row) =>
-                          row.id === tier.id
-                            ? { ...row, unitAmountCents: Number(event.target.value || 0) }
-                            : row
-                        )
-                      }))
-                    }
-                    sx={{ flex: 1 }}
-                  />
-                  <IconButton
-                    color="error"
-                    onClick={() => removeTier(tier.id)}
-                    disabled={formState.tiers.length === 1 && index === 0}
-                  >
-                    <DeleteOutlineIcon />
-                  </IconButton>
-                </Stack>
-              ))}
+              <Typography variant="caption" color="text.secondary">
+                Enter max units. When you type max in the last row, next open-ended tier is added
+                automatically.
+              </Typography>
 
-              <Button startIcon={<AddIcon />} onClick={addTier}>
-                Add Tier
-              </Button>
+              {formState.tiers.map((tier, index) => {
+                const isLastTier = index === formState.tiers.length - 1;
+                const helperText = isLastTier
+                  ? `Starts at ${tierStartUnits[index] ?? 1}. Leave empty for ∞.`
+                  : `Starts at ${tierStartUnits[index] ?? 1}`;
+
+                return (
+                  <Stack key={tier.id} direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                    <TextField
+                      label="Max Units"
+                      value={tier.maxUnits}
+                      onChange={(event) => updateTierMaxUnits(tier.id, event.target.value)}
+                      onBlur={() => normalizeTierMaxUnitsOnBlur(tier.id)}
+                      helperText={helperText}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        placeholder: isLastTier ? '∞' : undefined
+                      }}
+                      sx={{ flex: 1 }}
+                    />
+
+                    <TextField
+                      label="Unit Price (USD)"
+                      value={tier.unitAmountUsd}
+                      onChange={(event) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          tiers: prev.tiers.map((row) =>
+                            row.id === tier.id
+                              ? { ...row, unitAmountUsd: sanitizeMoneyInput(event.target.value) }
+                              : row
+                          )
+                        }))
+                      }
+                      error={showValidation && Boolean(tierValidation.errors[index]?.unitAmountUsd)}
+                      helperText={showValidation ? tierValidation.errors[index]?.unitAmountUsd : undefined}
+                      inputProps={{ inputMode: 'decimal', placeholder: '0.00' }}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>
+                      }}
+                      sx={{ flex: 1 }}
+                    />
+
+                    <IconButton
+                      color="error"
+                      onClick={() => removeTier(tier.id)}
+                      disabled={formState.tiers.length === 1}
+                    >
+                      <DeleteOutlineIcon />
+                    </IconButton>
+                  </Stack>
+                );
+              })}
             </Stack>
           )}
 
           <TextField
-            label="Minimum Price (cents, optional)"
-            type="number"
-            value={formState.minimumPriceCents}
+            label="Minimum Price (USD, optional)"
+            value={formState.minimumPriceUsd}
             onChange={(event) =>
               setFormState((prev) => ({
                 ...prev,
-                minimumPriceCents: event.target.value
+                minimumPriceUsd: sanitizeMoneyInput(event.target.value)
               }))
             }
-          />
-
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <TextField
-              label="Currency"
-              value={formState.currency}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  currency: event.target.value
-                }))
-              }
-              sx={{ flex: 1 }}
-            />
-            <TextField
-              label="Billing Interval"
-              value={formState.billingInterval}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  billingInterval: event.target.value
-                }))
-              }
-              sx={{ flex: 1 }}
-            />
-          </Stack>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formState.isActive}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    isActive: event.target.checked
-                  }))
-                }
-              />
+            error={
+              showValidation &&
+              formState.minimumPriceUsd.trim() !== '' &&
+              parseUsdToCents(formState.minimumPriceUsd) === null
             }
-            label="Active pricing"
+            helperText={
+              showValidation &&
+              formState.minimumPriceUsd.trim() !== '' &&
+              parseUsdToCents(formState.minimumPriceUsd) === null
+                ? 'Enter a valid USD amount.'
+                : undefined
+            }
+            inputProps={{ inputMode: 'decimal', placeholder: '0.00' }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start">$</InputAdornment>
+            }}
           />
+
         </Stack>
 
         <Divider />
@@ -454,7 +663,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           <Button variant="text" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={!canSubmit || isSaving}>
+          <Button variant="contained" onClick={handleSubmit} disabled={isSaving}>
             {isEdit ? 'Save changes' : 'Create pricing'}
           </Button>
         </Stack>

@@ -11,7 +11,9 @@ import {
 import {
   accountsLookupQuerySchema,
   paymentMethodsLookupQuerySchema,
-  propertiesLookupQuerySchema
+  propertyParamsSchema,
+  propertiesLookupQuerySchema,
+  updatePropertyUnitsBodySchema
 } from '../schemas/lookup.js';
 import {
   createSubscriptionBodySchema,
@@ -20,6 +22,9 @@ import {
   subscriptionParamsSchema,
   updateSubscriptionBodySchema
 } from '../schemas/subscription.js';
+import {
+  validateTierStructure
+} from '../services/pricing-calculator.js';
 
 const pricingInclude = {
   product: {
@@ -57,7 +62,8 @@ const subscriptionInclude = {
     select: {
       id: true,
       name: true,
-      address: true
+      address: true,
+      billableUnits: true
     }
   },
   paymentMethod: {
@@ -288,6 +294,11 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
           companyName: true,
           email: true,
           createdAt: true,
+          properties: {
+            select: {
+              billableUnits: true
+            }
+          },
           _count: {
             select: {
               properties: true,
@@ -309,7 +320,11 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         email: item.email,
         createdAt: item.createdAt,
         propertiesCount: item._count.properties,
-        subscriptionsCount: item._count.subscriptions
+        subscriptionsCount: item._count.subscriptions,
+        totalBillableUnits: item.properties.reduce(
+          (sum, property) => sum + property.billableUnits,
+          0
+        )
       })),
       page,
       pageSize,
@@ -349,6 +364,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
           accountId: true,
           name: true,
           address: true,
+          billableUnits: true,
           createdAt: true,
           _count: {
             select: {
@@ -369,12 +385,60 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         accountId: item.accountId,
         name: item.name,
         address: item.address,
+        billableUnits: item.billableUnits,
         createdAt: item.createdAt,
         subscriptionsCount: item._count.subscriptions
       })),
       page,
       pageSize,
       total
+    };
+  });
+
+  app.patch('/api/admin/properties/:id/units', async (request, reply) => {
+    const { id } = propertyParamsSchema.parse(request.params);
+    const payload = updatePropertyUnitsBodySchema.parse(request.body);
+
+    const existing = await prisma.property.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      reply.status(404).send({ message: 'Property not found' });
+      return;
+    }
+
+    const updated = await prisma.property.update({
+      where: { id },
+      data: {
+        billableUnits: payload.billableUnits
+      },
+      select: {
+        id: true,
+        accountId: true,
+        name: true,
+        address: true,
+        billableUnits: true,
+        createdAt: true,
+        _count: {
+          select: {
+            subscriptions: true
+          }
+        }
+      }
+    });
+
+    return {
+      item: {
+        id: updated.id,
+        accountId: updated.accountId,
+        name: updated.name,
+        address: updated.address,
+        billableUnits: updated.billableUnits,
+        createdAt: updated.createdAt,
+        subscriptionsCount: updated._count.subscriptions
+      }
     };
   });
 
@@ -825,6 +889,17 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     const payload = createPricingBodySchema.parse(request.body);
     const normalizedTiers = payload.type === 'TIERED' ? normalizeTiers(payload.tiers ?? []) : [];
 
+    if (payload.type === 'TIERED') {
+      try {
+        validateTierStructure(normalizedTiers);
+      } catch (error) {
+        reply.status(400).send({
+          message: error instanceof Error ? error.message : 'Invalid tiered pricing structure'
+        });
+        return;
+      }
+    }
+
     const createdPricing = await prisma.$transaction(async (tx) => {
       const created = await tx.pricing.create({
         data: {
@@ -910,6 +985,17 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     const validated = createPricingBodySchema.parse(candidatePayload);
     const normalizedTiers =
       validated.type === 'TIERED' ? normalizeTiers(validated.tiers ?? []) : [];
+
+    if (validated.type === 'TIERED') {
+      try {
+        validateTierStructure(normalizedTiers);
+      } catch (error) {
+        reply.status(400).send({
+          message: error instanceof Error ? error.message : 'Invalid tiered pricing structure'
+        });
+        return;
+      }
+    }
 
     const updatedPricing = await prisma.$transaction(async (tx) => {
       await tx.pricing.update({

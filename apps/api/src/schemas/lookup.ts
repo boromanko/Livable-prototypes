@@ -13,6 +13,14 @@ export const propertiesLookupQuerySchema = z.object({
   search: z.string().trim().min(1).optional()
 });
 
+export const propertyParamsSchema = z.object({
+  id: z.string().min(1)
+});
+
+export const updatePropertyUnitsBodySchema = z.object({
+  billableUnits: z.coerce.number().int().nonnegative()
+});
+
 export const paymentMethodsLookupQuerySchema = z.object({
   accountId: z.string().min(1)
 });

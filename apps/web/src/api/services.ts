@@ -17,6 +17,8 @@ import type {
   SubscriptionBulkResponse,
   SubscriptionsQueryParams,
   SubscriptionsResponse,
+  UpdatePropertyUnitsPayload,
+  UpdatePropertyUnitsResponse,
   UpdatePricingPayload,
   UpdateSubscriptionPayload,
   UpsertPricingResponse,
@@ -31,6 +33,15 @@ export const api = {
 
   getProperties: (params: PropertiesQueryParams): Promise<PropertiesResponse> =>
     apiRequest('/api/admin/properties', { query: params }),
+
+  updatePropertyUnits: (
+    propertyId: string,
+    payload: UpdatePropertyUnitsPayload
+  ): Promise<UpdatePropertyUnitsResponse> =>
+    apiRequest(`/api/admin/properties/${propertyId}/units`, {
+      method: 'PATCH',
+      body: payload
+    }),
 
   getPaymentMethods: (params: PaymentMethodsQueryParams): Promise<PaymentMethodsResponse> =>
     apiRequest('/api/admin/payment-methods', { query: params }),

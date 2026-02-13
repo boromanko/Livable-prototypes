@@ -21,6 +21,7 @@ export type AccountItem = {
   createdAt: string;
   propertiesCount: number;
   subscriptionsCount: number;
+  totalBillableUnits: number;
 };
 
 export type AccountsQueryParams = PaginationParams & {
@@ -34,6 +35,7 @@ export type PropertyItem = {
   accountId: string;
   name: string;
   address: string;
+  billableUnits: number;
   createdAt: string;
   subscriptionsCount: number;
 };
@@ -44,6 +46,14 @@ export type PropertiesQueryParams = PaginationParams & {
 };
 
 export type PropertiesResponse = PaginatedResponse<PropertyItem>;
+
+export type UpdatePropertyUnitsPayload = {
+  billableUnits: number;
+};
+
+export type UpdatePropertyUnitsResponse = {
+  item: PropertyItem;
+};
 
 export type PaymentMethodItem = {
   id: string;
@@ -177,6 +187,7 @@ export type SubscriptionItem = {
     id: string;
     name: string;
     address: string;
+    billableUnits: number;
   } | null;
   paymentMethod: {
     id: string;

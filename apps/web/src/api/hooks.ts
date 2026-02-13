@@ -25,6 +25,8 @@ import type {
   SubscriptionBulkResponse,
   SubscriptionsQueryParams,
   SubscriptionsResponse,
+  UpdatePropertyUnitsPayload,
+  UpdatePropertyUnitsResponse,
   UpdatePricingPayload,
   UpdateSubscriptionPayload,
   UpsertPricingResponse,
@@ -200,6 +202,23 @@ export function useBulkSubscriptionsMutation(): UseMutationResult<
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.accountsAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.propertiesAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsAll })
+      ]);
+    }
+  });
+}
+
+export function useUpdatePropertyUnitsMutation(): UseMutationResult<
+  UpdatePropertyUnitsResponse,
+  Error,
+  { propertyId: string; payload: UpdatePropertyUnitsPayload }
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ propertyId, payload }) => api.updatePropertyUnits(propertyId, payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.propertiesAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.accountsAll })
       ]);
     }
   });

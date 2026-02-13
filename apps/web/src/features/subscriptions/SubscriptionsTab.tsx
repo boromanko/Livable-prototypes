@@ -379,7 +379,7 @@ export function SubscriptionsTab(): JSX.Element {
                   <MenuItem value="">All accounts</MenuItem>
                   {(accountsQuery.data?.items ?? []).map((account) => (
                     <MenuItem key={account.id} value={account.id}>
-                      {account.companyName}
+                      {account.companyName} ({account.totalBillableUnits} units)
                     </MenuItem>
                   ))}
                 </TextField>
@@ -547,6 +547,9 @@ export function SubscriptionsTab(): JSX.Element {
                               <Typography variant="body2">{subscription.property.name}</Typography>
                               <Typography variant="caption" color="text.secondary">
                                 {subscription.property.address}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {subscription.property.billableUnits} units
                               </Typography>
                             </Stack>
                           ) : (

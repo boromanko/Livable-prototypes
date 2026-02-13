@@ -8,6 +8,10 @@
   - Основний PRD для Stripe Integration V2.1.
   - Важливо: цей файл вважається frozen для поточного етапу.
 
+- `pricing-tier-requirements-v1.md`
+  - Детальні імплементаційні вимоги по Pricing/Tiered logic.
+  - Містить однозначну формулу розрахунку (`VOLUME`), DB/API/UX вимоги та acceptance criteria.
+
 - `ui-structure-&-prototype-plans.md`
   - UX canvas, структура екранів і поточний статус UI-реалізації.
   - Містить backlog для покрокового UX polishing.

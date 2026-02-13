@@ -123,6 +123,12 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
   const updateMutation = useUpdateSubscriptionMutation();
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+  const selectedProperty = useMemo(
+    () =>
+      (propertiesQuery.data?.items ?? []).find((property) => property.id === formState.propertyId) ??
+      null,
+    [formState.propertyId, propertiesQuery.data?.items]
+  );
 
   useEffect(() => {
     if (!open) {
@@ -264,7 +270,7 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
           >
             {(accountsQuery.data?.items ?? []).map((account) => (
               <MenuItem key={account.id} value={account.id}>
-                {account.companyName} ({account.email})
+                {account.companyName} ({account.email}) - {account.totalBillableUnits} units
               </MenuItem>
             ))}
           </TextField>
@@ -303,13 +309,15 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             }
             helperText={
               formState.scope === 'PROPERTY'
-                ? 'Required for property-level subscriptions.'
+                ? selectedProperty
+                  ? `Required for property-level subscriptions. Selected property has ${selectedProperty.billableUnits} units.`
+                  : 'Required for property-level subscriptions.'
                 : 'Not used for account-level subscriptions.'
             }
           >
             {(propertiesQuery.data?.items ?? []).map((property) => (
               <MenuItem key={property.id} value={property.id}>
-                {property.name}
+                {property.name} - {property.billableUnits} units
               </MenuItem>
             ))}
           </TextField>
@@ -430,6 +438,7 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
               ))}
             </Select>
           </FormControl>
+
         </Stack>
 
         <Divider />
