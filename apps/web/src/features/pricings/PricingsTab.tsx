@@ -1,7 +1,8 @@
 import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import {
@@ -30,6 +31,7 @@ import {
   useProductsQuery,
   type BillingScope,
   type PricingItem,
+  type PricingTier,
   type PricingTreeItem,
   type PricingTreeResolvedTier,
   type PricingType
@@ -78,22 +80,117 @@ function getTierRangeLabel(tier: PricingTreeResolvedTier): string {
   return `${tier.fromUnit}-${tier.toUnit ?? '∞'}`;
 }
 
-function summarizeTieredPricing(pricing: PricingTreeItem): string {
-  if (pricing.tiers.length === 0) {
-    return 'No tiers';
-  }
+const MAX_TIER_COLUMNS = 7;
+const ACTIONS_COLUMN_WIDTH = 118;
+const PROPERTIES_COLUMN_WIDTH = 176;
+const UNITS_COLUMN_WIDTH = 128;
+const TREE_INDENT_STEP = 32;
+const TREE_TOGGLE_SLOT_WIDTH = 24;
+const TREE_LABEL_GAP = 8;
+const INLINE_ACTION_BUTTON_SX = {
+  width: 'fit-content',
+  px: 1.5,
+  py: 0.75,
+  minHeight: 36,
+  backgroundColor: '#F8F9FA',
+  color: '#212934',
+  '&:hover': { backgroundColor: '#EBF0F5' }
+} as const;
 
-  return pricing.tiers
-    .map((tier) => `${tier.fromUnit}-${tier.toUnit ?? '∞'}: ${formatMoneyCents(tier.unitAmountCents, pricing.currency)}`)
-    .join('; ');
+const INLINE_TURQUOISE_ACTION_BUTTON_SX = {
+  ...INLINE_ACTION_BUTTON_SX,
+  color: '#009299'
+} as const;
+
+function TierMatchIndicator(): JSX.Element {
+  return (
+    <Box
+      sx={{
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        backgroundColor: '#009299',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 0 0 1px rgba(0, 146, 153, 0.18)'
+      }}
+    >
+      <CheckIcon sx={{ fontSize: 13, color: '#FFFFFF' }} />
+    </Box>
+  );
 }
 
-function summarizePricing(pricing: PricingTreeItem): string {
+function getPricingColumnCount(pricing: PricingTreeItem): number {
   if (pricing.type === 'FIXED') {
-    return formatMoneyCents(pricing.fixedAmountCents, pricing.currency);
+    return 1;
   }
 
-  return summarizeTieredPricing(pricing);
+  return Math.max(1, Math.min(MAX_TIER_COLUMNS, pricing.tiers.length));
+}
+
+function getProductTierColumnCount(pricings: PricingTreeItem[]): number {
+  return Math.max(1, pricings.reduce((maxCount, pricing) => Math.max(maxCount, getPricingColumnCount(pricing)), 1));
+}
+
+function getPricingColumnOffset(pricing: PricingTreeItem, productTierColumnCount: number): number {
+  return Math.max(0, productTierColumnCount - getPricingColumnCount(pricing));
+}
+
+function findTierLocalIndex(pricing: PricingTreeItem, resolvedTier: PricingTreeResolvedTier): number | null {
+  if (pricing.type === 'FIXED') {
+    return 0;
+  }
+
+  if (!resolvedTier) {
+    return null;
+  }
+
+  const tierIndex = pricing.tiers.findIndex(
+    (tier) => tier.fromUnit === resolvedTier.fromUnit && tier.toUnit === resolvedTier.toUnit
+  );
+
+  if (tierIndex >= 0) {
+    return tierIndex;
+  }
+
+  return pricing.tiers.findIndex(
+    (tier) =>
+      tier.fromUnit <= resolvedTier.fromUnit &&
+      (tier.toUnit === null || (resolvedTier.toUnit !== null && tier.toUnit >= resolvedTier.toUnit))
+  );
+}
+
+function getActiveTierColumnIndex(
+  pricing: PricingTreeItem,
+  productTierColumnCount: number,
+  resolvedTier: PricingTreeResolvedTier
+): number | null {
+  const localIndex = findTierLocalIndex(pricing, resolvedTier);
+  if (localIndex === null || localIndex < 0) {
+    return null;
+  }
+
+  const cappedLocalIndex = Math.min(localIndex, getPricingColumnCount(pricing) - 1);
+  return getPricingColumnOffset(pricing, productTierColumnCount) + cappedLocalIndex;
+}
+
+function getTierForColumn(
+  pricing: PricingTreeItem,
+  productTierColumnCount: number,
+  columnIndex: number
+): PricingTier | null {
+  if (pricing.type === 'FIXED') {
+    return null;
+  }
+
+  const offset = getPricingColumnOffset(pricing, productTierColumnCount);
+  const localIndex = columnIndex - offset;
+  if (localIndex < 0 || localIndex >= pricing.tiers.length || localIndex >= MAX_TIER_COLUMNS) {
+    return null;
+  }
+
+  return pricing.tiers[localIndex] ?? null;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -369,7 +466,7 @@ export function PricingsTab(): JSX.Element {
             }
             right={
               <Button variant="contained" startIcon={<AddIcon />} onClick={() => openCreatePricing()}>
-                Create Pricing
+                Add pricing
               </Button>
             }
           />
@@ -388,7 +485,7 @@ export function PricingsTab(): JSX.Element {
             <EmptyState
               title="No pricings found"
               description="Create your first pricing or adjust filters."
-              actionLabel="Create Pricing"
+              actionLabel="Add pricing"
               onActionClick={() => openCreatePricing()}
             />
           ) : (
@@ -404,6 +501,7 @@ export function PricingsTab(): JSX.Element {
               >
                 {visibleProducts.map((product) => {
                   const productPricings = pricingsByProductId.get(product.id) ?? [];
+                  const productTierColumnCount = getProductTierColumnCount(productPricings);
                   const isProductExpanded = expandedProducts.has(product.id);
 
                   return (
@@ -411,7 +509,7 @@ export function PricingsTab(): JSX.Element {
                       <Stack
                         direction="row"
                         alignItems="center"
-                        spacing={1}
+                        spacing={0}
                         sx={{
                           minHeight: 40,
                           px: 1.5,
@@ -420,25 +518,30 @@ export function PricingsTab(): JSX.Element {
                           borderTop: '1px solid #E1E7EC'
                         }}
                       >
-                        <IconButton
-                          size="small"
-                          onClick={() => toggleExpanded(setExpandedProducts, product.id)}
-                          aria-label={isProductExpanded ? 'Collapse product' : 'Expand product'}
-                        >
-                          {isProductExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                        </IconButton>
-
-                        <Typography sx={{ fontWeight: 700 }}>{product.name}</Typography>
-                        <Chip size="small" label={`${productPricings.length} pricings`} />
+                        <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                          <IconButton
+                            size="small"
+                            sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
+                            onClick={() => toggleExpanded(setExpandedProducts, product.id)}
+                            aria-label={isProductExpanded ? 'Collapse product' : 'Expand product'}
+                          >
+                            {isProductExpanded ? (
+                              <ExpandMoreIcon fontSize="small" />
+                            ) : (
+                              <ChevronRightIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Box>
+                        <Box sx={{ width: TREE_LABEL_GAP }} />
+                        <Stack direction="row" alignItems="center" spacing={0.75}>
+                          <Typography sx={{ fontWeight: 700 }}>{product.name}</Typography>
+                          <Chip size="small" label={`${productPricings.length} pricings`} />
+                        </Stack>
                       </Stack>
 
                       {isProductExpanded ? (
                         <Stack spacing={0}>
-                          {productPricings.length === 0 ? (
-                            <Typography sx={{ py: 1.25, px: 6, color: '#4B617C', fontSize: 13 }}>
-                              No pricings for this product.
-                            </Typography>
-                          ) : (
+                          {productPricings.length === 0 ? null : (
                             productPricings.map((pricing) => {
                               const pricingKey = `pricing:${pricing.id}`;
                               const isPricingExpanded = expandedPricings.has(pricingKey);
@@ -465,58 +568,139 @@ export function PricingsTab(): JSX.Element {
                                 <Box key={pricing.id}>
                                   <Stack
                                     direction="row"
-                                    alignItems="center"
-                                    spacing={1}
-                                    sx={{ minHeight: 38, px: 1.5, py: 0.25, borderTop: '1px solid #E1E7EC' }}
+                                    alignItems="stretch"
+                                    spacing={0}
+                                    sx={{ minHeight: 44, px: 1.5, py: 0.25, borderTop: '1px solid #E1E7EC' }}
                                   >
-                                    <Box sx={{ width: 28 }} />
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => toggleExpanded(setExpandedPricings, pricingKey)}
-                                      aria-label={isPricingExpanded ? 'Collapse pricing' : 'Expand pricing'}
-                                    >
-                                      {isPricingExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                    </IconButton>
+                                    <Stack direction="row" alignItems="center" spacing={0} sx={{ flex: 1, minWidth: 340 }}>
+                                      <Box sx={{ width: TREE_INDENT_STEP }} />
+                                      <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                                        <IconButton
+                                          size="small"
+                                          sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
+                                          onClick={() => toggleExpanded(setExpandedPricings, pricingKey)}
+                                          aria-label={isPricingExpanded ? 'Collapse pricing' : 'Expand pricing'}
+                                        >
+                                          {isPricingExpanded ? (
+                                            <ExpandMoreIcon fontSize="small" />
+                                          ) : (
+                                            <ChevronRightIcon fontSize="small" />
+                                          )}
+                                        </IconButton>
+                                      </Box>
+                                      <Box sx={{ width: TREE_LABEL_GAP }} />
+                                      <Stack direction="row" alignItems="center" spacing={0.75}>
+                                        <Typography sx={{ fontWeight: 600 }}>{pricing.internalName}</Typography>
+                                        <Chip size="small" label={pricing.type} />
+                                      </Stack>
+                                    </Stack>
 
-                                    <Typography sx={{ minWidth: 220, fontWeight: 600 }}>
-                                      {pricing.internalName}
-                                    </Typography>
-
-                                    <Chip size="small" label={pricing.type} />
-
-                                    <Typography
+                                    <Box
                                       sx={{
-                                        flex: 1,
-                                        color: '#4B617C',
-                                        fontSize: 13,
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
+                                        ml: 'auto',
+                                        flexShrink: 0,
+                                        display: 'grid',
+                                        gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(124px, 1fr))`
                                       }}
-                                      title={summarizePricing(pricing)}
                                     >
-                                      {summarizePricing(pricing)}
-                                    </Typography>
+                                      {Array.from({ length: productTierColumnCount }).map((_, columnIndex) => {
+                                        const columnOffset = getPricingColumnOffset(pricing, productTierColumnCount);
+                                        const localTierIndex = columnIndex - columnOffset;
+                                        const tier = getTierForColumn(pricing, productTierColumnCount, columnIndex);
+                                        const isFixedCell =
+                                          pricing.type === 'FIXED' && columnIndex === productTierColumnCount - 1;
+                                        const isFilled = isFixedCell || Boolean(tier);
 
-                                    <IconButton
-                                      size="small"
-                                      onClick={(event) =>
-                                        setPricingActionsTarget({
-                                          anchorEl: event.currentTarget,
-                                          pricingId: pricing.id
-                                        })
-                                      }
+                                        return (
+                                          <Box
+                                            key={`${pricing.id}:pricing-cell:${columnIndex}`}
+                                            sx={{
+                                              minHeight: 44,
+                                              px: 1.25,
+                                              py: 0.5,
+                                              borderLeft: '1px solid #E1E7EC',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              justifyContent: 'center',
+                                              gap: 0.125,
+                                              backgroundColor: isFilled ? '#FCFDFE' : '#FFFFFF'
+                                            }}
+                                          >
+                                            {isFixedCell ? (
+                                              <>
+                                                <Typography sx={{ fontSize: 11, color: '#4B617C', fontWeight: 600 }}>
+                                                  FIXED
+                                                </Typography>
+                                                <Typography
+                                                  sx={{
+                                                    fontSize: 14,
+                                                    fontWeight: 700,
+                                                    color: '#212934',
+                                                    fontVariantNumeric: 'tabular-nums'
+                                                  }}
+                                                >
+                                                  {formatMoneyCents(pricing.fixedAmountCents, pricing.currency)}
+                                                </Typography>
+                                              </>
+                                            ) : tier ? (
+                                              <>
+                                                <Typography sx={{ fontSize: 11, color: '#4B617C' }}>
+                                                  T{localTierIndex + 1} {getTierRangeLabel(tier)}
+                                                </Typography>
+                                                <Typography
+                                                  sx={{
+                                                    fontSize: 14,
+                                                    fontWeight: 700,
+                                                    color: '#212934',
+                                                    fontVariantNumeric: 'tabular-nums'
+                                                  }}
+                                                >
+                                                  {formatMoneyCents(tier.unitAmountCents, pricing.currency)}
+                                                </Typography>
+                                              </>
+                                            ) : null}
+                                          </Box>
+                                        );
+                                      })}
+                                    </Box>
+
+                                    <Stack
+                                      direction="row"
+                                      alignItems="center"
+                                      spacing={0.25}
+                                      sx={{
+                                        width: ACTIONS_COLUMN_WIDTH,
+                                        pl: 0.75,
+                                        flexShrink: 0,
+                                        justifyContent: 'flex-end',
+                                        alignSelf: 'stretch',
+                                        borderLeft: '1px solid #E1E7EC'
+                                      }}
                                     >
-                                      <MoreHorizIcon fontSize="small" />
-                                    </IconButton>
+                                      <IconButton
+                                        size="small"
+                                        onClick={(event) =>
+                                          setPricingActionsTarget({
+                                            anchorEl: event.currentTarget,
+                                            pricingId: pricing.id
+                                          })
+                                        }
+                                      >
+                                        <MoreHorizIcon fontSize="small" />
+                                      </IconButton>
 
-                                    <IconButton size="small" onClick={() => openEditPricing(pricing)}>
-                                      <EditOutlinedIcon fontSize="small" />
-                                    </IconButton>
+                                      <IconButton size="small" onClick={() => openEditPricing(pricing)}>
+                                        <EditOutlinedIcon fontSize="small" />
+                                      </IconButton>
 
-                                    <IconButton size="small" color="error" onClick={() => setDeletingPricing(pricing)}>
-                                      <DeleteOutlineIcon fontSize="small" />
-                                    </IconButton>
+                                      <IconButton
+                                        size="small"
+                                        color="error"
+                                        onClick={() => setDeletingPricing(pricing)}
+                                      >
+                                        <DeleteOutlineIcon fontSize="small" />
+                                      </IconButton>
+                                    </Stack>
                                   </Stack>
 
                                   {isPricingExpanded ? (
@@ -524,7 +708,7 @@ export function PricingsTab(): JSX.Element {
                                       <Stack
                                         direction="row"
                                         alignItems="center"
-                                        spacing={0.75}
+                                        spacing={0}
                                         sx={{
                                           minHeight: 34,
                                           px: 1.5,
@@ -532,22 +716,26 @@ export function PricingsTab(): JSX.Element {
                                           backgroundColor: '#FCFDFE'
                                         }}
                                       >
-                                        <Box sx={{ width: 56 }} />
-                                        <IconButton
-                                          size="small"
-                                          onClick={() =>
-                                            toggleExpanded(setCollapsedUsageSections, accountsSectionKey)
-                                          }
-                                          aria-label={
-                                            isAccountsCollapsed ? 'Expand accounts section' : 'Collapse accounts section'
-                                          }
-                                        >
-                                          {isAccountsCollapsed ? (
-                                            <ExpandMoreIcon fontSize="small" />
-                                          ) : (
-                                            <ExpandLessIcon fontSize="small" />
-                                          )}
-                                        </IconButton>
+                                        <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
+                                        <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                                          <IconButton
+                                            size="small"
+                                            sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
+                                            onClick={() =>
+                                              toggleExpanded(setCollapsedUsageSections, accountsSectionKey)
+                                            }
+                                            aria-label={
+                                              isAccountsCollapsed ? 'Expand accounts section' : 'Collapse accounts section'
+                                            }
+                                          >
+                                            {isAccountsCollapsed ? (
+                                              <ChevronRightIcon fontSize="small" />
+                                            ) : (
+                                              <ExpandMoreIcon fontSize="small" />
+                                            )}
+                                          </IconButton>
+                                        </Box>
+                                        <Box sx={{ width: TREE_LABEL_GAP }} />
                                         <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#212934' }}>
                                           {accountRows.length} accounts
                                         </Typography>
@@ -555,80 +743,154 @@ export function PricingsTab(): JSX.Element {
 
                                       {!isAccountsCollapsed && accountRows.length > 0 ? (
                                         accountRows.map((accountUsage) => {
-                                          const accountTierLabel = (() => {
-                                            if (pricing.type === 'FIXED') {
-                                              return formatMoneyCents(
-                                                pricing.fixedAmountCents,
-                                                pricing.currency
-                                              );
-                                            }
-
-                                            return `${getTierRangeLabel(accountUsage.currentTier)} · ${formatMoneyCents(accountUsage.currentUnitAmountCents, pricing.currency)}`;
-                                          })();
+                                          const activeTierColumnIndex = getActiveTierColumnIndex(
+                                            pricing,
+                                            productTierColumnCount,
+                                            accountUsage.currentTier
+                                          );
 
                                           return (
                                             <Box key={`${pricing.id}:${accountUsage.account.id}`}>
                                               <Stack
                                                 direction="row"
-                                                alignItems="center"
-                                                spacing={1}
+                                                alignItems="stretch"
+                                                spacing={0}
                                                 sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
                                               >
-                                                <Box sx={{ width: 96 }} />
+                                              <Stack
+                                                direction="row"
+                                                alignItems="center"
+                                                spacing={0}
+                                                sx={{ flex: 1, minWidth: 340 }}
+                                              >
+                                                <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
+                                                <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                                <Box sx={{ width: TREE_LABEL_GAP }} />
                                                 <Typography sx={{ minWidth: 260, fontSize: 14 }}>
                                                   {accountUsage.account.companyName}
                                                 </Typography>
+                                              </Stack>
 
-                                                <Typography sx={{ minWidth: 170, color: '#4B617C', fontSize: 13 }}>
-                                                  {accountUsage.inheritedPropertiesCount}/
-                                                  {accountUsage.totalProperties} properties
-                                                </Typography>
-
-                                                <Typography sx={{ minWidth: 130, color: '#4B617C', fontSize: 13 }}>
-                                                  {accountUsage.totalBillableUnits} units
-                                                </Typography>
-
-                                                <Typography sx={{ flex: 1, color: '#4B617C', fontSize: 13 }}>
-                                                  {accountTierLabel}
-                                                </Typography>
-
-                                                {accountUsage.accountSubscriptionId ? (
-                                                  <IconButton
-                                                    size="small"
-                                                    onClick={(event) =>
-                                                      setDetachTarget({
-                                                        anchorEl: event.currentTarget,
-                                                        pricingId: pricing.id,
-                                                        subscriptionId: accountUsage.accountSubscriptionId ?? '',
-                                                        title: `Detach pricing from ${accountUsage.account.companyName}`
-                                                      })
-                                                    }
+                                                <Box
+                                                  sx={{
+                                                    ml: 'auto',
+                                                    flexShrink: 0,
+                                                    display: 'grid',
+                                                    gridTemplateColumns: `${PROPERTIES_COLUMN_WIDTH}px ${UNITS_COLUMN_WIDTH}px`
+                                                  }}
+                                                >
+                                                  <Box
+                                                    sx={{
+                                                      minHeight: 34,
+                                                      px: 1.25,
+                                                      borderLeft: '1px solid #E1E7EC',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      color: '#212934',
+                                                      fontSize: 13,
+                                                      fontWeight: 600,
+                                                      fontVariantNumeric: 'tabular-nums'
+                                                    }}
                                                   >
-                                                    <MoreHorizIcon fontSize="small" />
-                                                  </IconButton>
-                                                ) : (
-                                                  <Box sx={{ width: 30 }} />
-                                                )}
+                                                    {accountUsage.inheritedPropertiesCount}/{accountUsage.totalProperties}{' '}
+                                                    properties
+                                                  </Box>
+                                                  <Box
+                                                    sx={{
+                                                      minHeight: 34,
+                                                      px: 1.25,
+                                                      borderLeft: '1px solid #E1E7EC',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      color: '#212934',
+                                                      fontSize: 13,
+                                                      fontWeight: 600,
+                                                      fontVariantNumeric: 'tabular-nums'
+                                                    }}
+                                                  >
+                                                    {accountUsage.totalBillableUnits} units
+                                                  </Box>
+                                                </Box>
+
+                                                <Box
+                                                  sx={{
+                                                    flexShrink: 0,
+                                                    display: 'grid',
+                                                    gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(124px, 1fr))`
+                                                  }}
+                                                >
+                                                  {Array.from({ length: productTierColumnCount }).map(
+                                                    (_, columnIndex) => (
+                                                      <Box
+                                                        key={`${pricing.id}:${accountUsage.account.id}:tier-check:${columnIndex}`}
+                                                        sx={{
+                                                          minHeight: 34,
+                                                          borderLeft: '1px solid #E1E7EC',
+                                                          display: 'flex',
+                                                          alignItems: 'center',
+                                                          justifyContent: 'center'
+                                                        }}
+                                                      >
+                                                        {columnIndex === activeTierColumnIndex ? (
+                                                          <TierMatchIndicator />
+                                                        ) : null}
+                                                      </Box>
+                                                    )
+                                                  )}
+                                                </Box>
+
+                                                <Box
+                                                  sx={{
+                                                    width: ACTIONS_COLUMN_WIDTH,
+                                                    pl: 0.75,
+                                                    flexShrink: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'flex-end',
+                                                    borderLeft: '1px solid #E1E7EC'
+                                                  }}
+                                                >
+                                                  {accountUsage.accountSubscriptionId ? (
+                                                    <IconButton
+                                                      size="small"
+                                                      onClick={(event) =>
+                                                        setDetachTarget({
+                                                          anchorEl: event.currentTarget,
+                                                          pricingId: pricing.id,
+                                                          subscriptionId: accountUsage.accountSubscriptionId ?? '',
+                                                          title: `Detach pricing from ${accountUsage.account.companyName}`
+                                                        })
+                                                      }
+                                                    >
+                                                      <MoreHorizIcon fontSize="small" />
+                                                    </IconButton>
+                                                  ) : null}
+                                                </Box>
                                               </Stack>
                                             </Box>
                                           );
                                         })
-                                      ) : !isAccountsCollapsed ? (
-                                        <Typography sx={{ py: 1, px: 10, color: '#4B617C', fontSize: 13 }}>
-                                          No accounts for this pricing.
-                                        </Typography>
                                       ) : null}
 
                                       {!isAccountsCollapsed ? (
                                         <Stack
                                           direction="row"
                                           alignItems="center"
-                                          sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
+                                          sx={{
+                                            minHeight: 48,
+                                            px: 1.5,
+                                            py: 0.75,
+                                            borderTop: '1px dashed #E1E7EC',
+                                            backgroundColor: '#FCFDFE'
+                                          }}
                                         >
-                                          <Box sx={{ width: 96 }} />
+                                          <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
+                                          <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                          <Box sx={{ width: TREE_LABEL_GAP }} />
                                           <Button
                                             size="small"
                                             startIcon={<AddIcon />}
+                                            sx={INLINE_ACTION_BUTTON_SX}
                                             onClick={() =>
                                               openCreateSubscription(pricing.id, {
                                                 scope: 'ACCOUNT'
@@ -643,7 +905,7 @@ export function PricingsTab(): JSX.Element {
                                       <Stack
                                         direction="row"
                                         alignItems="center"
-                                        spacing={0.75}
+                                        spacing={0}
                                         sx={{
                                           minHeight: 34,
                                           px: 1.5,
@@ -651,27 +913,31 @@ export function PricingsTab(): JSX.Element {
                                           backgroundColor: '#FCFDFE'
                                         }}
                                       >
-                                        <Box sx={{ width: 56 }} />
-                                        <IconButton
-                                          size="small"
-                                          onClick={() =>
-                                            toggleExpanded(
-                                              setCollapsedUsageSections,
-                                              specificPropertiesSectionKey
-                                            )
-                                          }
-                                          aria-label={
-                                            isSpecificPropertiesCollapsed
-                                              ? 'Expand specific properties section'
-                                              : 'Collapse specific properties section'
-                                          }
-                                        >
-                                          {isSpecificPropertiesCollapsed ? (
-                                            <ExpandMoreIcon fontSize="small" />
-                                          ) : (
-                                            <ExpandLessIcon fontSize="small" />
-                                          )}
-                                        </IconButton>
+                                        <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
+                                        <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                                          <IconButton
+                                            size="small"
+                                            sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
+                                            onClick={() =>
+                                              toggleExpanded(
+                                                setCollapsedUsageSections,
+                                                specificPropertiesSectionKey
+                                              )
+                                            }
+                                            aria-label={
+                                              isSpecificPropertiesCollapsed
+                                                ? 'Expand specific properties section'
+                                                : 'Collapse specific properties section'
+                                            }
+                                          >
+                                            {isSpecificPropertiesCollapsed ? (
+                                              <ChevronRightIcon fontSize="small" />
+                                            ) : (
+                                              <ExpandMoreIcon fontSize="small" />
+                                            )}
+                                          </IconButton>
+                                        </Box>
+                                        <Box sx={{ width: TREE_LABEL_GAP }} />
                                         <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#212934' }}>
                                           {specificPropertiesCount}{' '}
                                           specific properties
@@ -680,82 +946,148 @@ export function PricingsTab(): JSX.Element {
 
                                       {!isSpecificPropertiesCollapsed
                                         ? specificPropertyRows.map(({ accountUsage, propertyUsage }) => {
-                                          const propertyTierLabel = (() => {
-                                            if (pricing.type === 'FIXED') {
-                                              return formatMoneyCents(
-                                                pricing.fixedAmountCents,
-                                                pricing.currency
-                                              );
-                                            }
-
-                                            return `${getTierRangeLabel(propertyUsage.currentTier)} · ${formatMoneyCents(propertyUsage.currentUnitAmountCents, pricing.currency)}`;
-                                          })();
+                                          const activeTierColumnIndex = getActiveTierColumnIndex(
+                                            pricing,
+                                            productTierColumnCount,
+                                            propertyUsage.currentTier
+                                          );
 
                                           return (
                                             <Stack
                                               key={`${pricing.id}:${accountUsage.account.id}:${propertyUsage.property.id}`}
                                               direction="row"
-                                              alignItems="center"
-                                              spacing={1}
+                                              alignItems="stretch"
+                                              spacing={0}
                                               sx={{ minHeight: 32, px: 1.5, borderTop: '1px dotted #E1E7EC' }}
                                             >
-                                              <Box sx={{ width: 96 }} />
+                                              <Stack
+                                                direction="row"
+                                                alignItems="center"
+                                                spacing={0}
+                                                sx={{ flex: 1, minWidth: 340 }}
+                                              >
+                                                <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
+                                                <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                                <Box sx={{ width: TREE_LABEL_GAP }} />
 
-                                              <Typography sx={{ minWidth: 260, fontSize: 13 }}>
-                                                {propertyUsage.property.name}
-                                              </Typography>
+                                                <Typography sx={{ minWidth: 260, fontSize: 13 }}>
+                                                  {propertyUsage.property.name}
+                                                </Typography>
 
-                                              <Typography sx={{ minWidth: 170, color: '#4B617C', fontSize: 12 }}>
-                                                {accountUsage.account.companyName}
-                                              </Typography>
+                                                <Typography sx={{ minWidth: 170, color: '#4B617C', fontSize: 12 }}>
+                                                  {accountUsage.account.companyName}
+                                                </Typography>
+                                              </Stack>
 
-                                              <Typography sx={{ minWidth: 130, color: '#4B617C', fontSize: 12 }}>
-                                                {propertyUsage.property.billableUnits} units
-                                              </Typography>
-
-                                              <Typography sx={{ flex: 1, color: '#4B617C', fontSize: 12 }}>
-                                                {propertyTierLabel}
-                                              </Typography>
-
-                                              {propertyUsage.resolvedBySubscriptionId ? (
-                                                <IconButton
-                                                  size="small"
-                                                  onClick={(event) =>
-                                                    setDetachTarget({
-                                                      anchorEl: event.currentTarget,
-                                                      pricingId: pricing.id,
-                                                      subscriptionId:
-                                                        propertyUsage.resolvedBySubscriptionId ?? '',
-                                                      title: `Detach override from ${propertyUsage.property.name}`
-                                                    })
-                                                  }
+                                              <Box
+                                                sx={{
+                                                  ml: 'auto',
+                                                  flexShrink: 0,
+                                                  display: 'grid',
+                                                  gridTemplateColumns: `${PROPERTIES_COLUMN_WIDTH}px ${UNITS_COLUMN_WIDTH}px`
+                                                }}
+                                              >
+                                                <Box
+                                                  sx={{
+                                                    minHeight: 32,
+                                                    px: 1.25,
+                                                    borderLeft: '1px solid #E1E7EC'
+                                                  }}
+                                                />
+                                                <Box
+                                                  sx={{
+                                                    minHeight: 32,
+                                                    px: 1.25,
+                                                    borderLeft: '1px solid #E1E7EC',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    color: '#212934',
+                                                    fontSize: 13,
+                                                    fontWeight: 600,
+                                                    fontVariantNumeric: 'tabular-nums'
+                                                  }}
                                                 >
-                                                  <MoreHorizIcon fontSize="small" />
-                                                </IconButton>
-                                              ) : (
-                                                <Box sx={{ width: 30 }} />
-                                              )}
+                                                  {propertyUsage.property.billableUnits} units
+                                                </Box>
+                                              </Box>
+
+                                              <Box
+                                                sx={{
+                                                  flexShrink: 0,
+                                                  display: 'grid',
+                                                  gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(124px, 1fr))`
+                                                }}
+                                              >
+                                                {Array.from({ length: productTierColumnCount }).map((_, columnIndex) => (
+                                                  <Box
+                                                    key={`${pricing.id}:${propertyUsage.property.id}:tier-check:${columnIndex}`}
+                                                    sx={{
+                                                      minHeight: 32,
+                                                      borderLeft: '1px solid #E1E7EC',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'center'
+                                                    }}
+                                                  >
+                                                    {columnIndex === activeTierColumnIndex ? (
+                                                      <TierMatchIndicator />
+                                                    ) : null}
+                                                  </Box>
+                                                ))}
+                                              </Box>
+
+                                              <Box
+                                                sx={{
+                                                  width: ACTIONS_COLUMN_WIDTH,
+                                                  pl: 0.75,
+                                                  flexShrink: 0,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'flex-end',
+                                                  borderLeft: '1px solid #E1E7EC'
+                                                }}
+                                              >
+                                                {propertyUsage.resolvedBySubscriptionId ? (
+                                                  <IconButton
+                                                    size="small"
+                                                    onClick={(event) =>
+                                                      setDetachTarget({
+                                                        anchorEl: event.currentTarget,
+                                                        pricingId: pricing.id,
+                                                        subscriptionId:
+                                                          propertyUsage.resolvedBySubscriptionId ?? '',
+                                                        title: `Detach override from ${propertyUsage.property.name}`
+                                                      })
+                                                    }
+                                                  >
+                                                    <MoreHorizIcon fontSize="small" />
+                                                  </IconButton>
+                                                ) : null}
+                                              </Box>
                                             </Stack>
                                           );
                                         })
                                         : null}
 
-                                      {!isSpecificPropertiesCollapsed && specificPropertiesCount === 0 ? (
-                                        <Typography sx={{ py: 1, px: 10, color: '#4B617C', fontSize: 13 }}>
-                                          No specific properties for this pricing.
-                                        </Typography>
-                                      ) : null}
-
                                       {!isSpecificPropertiesCollapsed ? (
                                         <Stack
                                           direction="row"
                                           alignItems="center"
-                                          sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
+                                          sx={{
+                                            minHeight: 48,
+                                            px: 1.5,
+                                            py: 0.75,
+                                            borderTop: '1px dashed #E1E7EC',
+                                            backgroundColor: '#FCFDFE'
+                                          }}
                                         >
-                                          <Box sx={{ width: 96 }} />
+                                          <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
+                                          <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                          <Box sx={{ width: TREE_LABEL_GAP }} />
                                           <Button
                                             size="small"
                                             startIcon={<AddIcon />}
+                                            sx={INLINE_ACTION_BUTTON_SX}
                                             onClick={() =>
                                               openCreateSubscription(pricing.id, {
                                                 scope: 'PROPERTY'
@@ -778,14 +1110,22 @@ export function PricingsTab(): JSX.Element {
                             direction="row"
                             alignItems="center"
                             sx={{
-                              minHeight: 34,
+                              minHeight: 48,
                               px: 1.5,
+                              py: 0.75,
                               borderTop: '1px solid #E1E7EC',
-                              backgroundColor: '#FCFDFE'
+                              backgroundColor: '#F8F9FA'
                             }}
                           >
-                            <Box sx={{ width: 56 }} />
-                            <Button size="small" startIcon={<AddIcon />} onClick={() => openCreatePricing(product.id)}>
+                            <Box sx={{ width: TREE_INDENT_STEP }} />
+                            <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                            <Box sx={{ width: TREE_LABEL_GAP }} />
+                            <Button
+                              size="small"
+                              startIcon={<AddIcon />}
+                              sx={INLINE_TURQUOISE_ACTION_BUTTON_SX}
+                              onClick={() => openCreatePricing(product.id)}
+                            >
                               Add pricing
                             </Button>
                           </Stack>
