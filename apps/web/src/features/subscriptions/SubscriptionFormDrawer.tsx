@@ -36,6 +36,7 @@ type SubscriptionFormDrawerProps = {
   mode: 'create' | 'edit';
   initialSubscription: SubscriptionItem | null;
   defaultAccountId?: string;
+  defaultPricingIds?: string[];
   onClose: () => void;
 };
 
@@ -86,7 +87,7 @@ function getErrorMessage(error: unknown): string {
   return 'Unexpected error';
 }
 
-function initialFormState(defaultAccountId?: string): FormState {
+function initialFormState(defaultAccountId?: string, defaultPricingIds?: string[]): FormState {
   return {
     accountId: defaultAccountId ?? '',
     scope: 'ACCOUNT',
@@ -96,14 +97,16 @@ function initialFormState(defaultAccountId?: string): FormState {
     hasEndDate: false,
     status: 'DRAFT',
     paymentMethodId: '',
-    pricingIds: []
+    pricingIds: defaultPricingIds ?? []
   };
 }
 
 export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.Element {
-  const { open, mode, initialSubscription, defaultAccountId, onClose } = props;
+  const { open, mode, initialSubscription, defaultAccountId, defaultPricingIds, onClose } = props;
 
-  const [formState, setFormState] = useState<FormState>(() => initialFormState(defaultAccountId));
+  const [formState, setFormState] = useState<FormState>(() =>
+    initialFormState(defaultAccountId, defaultPricingIds)
+  );
   const [formError, setFormError] = useState<string | null>(null);
 
   const isEdit = mode === 'edit';
@@ -148,11 +151,11 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
         pricingIds: initialSubscription.pricings.map((pricing) => pricing.id)
       });
     } else {
-      setFormState(initialFormState(defaultAccountId));
+      setFormState(initialFormState(defaultAccountId, defaultPricingIds));
     }
 
     setFormError(null);
-  }, [defaultAccountId, initialSubscription, open]);
+  }, [defaultAccountId, defaultPricingIds, initialSubscription, open]);
 
   const canSubmit = useMemo(() => {
     if (!formState.accountId) {

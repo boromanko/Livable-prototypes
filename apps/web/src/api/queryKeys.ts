@@ -23,6 +23,7 @@ export const queryKeys = {
     productsAll: [...adminBaseKey, 'products'] as const,
     pricingsAll: [...adminBaseKey, 'pricings'] as const,
     pricings: (params: PricingsQueryParams) => [...adminBaseKey, 'pricings', params] as const,
+    pricingsTreeAll: [...adminBaseKey, 'pricingsTree'] as const,
     subscriptionsAll: [...adminBaseKey, 'subscriptions'] as const,
     subscriptions: (params: SubscriptionsQueryParams) =>
       [...adminBaseKey, 'subscriptions', params] as const

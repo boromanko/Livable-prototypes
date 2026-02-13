@@ -44,6 +44,7 @@ type PricingFormDrawerProps = {
   open: boolean;
   mode: 'create' | 'edit';
   initialPricing: PricingItem | null;
+  defaultProductId?: string;
   onClose: () => void;
 };
 
@@ -346,11 +347,12 @@ function buildDefaultPricingName(pricings: PricingItem[] | undefined): string {
 
 function buildInitialState(
   pricing?: PricingItem | null,
-  defaultPricingName = 'Price 1'
+  defaultPricingName = 'Price 1',
+  defaultProductId = ''
 ): PricingFormState {
   if (!pricing) {
     return {
-      productId: '',
+      productId: defaultProductId,
       internalName: defaultPricingName,
       type: 'FIXED',
       fixedAmountUsd: '',
@@ -408,7 +410,7 @@ function getFormFieldSx(hasError: boolean): Record<string, unknown> {
 }
 
 export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
-  const { open, mode, initialPricing, onClose } = props;
+  const { open, mode, initialPricing, defaultProductId, onClose } = props;
 
   const [formState, setFormState] = useState<PricingFormState>(() =>
     buildInitialState(null, 'Price 1')
@@ -447,10 +449,10 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
       return;
     }
 
-    setFormState(buildInitialState(initialPricing, defaultPricingName));
+    setFormState(buildInitialState(initialPricing, defaultPricingName, defaultProductId));
     setFormError(null);
     setShowValidation(false);
-  }, [defaultPricingName, initialPricing, open]);
+  }, [defaultPricingName, defaultProductId, initialPricing, open]);
 
   useEffect(() => {
     if (!open || isEdit) {
@@ -672,6 +674,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
   const fixedAmountError = showValidation && formValidation.fixedAmountError;
   const minimumPriceError = showValidation && formValidation.minimumPriceError;
   const productItems = productsQuery.data?.items ?? [];
+  const isProductLocked = mode === 'create' && Boolean(defaultProductId);
 
   return (
     <Dialog
@@ -753,7 +756,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                   productId: event.target.value
                 }))
               }
-              disabled={productsQuery.isPending || isEdit}
+              disabled={productsQuery.isPending || isEdit || isProductLocked}
               error={productError}
               SelectProps={{
                 displayEmpty: true,
@@ -768,7 +771,9 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
               helperText={
                 productError
                   ? 'Product is required.'
-                  : (isEdit ? 'Product is fixed for existing pricing.' : undefined)
+                  : (isEdit || isProductLocked
+                      ? 'Product is fixed for this flow.'
+                      : undefined)
               }
               sx={getFormFieldSx(productError)}
             >

@@ -9,6 +9,7 @@ import type {
   PaymentMethodsQueryParams,
   PaymentMethodsResponse,
   PricingsQueryParams,
+  PricingsTreeResponse,
   PricingsResponse,
   ProductsResponse,
   PropertiesQueryParams,
@@ -50,6 +51,8 @@ export const api = {
 
   getPricings: (params: PricingsQueryParams): Promise<PricingsResponse> =>
     apiRequest('/api/admin/pricings', { query: params }),
+
+  getPricingsTree: (): Promise<PricingsTreeResponse> => apiRequest('/api/admin/pricings-tree'),
 
   createPricing: (payload: CreatePricingPayload): Promise<UpsertPricingResponse> =>
     apiRequest('/api/admin/pricings', {

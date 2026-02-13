@@ -17,6 +17,7 @@ import type {
   PaymentMethodsQueryParams,
   PaymentMethodsResponse,
   PricingsQueryParams,
+  PricingsTreeResponse,
   PricingsResponse,
   ProductsResponse,
   PropertiesQueryParams,
@@ -87,6 +88,13 @@ export function usePricingsQuery(
   });
 }
 
+export function usePricingsTreeQuery(): UseQueryResult<PricingsTreeResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.admin.pricingsTreeAll,
+    queryFn: api.getPricingsTree
+  });
+}
+
 export function useSubscriptionsQuery(
   params: SubscriptionsQueryParams
 ): UseQueryResult<SubscriptionsResponse, Error> {
@@ -107,6 +115,7 @@ export function useCreatePricingMutation(): UseMutationResult<
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsTreeAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.productsAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.subscriptionsAll })
       ]);
@@ -125,6 +134,7 @@ export function useUpdatePricingMutation(): UseMutationResult<
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsTreeAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.subscriptionsAll })
       ]);
     }
@@ -142,6 +152,7 @@ export function useDeletePricingMutation(): UseMutationResult<
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsTreeAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.productsAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.subscriptionsAll })
       ]);
@@ -160,6 +171,7 @@ export function useCreateSubscriptionMutation(): UseMutationResult<
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.subscriptionsAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsTreeAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.accountsAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.propertiesAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsAll })
@@ -180,6 +192,7 @@ export function useUpdateSubscriptionMutation(): UseMutationResult<
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.subscriptionsAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsTreeAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.accountsAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.propertiesAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsAll })
@@ -199,6 +212,7 @@ export function useBulkSubscriptionsMutation(): UseMutationResult<
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.subscriptionsAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsTreeAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.accountsAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.propertiesAll }),
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsAll })
@@ -218,7 +232,8 @@ export function useUpdatePropertyUnitsMutation(): UseMutationResult<
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.propertiesAll }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.admin.accountsAll })
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.accountsAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.pricingsTreeAll })
       ]);
     }
   });

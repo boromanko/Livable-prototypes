@@ -123,6 +123,64 @@ export type PricingsQueryParams = PaginationParams & {
 
 export type PricingsResponse = PaginatedResponse<PricingItem>;
 
+export type PricingTreeResolvedTier = {
+  fromUnit: number;
+  toUnit: number | null;
+  unitAmountCents: number;
+} | null;
+
+export type PricingTreePropertyUsage = {
+  property: {
+    id: string;
+    name: string;
+    address: string;
+    billableUnits: number;
+  };
+  source: 'INHERITED' | 'OVERRIDE';
+  subscriptionId: string | null;
+  currentTier: PricingTreeResolvedTier;
+  currentUnitAmountCents: number | null;
+};
+
+export type PricingTreeAccountUsage = {
+  account: {
+    id: string;
+    companyName: string;
+    email: string;
+  };
+  source: 'ACCOUNT' | 'PROPERTY_ONLY';
+  accountSubscriptionId: string | null;
+  propertiesMatched: number;
+  totalBillableUnits: number;
+  currentTier: PricingTreeResolvedTier;
+  currentUnitAmountCents: number | null;
+  properties: PricingTreePropertyUsage[];
+};
+
+export type PricingTreeItem = {
+  id: string;
+  product: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  internalName: string;
+  type: PricingType;
+  fixedAmountCents: number | null;
+  minimumPriceCents: number | null;
+  currency: string;
+  billingInterval: string;
+  isActive: boolean;
+  createdAt: string;
+  subscriptionsCount: number;
+  tiers: PricingTier[];
+  accounts: PricingTreeAccountUsage[];
+};
+
+export type PricingsTreeResponse = {
+  items: PricingTreeItem[];
+};
+
 export type CreatePricingPayload = {
   productId: string;
   internalName: string;
