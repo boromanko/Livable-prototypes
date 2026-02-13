@@ -4,7 +4,9 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import HomeIcon from '@mui/icons-material/Home';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import PersonIcon from '@mui/icons-material/Person';
 import {
   Alert,
   Box,
@@ -15,6 +17,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  Link,
   Menu,
   MenuItem,
   Snackbar,
@@ -101,6 +104,12 @@ const INLINE_TURQUOISE_ACTION_BUTTON_SX = {
   ...INLINE_ACTION_BUTTON_SX,
   color: '#009299'
 } as const;
+const CLICKABLE_ENTITY_LINK_SX = {
+  color: '#009299',
+  textDecoration: 'none',
+  cursor: 'pointer',
+  '&:hover': { textDecoration: 'underline' }
+} as const;
 
 function TierMatchIndicator(): JSX.Element {
   return (
@@ -117,6 +126,25 @@ function TierMatchIndicator(): JSX.Element {
       }}
     >
       <CheckIcon sx={{ fontSize: 13, color: '#FFFFFF' }} />
+    </Box>
+  );
+}
+
+function EntityTypeIndicator(props: { type: 'ACCOUNT' | 'PROPERTY' }): JSX.Element {
+  const Icon = props.type === 'ACCOUNT' ? PersonIcon : HomeIcon;
+
+  return (
+    <Box
+      sx={{
+        width: 20,
+        height: 20,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}
+    >
+      <Icon sx={{ fontSize: 17, color: '#4B617C' }} />
     </Box>
   );
 }
@@ -250,7 +278,7 @@ function matchesPricingFilters(
     }
 
     return accountUsage.properties.some((propertyUsage) =>
-      propertyUsage.property.name.toLowerCase().includes(normalizedSearch)
+      propertyUsage.property.address.toLowerCase().includes(normalizedSearch)
     );
   });
 }
@@ -766,9 +794,16 @@ export function PricingsTab(): JSX.Element {
                                                 <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
                                                 <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
                                                 <Box sx={{ width: TREE_LABEL_GAP }} />
-                                                <Typography sx={{ minWidth: 260, fontSize: 14 }}>
+                                                <Box sx={{ mr: 1 }}>
+                                                  <EntityTypeIndicator type="ACCOUNT" />
+                                                </Box>
+                                                <Link
+                                                  href="#"
+                                                  onClick={(event) => event.preventDefault()}
+                                                  sx={{ ...CLICKABLE_ENTITY_LINK_SX, minWidth: 260, fontSize: 14 }}
+                                                >
                                                   {accountUsage.account.companyName}
-                                                </Typography>
+                                                </Link>
                                               </Stack>
 
                                                 <Box
@@ -958,7 +993,7 @@ export function PricingsTab(): JSX.Element {
                                               direction="row"
                                               alignItems="stretch"
                                               spacing={0}
-                                              sx={{ minHeight: 32, px: 1.5, borderTop: '1px dotted #E1E7EC' }}
+                                              sx={{ minHeight: 44, px: 1.5, borderTop: '1px dotted #E1E7EC' }}
                                             >
                                               <Stack
                                                 direction="row"
@@ -969,14 +1004,31 @@ export function PricingsTab(): JSX.Element {
                                                 <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
                                                 <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
                                                 <Box sx={{ width: TREE_LABEL_GAP }} />
+                                                <Box sx={{ mr: 1 }}>
+                                                  <EntityTypeIndicator type="PROPERTY" />
+                                                </Box>
 
-                                                <Typography sx={{ minWidth: 260, fontSize: 13 }}>
-                                                  {propertyUsage.property.name}
-                                                </Typography>
-
-                                                <Typography sx={{ minWidth: 170, color: '#4B617C', fontSize: 12 }}>
-                                                  {accountUsage.account.companyName}
-                                                </Typography>
+                                                <Stack spacing={0} sx={{ minWidth: 360, py: 0.5 }}>
+                                                  <Link
+                                                    href="#"
+                                                    onClick={(event) => event.preventDefault()}
+                                                    sx={{ ...CLICKABLE_ENTITY_LINK_SX, fontSize: 13, lineHeight: 1.1 }}
+                                                  >
+                                                    {propertyUsage.property.address}
+                                                  </Link>
+                                                  <Link
+                                                    href="#"
+                                                    onClick={(event) => event.preventDefault()}
+                                                    sx={{
+                                                      ...CLICKABLE_ENTITY_LINK_SX,
+                                                      fontSize: 11,
+                                                      lineHeight: 1.1,
+                                                      color: '#7A8EA8'
+                                                    }}
+                                                  >
+                                                    {accountUsage.account.companyName}
+                                                  </Link>
+                                                </Stack>
                                               </Stack>
 
                                               <Box
@@ -989,14 +1041,14 @@ export function PricingsTab(): JSX.Element {
                                               >
                                                 <Box
                                                   sx={{
-                                                    minHeight: 32,
+                                                    minHeight: 44,
                                                     px: 1.25,
                                                     borderLeft: '1px solid #E1E7EC'
                                                   }}
                                                 />
                                                 <Box
                                                   sx={{
-                                                    minHeight: 32,
+                                                    minHeight: 44,
                                                     px: 1.25,
                                                     borderLeft: '1px solid #E1E7EC',
                                                     display: 'flex',
@@ -1022,7 +1074,7 @@ export function PricingsTab(): JSX.Element {
                                                   <Box
                                                     key={`${pricing.id}:${propertyUsage.property.id}:tier-check:${columnIndex}`}
                                                     sx={{
-                                                      minHeight: 32,
+                                                      minHeight: 44,
                                                       borderLeft: '1px solid #E1E7EC',
                                                       display: 'flex',
                                                       alignItems: 'center',
@@ -1056,7 +1108,7 @@ export function PricingsTab(): JSX.Element {
                                                         pricingId: pricing.id,
                                                         subscriptionId:
                                                           propertyUsage.resolvedBySubscriptionId ?? '',
-                                                        title: `Detach override from ${propertyUsage.property.name}`
+                                                        title: `Detach override from ${propertyUsage.property.address}`
                                                       })
                                                     }
                                                   >

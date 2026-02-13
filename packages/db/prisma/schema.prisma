@@ -45,7 +45,6 @@ model Account {
 model Property {
   id        String         @id @default(cuid())
   accountId String         @map("account_id")
-  name      String
   address   String
   billableUnits Int        @default(0) @map("billable_units")
   createdAt DateTime       @default(now()) @map("created_at")

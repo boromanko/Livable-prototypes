@@ -64,7 +64,6 @@ const subscriptionInclude = {
   property: {
     select: {
       id: true,
-      name: true,
       address: true,
       billableUnits: true
     }
@@ -141,7 +140,6 @@ const pricingTreeInclude = {
             select: {
               id: true,
               accountId: true,
-              name: true,
               address: true,
               billableUnits: true
             }
@@ -449,7 +447,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     };
 
     if (query.search) {
-      where.OR = [{ name: { contains: query.search } }, { address: { contains: query.search } }];
+      where.address = { contains: query.search };
     }
 
     const [items, total] = await prisma.$transaction([
@@ -458,7 +456,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         select: {
           id: true,
           accountId: true,
-          name: true,
           address: true,
           billableUnits: true,
           createdAt: true,
@@ -468,7 +465,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
             }
           }
         },
-        orderBy: { name: 'asc' },
+        orderBy: { address: 'asc' },
         skip,
         take: pageSize
       }),
@@ -479,7 +476,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       items: items.map((item) => ({
         id: item.id,
         accountId: item.accountId,
-        name: item.name,
         address: item.address,
         billableUnits: item.billableUnits,
         createdAt: item.createdAt,
@@ -513,7 +509,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       select: {
         id: true,
         accountId: true,
-        name: true,
         address: true,
         billableUnits: true,
         createdAt: true,
@@ -529,7 +524,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       item: {
         id: updated.id,
         accountId: updated.accountId,
-        name: updated.name,
         address: updated.address,
         billableUnits: updated.billableUnits,
         createdAt: updated.createdAt,
@@ -638,7 +632,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       where.OR = [
         { account: { companyName: { contains: query.search } } },
         { account: { email: { contains: query.search } } },
-        { property: { name: { contains: query.search } } }
+        { property: { address: { contains: query.search } } }
       ];
     }
 
@@ -959,11 +953,10 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
           select: {
             id: true,
             accountId: true,
-            name: true,
             address: true,
             billableUnits: true
           },
-          orderBy: [{ name: 'asc' }]
+          orderBy: [{ address: 'asc' }]
         })
       : [];
 

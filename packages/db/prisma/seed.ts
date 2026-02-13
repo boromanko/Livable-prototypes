@@ -133,7 +133,6 @@ async function main(): Promise<void> {
       data: Array.from({ length: 10 }, (_, propertyIndex) => ({
         id: `prop-${account.id}-${String(propertyIndex + 1).padStart(2, '0')}`,
         accountId: account.id,
-        name: `${account.companyName} Property ${propertyIndex + 1}`,
         address: buildPropertyAddress(accountIndex, propertyIndex),
         billableUnits: buildBillableUnits(accountIndex, propertyIndex)
       }))

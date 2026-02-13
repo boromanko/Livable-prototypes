@@ -14,9 +14,9 @@ const account = {
 };
 
 const baseProperties: ResolutionPropertyInput[] = [
-  { id: 'prop-1', accountId: account.id, name: 'Property 1', address: 'Addr 1', billableUnits: 5 },
-  { id: 'prop-2', accountId: account.id, name: 'Property 2', address: 'Addr 2', billableUnits: 8 },
-  { id: 'prop-3', accountId: account.id, name: 'Property 3', address: 'Addr 3', billableUnits: 10 }
+  { id: 'prop-1', accountId: account.id, address: 'Addr 1', billableUnits: 5 },
+  { id: 'prop-2', accountId: account.id, address: 'Addr 2', billableUnits: 8 },
+  { id: 'prop-3', accountId: account.id, address: 'Addr 3', billableUnits: 10 }
 ];
 
 function buildTieredPricing(

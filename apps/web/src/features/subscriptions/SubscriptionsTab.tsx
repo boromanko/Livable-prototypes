@@ -128,7 +128,7 @@ function compareRows(
   }
 
   if (field === 'property') {
-    return (left.property?.name ?? '').localeCompare(right.property?.name ?? '');
+    return (left.property?.address ?? '').localeCompare(right.property?.address ?? '');
   }
 
   if (field === 'startDate') {
@@ -544,7 +544,6 @@ export function SubscriptionsTab(): JSX.Element {
                         <TableCell>
                           {subscription.property ? (
                             <Stack spacing={0.25}>
-                              <Typography variant="body2">{subscription.property.name}</Typography>
                               <Typography variant="caption" color="text.secondary">
                                 {subscription.property.address}
                               </Typography>

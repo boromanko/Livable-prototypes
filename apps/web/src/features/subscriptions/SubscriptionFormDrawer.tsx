@@ -333,7 +333,7 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
           >
             {(propertiesQuery.data?.items ?? []).map((property) => (
               <MenuItem key={property.id} value={property.id}>
-                {property.name} - {property.billableUnits} units
+                {property.address} - {property.billableUnits} units
               </MenuItem>
             ))}
           </TextField>

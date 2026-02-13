@@ -50,7 +50,6 @@ export type PricingResolutionInput = {
 export type ResolutionPropertyInput = {
   id: string;
   accountId: string;
-  name: string;
   address: string;
   billableUnits: number;
 };
@@ -76,7 +75,6 @@ export type PricingTreeResolvedTier = TierSnapshot | null;
 export type PricingTreePropertyUsage = {
   property: {
     id: string;
-    name: string;
     address: string;
     billableUnits: number;
   };
@@ -288,7 +286,7 @@ export function resolvePricingTree(
   }
 
   for (const accountProperties of propertiesByAccountId.values()) {
-    accountProperties.sort((left, right) => left.name.localeCompare(right.name));
+    accountProperties.sort((left, right) => left.address.localeCompare(right.address));
   }
 
   return pricings.map((pricing) => {
@@ -355,7 +353,6 @@ export function resolvePricingTree(
           propertyRows.push({
             property: {
               id: property.id,
-              name: property.name,
               address: property.address,
               billableUnits: property.billableUnits
             },
@@ -377,7 +374,6 @@ export function resolvePricingTree(
         propertyRows.push({
           property: {
             id: property.id,
-            name: property.name,
             address: property.address,
             billableUnits: property.billableUnits
           },

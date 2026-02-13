@@ -33,7 +33,6 @@ export type AccountsResponse = PaginatedResponse<AccountItem>;
 export type PropertyItem = {
   id: string;
   accountId: string;
-  name: string;
   address: string;
   billableUnits: number;
   createdAt: string;
@@ -134,7 +133,6 @@ export type PricingTierScope = 'ACCOUNT_POOL' | 'PROPERTY';
 export type PricingTreePropertyUsage = {
   property: {
     id: string;
-    name: string;
     address: string;
     billableUnits: number;
   };
@@ -252,7 +250,6 @@ export type SubscriptionItem = {
   };
   property: {
     id: string;
-    name: string;
     address: string;
     billableUnits: number;
   } | null;
