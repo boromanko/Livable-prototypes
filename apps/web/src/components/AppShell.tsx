@@ -9,8 +9,7 @@ import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import { Box, IconButton, Stack, Typography } from '@mui/material';
+import { Box, IconButton, Stack } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import livableLogo from '../assets/livable-logo.svg';
 import { prototypeTokens } from '../theme/tokens';
@@ -121,38 +120,7 @@ export function AppShell(): JSX.Element {
             sx={{ width: 120, height: 32, display: 'block', flexShrink: 0 }}
           />
 
-          <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            <Box
-              sx={{
-                width: '100%',
-                maxWidth: `${prototypeTokens.size.searchWidth}px`,
-                px: 1.5,
-                py: 1.5,
-                borderRadius: `${prototypeTokens.radius.r4}px`,
-                bgcolor: prototypeTokens.color.bg.search,
-                display: { xs: 'none', sm: 'flex' },
-                alignItems: 'center',
-                gap: 1
-              }}
-            >
-              <SearchRoundedIcon
-                sx={{
-                  fontSize: `${prototypeTokens.size.iconSm}px`,
-                  color: prototypeTokens.color.icon.muted
-                }}
-              />
-              <Typography
-                sx={{
-                  color: prototypeTokens.color.text.secondary,
-                  fontFamily: prototypeTokens.typography.search.family,
-                  fontSize: `${prototypeTokens.typography.search.sizePx}px`,
-                  lineHeight: `${prototypeTokens.typography.search.lineHeightPx}px`
-                }}
-              >
-                Search
-              </Typography>
-            </Box>
-          </Box>
+          <Box sx={{ flex: 1 }} />
 
           <Stack direction="row" spacing={0.5}>
             <IconButton size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
