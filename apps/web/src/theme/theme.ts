@@ -28,6 +28,15 @@ export const appTheme = createTheme({
     }
   },
   components: {
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: prototypeTokens.radius.r2,
+          boxShadow: '0px 18px 32px rgba(0, 0, 0, 0.15)',
+          backgroundImage: 'none'
+        }
+      }
+    },
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -40,6 +49,32 @@ export const appTheme = createTheme({
         root: {
           borderRadius: prototypeTokens.radius.r2,
           textTransform: 'none'
+        },
+        contained: {
+          boxShadow: prototypeTokens.shadow.brandAction
+        },
+        outlined: {
+          boxShadow: prototypeTokens.shadow.brandAction
+        }
+      }
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: prototypeTokens.radius.r2,
+          backgroundColor: prototypeTokens.color.bg.surface,
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#B8C4CE'
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#8FA1B3'
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: prototypeTokens.color.brand.teal500
+          }
+        },
+        input: {
+          fontFamily: prototypeTokens.typography.search.family
         }
       }
     },
@@ -52,4 +87,3 @@ export const appTheme = createTheme({
     }
   }
 });
-

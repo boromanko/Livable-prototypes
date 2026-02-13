@@ -1,22 +1,24 @@
+import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import {
   Alert,
   Box,
   Button,
-  Divider,
-  Drawer,
+  Dialog,
   IconButton,
   InputAdornment,
+  InputBase,
   MenuItem,
   Stack,
   TextField,
   Typography
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ApiError,
   useCreatePricingMutation,
+  usePricingsQuery,
   useProductsQuery,
   useUpdatePricingMutation,
   type PricingItem,
@@ -59,6 +61,18 @@ type TierValidation = {
   }>;
   hasErrors: boolean;
 };
+
+type FormValidationState = {
+  internalNameError: boolean;
+  productError: boolean;
+  fixedAmountError: boolean;
+  minimumPriceError: boolean;
+  tiersError: boolean;
+  hasErrors: boolean;
+};
+
+const tableColumnTemplate = '64px minmax(240px, 1fr) minmax(240px, 1fr) 48px';
+const errorTint = '#FFF1F1';
 
 function defaultTier(id: string, maxUnits = ''): TierDraft {
   return {
@@ -138,6 +152,19 @@ function parseUsdToCents(value: string): number | null {
   return Math.round(parsed * 100);
 }
 
+function formatUsdInputOnBlur(value: string): string {
+  if (value.trim() === '') {
+    return '';
+  }
+
+  const parsedCents = parseUsdToCents(value);
+  if (parsedCents === null) {
+    return value;
+  }
+
+  return (parsedCents / 100).toFixed(2);
+}
+
 function formatCentsToUsdInput(valueCents: number | null): string {
   if (valueCents === null) {
     return '';
@@ -161,7 +188,11 @@ function getTierStartUnits(tiers: TierDraft[]): number[] {
     const maxUnits = parsePositiveInteger(tiers[index]?.maxUnits ?? '');
     if (maxUnits !== null && maxUnits >= currentStart) {
       currentStart = maxUnits + 1;
+      continue;
     }
+
+    // Keep placeholder starts monotonic even for empty/invalid draft rows.
+    currentStart += 1;
   }
 
   return starts;
@@ -244,6 +275,38 @@ function validateTiers(tiers: TierDraft[]): TierValidation {
   };
 }
 
+function getFormValidationState(
+  formState: PricingFormState,
+  tierValidation: TierValidation
+): FormValidationState {
+  const internalNameError = formState.internalName.trim() === '';
+  const productError = formState.productId === '';
+
+  const minimumPriceCents = parseUsdToCents(formState.minimumPriceUsd);
+  const minimumPriceError =
+    formState.type === 'TIERED' &&
+    formState.minimumPriceUsd.trim() !== '' &&
+    minimumPriceCents === null;
+
+  const fixedAmountCents = parseUsdToCents(formState.fixedAmountUsd);
+  const fixedAmountError = formState.type === 'FIXED' && fixedAmountCents === null;
+
+  const tiersError =
+    formState.type === 'TIERED' && (formState.tiers.length === 0 || tierValidation.hasErrors);
+
+  const hasErrors =
+    internalNameError || productError || minimumPriceError || fixedAmountError || tiersError;
+
+  return {
+    internalNameError,
+    productError,
+    fixedAmountError,
+    minimumPriceError,
+    tiersError,
+    hasErrors
+  };
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (
@@ -262,11 +325,32 @@ function getErrorMessage(error: unknown): string {
   return 'Unexpected error';
 }
 
-function buildInitialState(pricing?: PricingItem | null): PricingFormState {
+function buildDefaultPricingName(pricings: PricingItem[] | undefined): string {
+  const maxPriceIndex = (pricings ?? []).reduce((acc, pricing) => {
+    const match = pricing.internalName.trim().match(/^Price\s+(\d+)$/i);
+    if (!match) {
+      return acc;
+    }
+
+    const parsed = Number(match[1]);
+    if (!Number.isFinite(parsed)) {
+      return acc;
+    }
+
+    return Math.max(acc, parsed);
+  }, 0);
+
+  return `Price ${maxPriceIndex + 1}`;
+}
+
+function buildInitialState(
+  pricing?: PricingItem | null,
+  defaultPricingName = 'Price 1'
+): PricingFormState {
   if (!pricing) {
     return {
       productId: '',
-      internalName: '',
+      internalName: defaultPricingName,
       type: 'FIXED',
       fixedAmountUsd: '',
       minimumPriceUsd: '',
@@ -291,31 +375,108 @@ function buildInitialState(pricing?: PricingItem | null): PricingFormState {
   };
 }
 
+function sectionTitle(title: string, subtitle?: string): JSX.Element {
+  return (
+    <Stack spacing={0.5}>
+      <Typography sx={{ fontSize: 32 / 2, fontWeight: 600, color: '#212934' }}>
+        {title}
+      </Typography>
+      {subtitle ? (
+        <Typography sx={{ fontSize: 14, color: '#4B617C' }}>
+          {subtitle}
+        </Typography>
+      ) : null}
+    </Stack>
+  );
+}
+
+function getFormFieldSx(hasError: boolean): Record<string, unknown> {
+  return {
+    '& .MuiOutlinedInput-root': {
+      height: 48,
+      alignItems: 'center',
+      ...(hasError ? { backgroundColor: errorTint } : {})
+    },
+    '& .MuiOutlinedInput-input': {
+      py: '12px'
+    },
+    '& .MuiSelect-select': {
+      py: '12px'
+    }
+  };
+}
+
 export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
   const { open, mode, initialPricing, onClose } = props;
 
-  const [formState, setFormState] = useState<PricingFormState>(() => buildInitialState(null));
+  const [formState, setFormState] = useState<PricingFormState>(() =>
+    buildInitialState(null, 'Price 1')
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [showValidation, setShowValidation] = useState(false);
 
   const productsQuery = useProductsQuery();
+  const pricingsQuery = usePricingsQuery({
+    page: 1,
+    pageSize: 100
+  });
   const createMutation = useCreatePricingMutation();
   const updateMutation = useUpdatePricingMutation();
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isEdit = mode === 'edit';
+  const internalNameFieldRef = useRef<HTMLDivElement | null>(null);
+  const productFieldRef = useRef<HTMLDivElement | null>(null);
+  const fixedAmountFieldRef = useRef<HTMLDivElement | null>(null);
+  const tierSectionRef = useRef<HTMLDivElement | null>(null);
+  const minimumPriceFieldRef = useRef<HTMLDivElement | null>(null);
 
   const tierValidation = useMemo(() => validateTiers(formState.tiers), [formState.tiers]);
   const tierStartUnits = useMemo(() => getTierStartUnits(formState.tiers), [formState.tiers]);
+  const defaultPricingName = useMemo(
+    () => buildDefaultPricingName(pricingsQuery.data?.items),
+    [pricingsQuery.data?.items]
+  );
+  const formValidation = useMemo(
+    () => getFormValidationState(formState, tierValidation),
+    [formState, tierValidation]
+  );
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    setFormState(buildInitialState(initialPricing));
+    setFormState(buildInitialState(initialPricing, defaultPricingName));
     setFormError(null);
     setShowValidation(false);
-  }, [initialPricing, open]);
+  }, [defaultPricingName, initialPricing, open]);
+
+  useEffect(() => {
+    if (!open || isEdit) {
+      return;
+    }
+
+    setFormState((prev) => {
+      const currentName = prev.internalName.trim();
+      const isAutoName = /^Price\s+\d+$/i.test(currentName);
+
+      if (currentName !== '' && !isAutoName) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        internalName: defaultPricingName
+      };
+    });
+  }, [defaultPricingName, isEdit, open]);
+
+  function addTier(): void {
+    setFormState((prev) => ({
+      ...prev,
+      tiers: [...prev.tiers, defaultTier(crypto.randomUUID())]
+    }));
+  }
 
   function removeTier(tierId: string): void {
     setFormState((prev) => ({
@@ -361,6 +522,26 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
     });
   }
 
+  function updateTierUnitPrice(tierId: string, value: string): void {
+    setFormState((prev) => ({
+      ...prev,
+      tiers: prev.tiers.map((tier) =>
+        tier.id === tierId ? { ...tier, unitAmountUsd: sanitizeMoneyInput(value) } : tier
+      )
+    }));
+  }
+
+  function normalizeTierUnitPriceOnBlur(tierId: string): void {
+    setFormState((prev) => ({
+      ...prev,
+      tiers: prev.tiers.map((tier) =>
+        tier.id === tierId
+          ? { ...tier, unitAmountUsd: formatUsdInputOnBlur(tier.unitAmountUsd) }
+          : tier
+      )
+    }));
+  }
+
   function normalizeTierMaxUnitsOnBlur(tierId: string): void {
     setFormState((prev) => {
       const tierIndex = prev.tiers.findIndex((tier) => tier.id === tierId);
@@ -390,39 +571,61 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
     });
   }
 
+  function normalizeFixedAmountOnBlur(): void {
+    setFormState((prev) => ({
+      ...prev,
+      fixedAmountUsd: formatUsdInputOnBlur(prev.fixedAmountUsd)
+    }));
+  }
+
+  function normalizeMinimumPriceOnBlur(): void {
+    setFormState((prev) => ({
+      ...prev,
+      minimumPriceUsd: formatUsdInputOnBlur(prev.minimumPriceUsd)
+    }));
+  }
+
+  function scrollToFirstValidationError(): void {
+    const scrollOptions: ScrollIntoViewOptions = { behavior: 'smooth', block: 'center' };
+
+    if (formValidation.internalNameError) {
+      internalNameFieldRef.current?.scrollIntoView(scrollOptions);
+      return;
+    }
+
+    if (formValidation.productError) {
+      productFieldRef.current?.scrollIntoView(scrollOptions);
+      return;
+    }
+
+    if (formValidation.fixedAmountError) {
+      fixedAmountFieldRef.current?.scrollIntoView(scrollOptions);
+      return;
+    }
+
+    if (formValidation.tiersError) {
+      tierSectionRef.current?.scrollIntoView(scrollOptions);
+      return;
+    }
+
+    if (formValidation.minimumPriceError) {
+      minimumPriceFieldRef.current?.scrollIntoView(scrollOptions);
+    }
+  }
+
   async function handleSubmit(): Promise<void> {
     setShowValidation(true);
     setFormError(null);
 
-    if (!formState.productId || !formState.internalName.trim()) {
-      setFormError('Product and internal pricing name are required.');
+    if (formValidation.hasErrors) {
+      setFormError('Fix highlighted fields before saving.');
+      scrollToFirstValidationError();
       return;
     }
 
-    const minimumPriceCents = parseUsdToCents(formState.minimumPriceUsd);
-    if (formState.minimumPriceUsd.trim() !== '' && minimumPriceCents === null) {
-      setFormError('Minimum price must be a valid USD amount.');
-      return;
-    }
-
+    const minimumPriceCents =
+      formState.type === 'TIERED' ? parseUsdToCents(formState.minimumPriceUsd) : null;
     const fixedAmountCents = parseUsdToCents(formState.fixedAmountUsd);
-
-    if (formState.type === 'FIXED' && fixedAmountCents === null) {
-      setFormError('Fixed amount must be a valid USD amount.');
-      return;
-    }
-
-    if (formState.type === 'TIERED') {
-      if (formState.tiers.length === 0) {
-        setFormError('Add at least one tier.');
-        return;
-      }
-
-      if (tierValidation.hasErrors) {
-        setFormError('Fix tier errors before saving.');
-        return;
-      }
-    }
 
     try {
       if (isEdit && initialPricing) {
@@ -434,7 +637,9 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
             fixedAmountCents:
               formState.type === 'FIXED' ? (fixedAmountCents ?? undefined) : null,
             minimumPriceCents:
-              formState.minimumPriceUsd.trim() === '' ? null : minimumPriceCents,
+              formState.type === 'TIERED' && formState.minimumPriceUsd.trim() !== ''
+                ? minimumPriceCents
+                : null,
             tiers: formState.type === 'TIERED' ? tierValidation.payload : []
           }
         });
@@ -446,7 +651,9 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           fixedAmountCents:
             formState.type === 'FIXED' ? (fixedAmountCents ?? undefined) : null,
           minimumPriceCents:
-            formState.minimumPriceUsd.trim() === '' ? null : minimumPriceCents,
+            formState.type === 'TIERED' && formState.minimumPriceUsd.trim() !== ''
+              ? minimumPriceCents
+              : null,
           tiers: formState.type === 'TIERED' ? tierValidation.payload : []
         });
       }
@@ -457,14 +664,29 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
     }
   }
 
+  const title = isEdit ? 'Edit pricing' : 'Add pricing';
+  const hasTierErrors = formValidation.tiersError;
+  const pricingNameError = showValidation && formValidation.internalNameError;
+  const productError = showValidation && formValidation.productError;
+  const fixedAmountError = showValidation && formValidation.fixedAmountError;
+  const minimumPriceError = showValidation && formValidation.minimumPriceError;
+  const productItems = productsQuery.data?.items ?? [];
+
   return (
-    <Drawer
-      anchor="right"
+    <Dialog
       open={open}
       onClose={onClose}
+      fullWidth
+      maxWidth={false}
       PaperProps={{
         sx: {
-          width: { xs: '100%', sm: 560 }
+          width: { xs: 'calc(100vw - 16px)', sm: 760 },
+          maxWidth: 760,
+          height: 'min(920px, calc(100vh - 16px))',
+          m: { xs: 1, sm: 2 },
+          overflow: 'hidden',
+          borderRadius: '2px',
+          boxShadow: '0px 18px 32px rgba(0, 0, 0, 0.15)'
         }
       }}
     >
@@ -473,201 +695,367 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           direction="row"
           alignItems="center"
           justifyContent="space-between"
-          spacing={1}
-          sx={{ p: 2 }}
+          sx={{
+            px: { xs: 2.5, sm: 5 },
+            py: 3.5,
+            background: 'linear-gradient(180deg, #F8F9FA 0%, #FFFFFF 100%)',
+            borderBottom: '1px solid #E1E7EC',
+            flexShrink: 0
+          }}
         >
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {isEdit ? 'Edit Pricing' : 'Create Pricing'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Configure fixed or tiered pricing for a selected product.
-            </Typography>
-          </Box>
-          <IconButton onClick={onClose} aria-label="Close drawer">
-            <CloseIcon />
+          <Typography sx={{ color: '#212934', fontSize: 40 / 2, fontWeight: 600 }}>
+            {title}
+          </Typography>
+          <IconButton onClick={onClose} aria-label="Close dialog">
+            <CloseIcon sx={{ color: '#4B617C' }} />
           </IconButton>
         </Stack>
 
-        <Divider />
-
-        <Stack spacing={2} sx={{ p: 2, overflowY: 'auto' }}>
+        <Stack
+          spacing={4}
+          sx={{
+            px: { xs: 2.5, sm: 4 },
+            py: 4,
+            flex: 1,
+            overflowY: 'auto'
+          }}
+        >
           {formError ? <Alert severity="error">{formError}</Alert> : null}
 
-          <TextField
-            select
-            label="Product"
-            value={formState.productId}
-            onChange={(event) =>
-              setFormState((prev) => ({
-                ...prev,
-                productId: event.target.value
-              }))
-            }
-            disabled={productsQuery.isPending || isEdit}
-            helperText={isEdit ? 'Product is fixed for existing pricing.' : undefined}
-          >
-            {(productsQuery.data?.items ?? []).map((product) => (
-              <MenuItem key={product.id} value={product.id}>
-                {product.name}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            label="Internal Pricing Name"
-            value={formState.internalName}
-            onChange={(event) =>
-              setFormState((prev) => ({
-                ...prev,
-                internalName: event.target.value
-              }))
-            }
-          />
-
-          <TextField
-            select
-            label="Pricing Type"
-            value={formState.type}
-            onChange={(event) =>
-              setFormState((prev) => ({
-                ...prev,
-                type: event.target.value as PricingType
-              }))
-            }
-          >
-            <MenuItem value="FIXED">FIXED</MenuItem>
-            <MenuItem value="TIERED">TIERED</MenuItem>
-          </TextField>
-
-          {formState.type === 'FIXED' ? (
+          <Stack spacing={2} ref={internalNameFieldRef}>
+            {sectionTitle('Pricing name')}
             <TextField
-              label="Fixed Amount (USD)"
-              value={formState.fixedAmountUsd}
+              placeholder="Add pricing name"
+              value={formState.internalName}
               onChange={(event) =>
                 setFormState((prev) => ({
                   ...prev,
-                  fixedAmountUsd: sanitizeMoneyInput(event.target.value)
+                  internalName: event.target.value
                 }))
               }
-              error={showValidation && parseUsdToCents(formState.fixedAmountUsd) === null}
+              error={pricingNameError}
               helperText={
-                showValidation && parseUsdToCents(formState.fixedAmountUsd) === null
-                  ? 'Fixed amount is required (USD).'
-                  : undefined
+                pricingNameError ? 'Pricing name is required.' : undefined
               }
-              inputProps={{ inputMode: 'decimal', placeholder: '0.00' }}
-              InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>
-              }}
+              sx={getFormFieldSx(pricingNameError)}
             />
+          </Stack>
+
+          <Stack spacing={2} ref={productFieldRef}>
+            {sectionTitle('Product')}
+            <TextField
+              select
+              value={formState.productId}
+              onChange={(event) =>
+                setFormState((prev) => ({
+                  ...prev,
+                  productId: event.target.value
+                }))
+              }
+              disabled={productsQuery.isPending || isEdit}
+              error={productError}
+              SelectProps={{
+                displayEmpty: true,
+                renderValue: (selected) => {
+                  if (typeof selected !== 'string' || selected === '') {
+                    return <Box component="span" sx={{ color: '#4B617C' }}>Select product</Box>;
+                  }
+
+                  return productItems.find((product) => product.id === selected)?.name ?? selected;
+                }
+              }}
+              helperText={
+                productError
+                  ? 'Product is required.'
+                  : (isEdit ? 'Product is fixed for existing pricing.' : undefined)
+              }
+              sx={getFormFieldSx(productError)}
+            >
+              <MenuItem value="" disabled>
+                Select product
+              </MenuItem>
+              {productItems.map((product) => (
+                <MenuItem key={product.id} value={product.id}>
+                  {product.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+
+          <Stack spacing={2}>
+            {sectionTitle('Pricing type')}
+            <Stack
+              direction="row"
+              sx={{
+                width: 'fit-content',
+                border: '1px solid #009299',
+                borderRadius: '2px',
+                overflow: 'hidden'
+              }}
+            >
+              <Button
+                onClick={() => setFormState((prev) => ({ ...prev, type: 'FIXED' }))}
+                variant={formState.type === 'FIXED' ? 'contained' : 'text'}
+                sx={{
+                  borderRadius: 0,
+                  px: 2.5,
+                  minHeight: 52,
+                  color: formState.type === 'FIXED' ? '#FFFFFF' : '#009299'
+                }}
+              >
+                Fixed price
+              </Button>
+              <Button
+                onClick={() => setFormState((prev) => ({ ...prev, type: 'TIERED' }))}
+                variant={formState.type === 'TIERED' ? 'contained' : 'text'}
+                sx={{
+                  borderRadius: 0,
+                  px: 2.5,
+                  minHeight: 52,
+                  color: formState.type === 'TIERED' ? '#FFFFFF' : '#009299'
+                }}
+              >
+                Tiered price
+              </Button>
+            </Stack>
+          </Stack>
+
+          {formState.type === 'FIXED' ? (
+            <Stack spacing={2} ref={fixedAmountFieldRef}>
+              {sectionTitle('Fixed price')}
+              <TextField
+                placeholder="0.00"
+                value={formState.fixedAmountUsd}
+                onChange={(event) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    fixedAmountUsd: sanitizeMoneyInput(event.target.value)
+                  }))
+                }
+                onBlur={normalizeFixedAmountOnBlur}
+                error={fixedAmountError}
+                helperText={
+                  fixedAmountError
+                    ? 'Fixed amount is required (USD).'
+                    : undefined
+                }
+                inputProps={{ inputMode: 'decimal' }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
+                sx={{ maxWidth: 220, ...getFormFieldSx(fixedAmountError) }}
+              />
+            </Stack>
           ) : (
-            <Stack spacing={1}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                Tier Rules
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Enter max units. When you type max in the last row, next open-ended tier is added
-                automatically.
-              </Typography>
+            <Stack spacing={2} ref={tierSectionRef}>
+              {sectionTitle('Tiered pricing', 'Define quantity tiers and pricing')}
 
-              {formState.tiers.map((tier, index) => {
-                const isLastTier = index === formState.tiers.length - 1;
-                const helperText = isLastTier
-                  ? `Starts at ${tierStartUnits[index] ?? 1}. Leave empty for ∞.`
-                  : `Starts at ${tierStartUnits[index] ?? 1}`;
+              <Box sx={{ overflowX: 'auto' }}>
+                <Box
+                  sx={{
+                    minWidth: 620,
+                    border: '1px solid #E1E7EC',
+                    borderRadius: '8px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: tableColumnTemplate,
+                      backgroundColor: '#F8F9FA',
+                      borderBottom: '1px solid #E1E7EC'
+                    }}
+                  >
+                    <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>Tier</Box>
+                    <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+                      Units quantity
+                    </Box>
+                    <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+                      Price per unit
+                    </Box>
+                    <Box sx={{ px: 1, py: 1.5 }} />
+                  </Box>
 
-                return (
-                  <Stack key={tier.id} direction={{ xs: 'column', md: 'row' }} spacing={1}>
-                    <TextField
-                      label="Max Units"
-                      value={tier.maxUnits}
-                      onChange={(event) => updateTierMaxUnits(tier.id, event.target.value)}
-                      onBlur={() => normalizeTierMaxUnitsOnBlur(tier.id)}
-                      helperText={helperText}
-                      inputProps={{
-                        inputMode: 'numeric',
-                        pattern: '[0-9]*',
-                        placeholder: isLastTier ? '∞' : undefined
-                      }}
-                      sx={{ flex: 1 }}
-                    />
+                  {formState.tiers.map((tier, index) => {
+                    const isLastTier = index === formState.tiers.length - 1;
+                    const start = tierStartUnits[index] ?? 1;
+                    const unitsError = showValidation ? tierValidation.errors[index]?.maxUnits : undefined;
+                    const priceError = showValidation
+                      ? tierValidation.errors[index]?.unitAmountUsd
+                      : undefined;
 
-                    <TextField
-                      label="Unit Price (USD)"
-                      value={tier.unitAmountUsd}
-                      onChange={(event) =>
-                        setFormState((prev) => ({
-                          ...prev,
-                          tiers: prev.tiers.map((row) =>
-                            row.id === tier.id
-                              ? { ...row, unitAmountUsd: sanitizeMoneyInput(event.target.value) }
-                              : row
-                          )
-                        }))
-                      }
-                      error={showValidation && Boolean(tierValidation.errors[index]?.unitAmountUsd)}
-                      helperText={showValidation ? tierValidation.errors[index]?.unitAmountUsd : undefined}
-                      inputProps={{ inputMode: 'decimal', placeholder: '0.00' }}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>
-                      }}
-                      sx={{ flex: 1 }}
-                    />
+                    return (
+                      <Box
+                        key={tier.id}
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: tableColumnTemplate,
+                          minHeight: 48,
+                          borderTop: index === 0 ? 'none' : '1px solid #E1E7EC'
+                        }}
+                      >
+                        <Stack
+                          justifyContent="center"
+                          sx={{ px: 1, py: 1.25, backgroundColor: '#F8F9FA', color: '#212934' }}
+                        >
+                          <Typography sx={{ fontSize: 15 }}>{index + 1}</Typography>
+                        </Stack>
 
-                    <IconButton
-                      color="error"
-                      onClick={() => removeTier(tier.id)}
-                      disabled={formState.tiers.length === 1}
-                    >
-                      <DeleteOutlineIcon />
-                    </IconButton>
-                  </Stack>
-                );
-              })}
+                        <Stack
+                          justifyContent="center"
+                          sx={{
+                            px: 1,
+                            py: 0.5,
+                            backgroundColor: unitsError ? errorTint : '#FFFFFF',
+                            boxShadow: unitsError ? 'inset 0 0 0 1px #D32F2F' : 'none',
+                            transition: 'background-color 120ms ease, box-shadow 120ms ease'
+                          }}
+                        >
+                          <InputBase
+                            value={tier.maxUnits}
+                            onChange={(event) => updateTierMaxUnits(tier.id, event.target.value)}
+                            onBlur={() => normalizeTierMaxUnitsOnBlur(tier.id)}
+                            placeholder={isLastTier ? `${start} - ∞` : `${start}`}
+                            inputProps={{
+                              inputMode: 'numeric',
+                              pattern: '[0-9]*',
+                              'aria-label': `Tier ${index + 1} units quantity`,
+                              'aria-invalid': Boolean(unitsError)
+                            }}
+                            sx={{
+                              fontSize: 15,
+                              px: 0.5,
+                              '& input::placeholder': {
+                                color: isLastTier ? '#B8C4CE' : '#8895A7',
+                                opacity: 1
+                              }
+                            }}
+                          />
+                        </Stack>
+
+                        <Stack
+                          justifyContent="center"
+                          sx={{
+                            px: 1,
+                            py: 0.5,
+                            backgroundColor: priceError ? errorTint : '#FFFFFF',
+                            boxShadow: priceError ? 'inset 0 0 0 1px #D32F2F' : 'none',
+                            transition: 'background-color 120ms ease, box-shadow 120ms ease'
+                          }}
+                        >
+                          <Stack direction="row" alignItems="center" spacing={0.75}>
+                            <Typography sx={{ color: '#8895A7', fontSize: 18 }}>$</Typography>
+                            <InputBase
+                              value={tier.unitAmountUsd}
+                              onChange={(event) => updateTierUnitPrice(tier.id, event.target.value)}
+                              onBlur={() => normalizeTierUnitPriceOnBlur(tier.id)}
+                              placeholder="0.00"
+                              inputProps={{
+                                inputMode: 'decimal',
+                                'aria-label': `Tier ${index + 1} unit price`,
+                                'aria-invalid': Boolean(priceError)
+                              }}
+                              sx={{
+                                width: '100%',
+                                fontSize: 15,
+                                '& input::placeholder': { color: '#8895A7', opacity: 1 }
+                              }}
+                            />
+                          </Stack>
+                        </Stack>
+
+                        <Stack justifyContent="center" alignItems="center" sx={{ backgroundColor: '#F8F9FA' }}>
+                          {!isLastTier ? (
+                            <IconButton
+                              aria-label={`Remove tier ${index + 1}`}
+                              onClick={() => removeTier(tier.id)}
+                              size="small"
+                              sx={{ color: '#4B617C' }}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          ) : null}
+                        </Stack>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+
+              <Button
+                startIcon={<AddIcon />}
+                onClick={addTier}
+                variant="text"
+                sx={{
+                  width: 'fit-content',
+                  px: 1.5,
+                  py: 0.75,
+                  backgroundColor: '#F8F9FA',
+                  color: '#212934',
+                  '&:hover': { backgroundColor: '#EBF0F5' }
+                }}
+              >
+                Add tier
+              </Button>
+
+              {showValidation && hasTierErrors ? (
+                <Typography sx={{ color: '#d32f2f', fontSize: 12 }}>
+                  Fill highlighted tier fields.
+                </Typography>
+              ) : null}
             </Stack>
           )}
 
-          <TextField
-            label="Minimum Price (USD, optional)"
-            value={formState.minimumPriceUsd}
-            onChange={(event) =>
-              setFormState((prev) => ({
-                ...prev,
-                minimumPriceUsd: sanitizeMoneyInput(event.target.value)
-              }))
-            }
-            error={
-              showValidation &&
-              formState.minimumPriceUsd.trim() !== '' &&
-              parseUsdToCents(formState.minimumPriceUsd) === null
-            }
-            helperText={
-              showValidation &&
-              formState.minimumPriceUsd.trim() !== '' &&
-              parseUsdToCents(formState.minimumPriceUsd) === null
-                ? 'Enter a valid USD amount.'
-                : undefined
-            }
-            inputProps={{ inputMode: 'decimal', placeholder: '0.00' }}
-            InputProps={{
-              startAdornment: <InputAdornment position="start">$</InputAdornment>
-            }}
-          />
-
+          {formState.type === 'TIERED' ? (
+            <Stack spacing={2} ref={minimumPriceFieldRef}>
+              {sectionTitle(
+                'Minimum price',
+                'Minimum total charge per billing period for this tiered pricing.'
+              )}
+              <TextField
+                placeholder="0.00"
+                value={formState.minimumPriceUsd}
+                onChange={(event) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    minimumPriceUsd: sanitizeMoneyInput(event.target.value)
+                  }))
+                }
+                onBlur={normalizeMinimumPriceOnBlur}
+                error={minimumPriceError}
+                helperText={
+                  minimumPriceError ? 'Enter a valid USD amount.' : undefined
+                }
+                inputProps={{ inputMode: 'decimal' }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
+                sx={{ maxWidth: 220, ...getFormFieldSx(minimumPriceError) }}
+              />
+            </Stack>
+          ) : null}
         </Stack>
 
-        <Divider />
-
-        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ p: 2 }}>
-          <Button variant="text" onClick={onClose} disabled={isSaving}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: '1px solid #E1E7EC',
+            backgroundColor: '#FFFFFF',
+            flexShrink: 0
+          }}
+        >
+          <Button variant="outlined" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
           <Button variant="contained" onClick={handleSubmit} disabled={isSaving}>
-            {isEdit ? 'Save changes' : 'Create pricing'}
+            {isEdit ? 'Save pricing' : 'Save pricing'}
           </Button>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 }
