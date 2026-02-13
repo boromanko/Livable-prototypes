@@ -1,0 +1,18 @@
+{
+  "name": "stripe-integration-v2-1",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.6.2",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @stripe-integration/web --filter @stripe-integration/api dev",
+    "dev:web": "pnpm --filter @stripe-integration/web dev",
+    "dev:api": "pnpm --filter @stripe-integration/api dev",
+    "db:generate": "pnpm --filter @stripe-integration/db db:generate",
+    "db:push": "pnpm --filter @stripe-integration/db db:push",
+    "db:migrate": "pnpm --filter @stripe-integration/db db:migrate",
+    "db:seed": "pnpm --filter @stripe-integration/db db:seed",
+    "db:studio": "pnpm --filter @stripe-integration/db db:studio",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint"
+  }
+}

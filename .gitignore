@@ -1,0 +1,16 @@
+node_modules
+.pnpm-store
+.DS_Store
+
+# Build output
+dist
+
+# Vite
+apps/web/.vite
+
+# Prisma SQLite
+packages/db/dev.db
+packages/db/dev.db-journal
+
+# Logs
+*.log

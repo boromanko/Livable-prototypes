@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum PricingType {
+  FIXED
+  TIERED
+}
+
+enum BillingScope {
+  ACCOUNT
+  PROPERTY
+}
+
+enum SubscriptionStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CANCELED
+}
+
+enum PaymentMethodType {
+  CARD
+  US_BANK_ACCOUNT
+}
+
+model Account {
+  id             String          @id @default(cuid())
+  companyName    String          @map("company_name")
+  email          String          @unique
+  createdAt      DateTime        @default(now()) @map("created_at")
+  properties     Property[]
+  subscriptions  Subscription[]
+  paymentMethods PaymentMethod[]
+
+  @@index([companyName])
+  @@map("accounts")
+}
+
+model Property {
+  id        String         @id @default(cuid())
+  accountId String         @map("account_id")
+  name      String
+  address   String
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  account       Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@index([accountId])
+  @@map("properties")
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  code        String    @unique
+  description String?
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  pricings    Pricing[]
+
+  @@map("products")
+}
+
+model Pricing {
+  id                 String                @id @default(cuid())
+  productId          String                @map("product_id")
+  internalName       String                @map("internal_name")
+  type               PricingType
+  fixedAmountCents   Int?                  @map("fixed_amount_cents")
+  minimumPriceCents  Int?                  @map("minimum_price_cents")
+  currency           String                @default("usd")
+  billingInterval    String                @default("month") @map("billing_interval")
+  isActive           Boolean               @default(true) @map("is_active")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  product            Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tiers              PricingTier[]
+  subscriptionLink   SubscriptionPricing[]
+
+  @@index([productId])
+  @@index([type])
+  @@map("pricings")
+}
+
+model PricingTier {
+  id              String   @id @default(cuid())
+  pricingId       String   @map("pricing_id")
+  fromUnit        Int      @map("from_unit")
+  toUnit          Int?     @map("to_unit")
+  unitAmountCents Int      @map("unit_amount_cents")
+  createdAt       DateTime @default(now()) @map("created_at")
+  pricing         Pricing  @relation(fields: [pricingId], references: [id], onDelete: Cascade)
+
+  @@unique([pricingId, fromUnit])
+  @@index([pricingId])
+  @@map("pricing_tiers")
+}
+
+model Subscription {
+  id                String               @id @default(cuid())
+  accountId         String               @map("account_id")
+  propertyId        String?              @map("property_id")
+  scope             BillingScope
+  startDate         DateTime             @map("start_date")
+  endDate           DateTime?            @map("end_date")
+  status            SubscriptionStatus   @default(DRAFT)
+  paymentMethodId   String?              @map("payment_method_id")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  account           Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  property          Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  paymentMethod     PaymentMethod?       @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  subscriptionItems SubscriptionPricing[]
+
+  @@index([accountId])
+  @@index([propertyId])
+  @@index([paymentMethodId])
+  @@index([scope])
+  @@map("subscriptions")
+}
+
+model SubscriptionPricing {
+  id             String       @id @default(cuid())
+  subscriptionId String       @map("subscription_id")
+  pricingId      String       @map("pricing_id")
+  quantity       Int          @default(1)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  pricing        Pricing      @relation(fields: [pricingId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, pricingId])
+  @@index([pricingId])
+  @@map("subscription_pricings")
+}
+
+model PaymentMethod {
+  id            String         @id @default(cuid())
+  accountId     String         @map("account_id")
+  type          PaymentMethodType
+  label         String
+  last4         String?
+  isDefault     Boolean        @default(false) @map("is_default")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  account       Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+
+  @@index([accountId])
+  @@map("payment_methods")
+}
