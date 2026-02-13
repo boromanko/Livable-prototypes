@@ -137,3 +137,53 @@ PRD описує Bills як сутність, але UI placement не визн�
 
 * (A) 3-й таб “Bills” у Products & Pricing
 * (B) Bills у контексті Account/Property (CTA “Create bill”) як окремі вʼюшки
+
+## 6) Поточний статус реалізації (2026-02-13)
+
+Реалізовано в прототипі:
+
+* Admin сторінка `Products & Pricing` з 2 табами: `Subscriptions`, `Pricings`.
+* `Subscriptions`:
+  * table + filter bar
+  * create/edit drawer
+  * bulk actions: delete subscription, add/replace/delete pricing
+* `Pricings`:
+  * tree-by-product (accordion)
+  * create/edit pricing drawer
+  * fixed + tiered editor (tiers)
+  * delete pricing dialog
+* Summary cards + базові loading/empty/error стани.
+* API інтеграція через React Query + typed client.
+
+Поки не реалізовано:
+
+* Role-based UX (Ops/Sales/Account режими).
+* Account-facing сторінки (`Account subscriptions`, `Property subscription section`).
+* Окремий full payment methods management screen (list/add/remove/default).
+* `Bills` (поза поточним scope).
+
+## 7) UX Polishing Backlog (next)
+
+Пріоритет P0:
+
+* Уніфікувати тексти, назви полів і термінологію між tab/form/table.
+* Зробити більш явні success/error патерни (snackbar + inline feedback).
+* Додати захисти від помилкових дій: confirm для критичних bulk operations.
+* Покращити empty states (контекстні CTA: create pricing/subscription).
+
+Пріоритет P1:
+
+* Полірувати visual hierarchy таблиць і щільність рядків.
+* Покращити mobile behavior: адаптивні фільтри і drawers.
+* Додати візуальні підказки до tiered-правил прямо в форму pricing.
+* Пройти accessibility pass: labels, focus states, keyboard flow.
+
+Пріоритет P2:
+
+* Підготувати окремі view-only стани для `Sales` і `Account`.
+* Підготувати прототип payment methods management сторінки.
+
+## 8) Робочі обмеження
+
+* `PRD` є основним джерелом вимог і не редагується в рамках цього етапу.
+* Фокус на UX-прототип, а не на production-рівень архітектури.

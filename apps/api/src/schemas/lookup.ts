@@ -12,3 +12,7 @@ export const propertiesLookupQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(200).optional(),
   search: z.string().trim().min(1).optional()
 });
+
+export const paymentMethodsLookupQuerySchema = z.object({
+  accountId: z.string().min(1)
+});

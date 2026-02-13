@@ -2,64 +2,67 @@
 
 ## Правила цього документу
 - `[ ]` не зроблено
-- `[~]` в роботі
+- `[~]` в роботі / частково
 - `[x]` готово
 - Фокус: тільки прототип UX
 - `Bills`: поза scope на поточному етапі
+- Поточна дата актуалізації: `2026-02-13`
 
 ## 1) Scope прототипу
-- [ ] Підтвердити межі прототипу (що точно входить/не входить)
-- [ ] Зафіксувати, що production-бізнес-логіку не реалізуємо
-- [ ] Зафіксувати, що `Bills` тимчасово ігноруємо
+- [x] Підтвердити межі прототипу (що точно входить/не входить)
+- [x] Зафіксувати, що production-бізнес-логіку не реалізуємо
+- [x] Зафіксувати, що `Bills` тимчасово ігноруємо
 
 ## 2) Ролі та доступи
-- [ ] Ops: повний доступ до Pricings (create/edit/delete)
+Примітка: зараз система працює в single-role режимі (найвищий доступ), без реального role-based UI/permissions.
+
+- [x] Ops: повний доступ до Pricings (create/edit/delete)
 - [ ] Sales: лише перегляд Pricings
 - [ ] Sales: керування Subscriptions
 - [ ] Account/Customer: перегляд Subscriptions і цін
 - [ ] Account/Customer: приховати internal pricing name
 
 ## 3) Інформаційна архітектура (IA)
-- [ ] Admin area: секція `Products & Pricing`
-- [ ] Admin area: 2 таби `Subscriptions` і `Pricings`
+- [x] Admin area: секція `Products & Pricing`
+- [x] Admin area: 2 таби `Subscriptions` і `Pricings`
 - [ ] Account area: окрема сторінка/таб `Subscriptions`
 - [ ] Property details: блок `Subscription`
 
 ## 4) Subscriptions Tab (Ops/Sales)
-- [ ] Таблиця subscriptions
-- [ ] Колонка: Account
-- [ ] Колонка: Property (nullable)
-- [ ] Колонка: Start date
-- [ ] Колонка: End date (nullable/Forever)
-- [ ] Колонка: Pricings list
-- [ ] Фільтри по колонках
-- [ ] Bulk action: delete subscription
-- [ ] Bulk action: add pricing
-- [ ] Bulk action: replace pricing
-- [ ] Bulk action: delete pricing
-- [ ] Row click -> Subscription details/edit
+- [x] Таблиця subscriptions
+- [x] Колонка: Account
+- [x] Колонка: Property (nullable)
+- [x] Колонка: Start date
+- [x] Колонка: End date (nullable/Forever)
+- [x] Колонка: Pricings list
+- [x] Фільтри по колонках
+- [x] Bulk action: delete subscription
+- [x] Bulk action: add pricing
+- [x] Bulk action: replace pricing
+- [x] Bulk action: delete pricing
+- [x] Row click -> Subscription details/edit
 
 ## 5) Subscription Create/Edit Flow
-- [ ] Scope: Account або Property
-- [ ] Start date / End date / Forever
-- [ ] Додавання одного або кількох pricings
-- [ ] Вибір payment method (optional)
-- [ ] Правило fallback payment method
-- [ ] Базова валідація форми і повідомлення про помилки
+- [x] Scope: Account або Property
+- [x] Start date / End date / Forever
+- [x] Додавання одного або кількох pricings
+- [x] Вибір payment method (optional)
+- [~] Правило fallback payment method
+- [x] Базова валідація форми і повідомлення про помилки
 
 ## 6) Pricings Tab (Ops/Sales)
-- [ ] Tree by Product
-- [ ] Гілки fixed/tiered pricings
-- [ ] Відображати pricing name (internal)
-- [ ] Відображати `# subscriptions using it`
-- [ ] Ops може create/edit/delete pricing
+- [x] Tree by Product
+- [x] Гілки fixed/tiered pricings
+- [x] Відображати pricing name (internal)
+- [x] Відображати `# subscriptions using it`
+- [x] Ops може create/edit/delete pricing
 - [ ] Sales має read-only доступ
 
 ## 7) Tiered/Fixed Pricing у прототипі
-- [ ] Fixed pricing: мінімально потрібні поля
-- [ ] Tiered pricing: додавання tier-рівнів
-- [ ] Tiered rule: останній tier може бути open-ended
-- [ ] Відображення tier-структури в UI
+- [x] Fixed pricing: мінімально потрібні поля
+- [x] Tiered pricing: додавання tier-рівнів
+- [x] Tiered rule: останній tier може бути open-ended
+- [x] Відображення tier-структури в UI
 
 ## 8) Account/Customer Views
 - [ ] Account subscriptions table (read-only)
@@ -70,22 +73,22 @@
 - [ ] Не показувати internal pricing name
 
 ## 9) Payment Methods (прототипний мінімум)
-- [ ] Список payment methods (masked)
+- [~] Список payment methods (masked)
 - [ ] Set default method
 - [ ] Add payment method (prototype flow)
 - [ ] Remove payment method (з guardrails-повідомленням)
 
 ## 10) Небізнесові критерії прототипу
 - [x] Seed-дані для демонстрації сценаріїв
-- [ ] Базові loading/error/empty стани
-- [ ] Послідовна термінологія в UI
+- [x] Базові loading/error/empty стани
+- [~] Послідовна термінологія в UI
 - [x] Ручний smoke-check ключових флоу
 
 ## 11) Чекліст узгодження перед імплементацією
-- [ ] Узгоджені обовʼязкові поля у всіх формах
-- [ ] Узгоджені table actions і bulk actions
+- [x] Узгоджені обовʼязкові поля у всіх формах
+- [x] Узгоджені table actions і bulk actions
 - [ ] Узгоджені права доступу по ролях
-- [ ] Узгоджені out-of-scope пункти
+- [x] Узгоджені out-of-scope пункти
 
 ## 12) Узгоджений Backend Scope v1 (для прототипу UX)
 - [x] Stack: Fastify + SQLite + Prisma
@@ -123,6 +126,7 @@
 - [x] `GET /api/admin/accounts` (пошук по company name + email)
 - [x] `GET /api/admin/properties?accountId=...`
 - [x] `GET /api/admin/products`
+- [x] `GET /api/admin/payment-methods?accountId=...`
 - [x] `GET /api/admin/pricings`
 - [x] `POST /api/admin/pricings`
 - [x] `PATCH /api/admin/pricings/:id`

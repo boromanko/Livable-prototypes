@@ -10,6 +10,7 @@ import {
 } from '../schemas/pricing.js';
 import {
   accountsLookupQuerySchema,
+  paymentMethodsLookupQuerySchema,
   propertiesLookupQuerySchema
 } from '../schemas/lookup.js';
 import {
@@ -405,6 +406,40 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         createdAt: item.createdAt,
         pricingsCount: item._count.pricings
       }))
+    };
+  });
+
+  app.get('/api/admin/payment-methods', async (request, reply) => {
+    const query = paymentMethodsLookupQuerySchema.parse(request.query);
+
+    const account = await prisma.account.findUnique({
+      where: { id: query.accountId },
+      select: { id: true }
+    });
+
+    if (!account) {
+      reply.status(404).send({ message: 'Account not found' });
+      return;
+    }
+
+    const items = await prisma.paymentMethod.findMany({
+      where: {
+        accountId: query.accountId
+      },
+      select: {
+        id: true,
+        accountId: true,
+        type: true,
+        label: true,
+        last4: true,
+        isDefault: true,
+        createdAt: true
+      },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }]
+    });
+
+    return {
+      items
     };
   });
 
