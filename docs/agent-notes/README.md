@@ -12,6 +12,10 @@
   - Детальні імплементаційні вимоги по Pricing/Tiered logic.
   - Містить однозначну формулу розрахунку (`VOLUME`), DB/API/UX вимоги та acceptance criteria.
 
+- `pricing-resolution-v1.md`
+  - Канонічні правила резолюції `ACCOUNT` vs `PROPERTY` pricing.
+  - Містить merge/override логіку по `productId`, правила tier resolution та покроковий план реалізації.
+
 - `ui-structure-&-prototype-plans.md`
   - UX canvas, структура екранів і поточний статус UI-реалізації.
   - Містить backlog для покрокового UX polishing.

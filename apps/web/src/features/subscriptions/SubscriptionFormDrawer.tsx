@@ -37,6 +37,7 @@ type SubscriptionFormDrawerProps = {
   initialSubscription: SubscriptionItem | null;
   defaultAccountId?: string;
   defaultPricingIds?: string[];
+  defaultScope?: BillingScope;
   onClose: () => void;
 };
 
@@ -87,10 +88,14 @@ function getErrorMessage(error: unknown): string {
   return 'Unexpected error';
 }
 
-function initialFormState(defaultAccountId?: string, defaultPricingIds?: string[]): FormState {
+function initialFormState(
+  defaultAccountId?: string,
+  defaultPricingIds?: string[],
+  defaultScope: BillingScope = 'ACCOUNT'
+): FormState {
   return {
     accountId: defaultAccountId ?? '',
-    scope: 'ACCOUNT',
+    scope: defaultScope,
     propertyId: '',
     startDate: new Date().toISOString().slice(0, 10),
     endDate: '',
@@ -102,10 +107,18 @@ function initialFormState(defaultAccountId?: string, defaultPricingIds?: string[
 }
 
 export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.Element {
-  const { open, mode, initialSubscription, defaultAccountId, defaultPricingIds, onClose } = props;
+  const {
+    open,
+    mode,
+    initialSubscription,
+    defaultAccountId,
+    defaultPricingIds,
+    defaultScope,
+    onClose
+  } = props;
 
   const [formState, setFormState] = useState<FormState>(() =>
-    initialFormState(defaultAccountId, defaultPricingIds)
+    initialFormState(defaultAccountId, defaultPricingIds, defaultScope)
   );
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -151,11 +164,11 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
         pricingIds: initialSubscription.pricings.map((pricing) => pricing.id)
       });
     } else {
-      setFormState(initialFormState(defaultAccountId, defaultPricingIds));
+      setFormState(initialFormState(defaultAccountId, defaultPricingIds, defaultScope));
     }
 
     setFormError(null);
-  }, [defaultAccountId, defaultPricingIds, initialSubscription, open]);
+  }, [defaultAccountId, defaultPricingIds, defaultScope, initialSubscription, open]);
 
   const canSubmit = useMemo(() => {
     if (!formState.accountId) {

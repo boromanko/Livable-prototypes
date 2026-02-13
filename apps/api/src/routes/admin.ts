@@ -25,6 +25,9 @@ import {
 import {
   validateTierStructure
 } from '../services/pricing-calculator.js';
+import {
+  resolvePricingTree
+} from '../services/pricing-resolution.js';
 
 const pricingInclude = {
   product: {
@@ -186,6 +189,22 @@ function uniqueIds(ids: string[]): string[] {
   return Array.from(new Set(ids));
 }
 
+function findDuplicateIds(ids: string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const id of ids) {
+    if (seen.has(id)) {
+      duplicates.add(id);
+      continue;
+    }
+
+    seen.add(id);
+  }
+
+  return Array.from(duplicates);
+}
+
 async function validateExistingSubscriptions(subscriptionIds: string[]): Promise<boolean> {
   const uniqueSubscriptionIds = uniqueIds(subscriptionIds);
   const count = await prisma.subscription.count({
@@ -266,18 +285,50 @@ async function validateSubscriptionCandidate(candidate: SubscriptionCandidate): 
     }
   }
 
+  const duplicatePricingIds = findDuplicateIds(candidate.pricingIds);
+  if (duplicatePricingIds.length > 0) {
+    return `Duplicate pricingIds are not allowed: ${duplicatePricingIds.join(', ')}`;
+  }
+
   const normalizedPricingIds = uniqueIds(candidate.pricingIds);
 
-  const pricingCount = await prisma.pricing.count({
+  const pricings = await prisma.pricing.findMany({
     where: {
       id: {
         in: normalizedPricingIds
       }
+    },
+    select: {
+      id: true,
+      productId: true,
+      product: {
+        select: {
+          code: true,
+          name: true
+        }
+      }
     }
   });
 
-  if (pricingCount !== normalizedPricingIds.length) {
+  if (pricings.length !== normalizedPricingIds.length) {
     return 'One or more pricingIds are invalid';
+  }
+
+  const pricingByProductId = new Map<string, (typeof pricings)[number][]>();
+  for (const pricing of pricings) {
+    const current = pricingByProductId.get(pricing.productId) ?? [];
+    current.push(pricing);
+    pricingByProductId.set(pricing.productId, current);
+  }
+
+  const duplicateProducts = Array.from(pricingByProductId.values())
+    .filter((items) => items.length > 1)
+    .map((items) => items[0])
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .map((item) => item.product.code || item.product.name || item.productId);
+
+  if (duplicateProducts.length > 0) {
+    return `Subscription cannot contain multiple pricings for the same product: ${duplicateProducts.join(', ')}`;
   }
 
   return null;
@@ -313,60 +364,6 @@ function toSubscriptionResponse(subscription: SubscriptionWithRelations) {
       }))
     }))
   };
-}
-
-type TierSnapshot = {
-  fromUnit: number;
-  toUnit: number | null;
-  unitAmountCents: number;
-};
-
-function isSubscriptionIncludedInPricingTree(status: string): boolean {
-  return status !== 'CANCELED';
-}
-
-function getStatusPriority(status: string): number {
-  switch (status) {
-    case 'ACTIVE':
-      return 3;
-    case 'PAUSED':
-      return 2;
-    case 'DRAFT':
-      return 1;
-    default:
-      return 0;
-  }
-}
-
-function pickPreferredSubscription<T extends { status: string; createdAt: Date }>(
-  candidates: T[]
-): T | null {
-  if (candidates.length === 0) {
-    return null;
-  }
-
-  const sorted = [...candidates].sort((left, right) => {
-    const statusDelta = getStatusPriority(right.status) - getStatusPriority(left.status);
-    if (statusDelta !== 0) {
-      return statusDelta;
-    }
-
-    return right.createdAt.getTime() - left.createdAt.getTime();
-  });
-
-  return sorted[0] ?? null;
-}
-
-function resolveCurrentTier(tiers: TierSnapshot[], units: number): TierSnapshot | null {
-  if (tiers.length === 0 || units <= 0) {
-    return null;
-  }
-
-  const tier = tiers.find(
-    (item) => units >= item.fromUnit && (item.toUnit === null || units <= item.toUnit)
-  );
-
-  return tier ?? null;
 }
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
@@ -674,7 +671,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       endDate: payload.endDate ?? null,
       status: payload.status,
       paymentMethodId: payload.paymentMethodId ?? null,
-      pricingIds: uniqueIds(payload.pricingIds)
+      pricingIds: payload.pricingIds
     };
 
     const validationError = await validateSubscriptionCandidate(candidate);
@@ -760,7 +757,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       endDate: candidate.endDate ?? null,
       status: candidate.status,
       paymentMethodId: candidate.paymentMethodId ?? null,
-      pricingIds: uniqueIds(candidate.pricingIds)
+      pricingIds: candidate.pricingIds
     };
 
     const validationError = await validateSubscriptionCandidate(normalizedCandidate);
@@ -947,14 +944,10 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       orderBy: [{ createdAt: 'desc' }]
     });
 
-    const accountIds = Array.from(
-      new Set(
-        pricingItems
-          .flatMap((pricing) => pricing.subscriptionLink.map((link) => link.subscription))
-          .filter((subscription) => isSubscriptionIncludedInPricingTree(subscription.status))
-          .map((subscription) => subscription.accountId)
-      )
-    );
+    const accountIds = Array.from(new Set(
+      pricingItems
+        .flatMap((pricing) => pricing.subscriptionLink.map((link) => link.subscription.accountId))
+    ));
 
     const properties = accountIds.length
       ? await prisma.property.findMany({
@@ -974,166 +967,50 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         })
       : [];
 
-    const propertiesByAccountId = new Map<
-      string,
-      Array<{
-        id: string;
-        accountId: string;
-        name: string;
-        address: string;
-        billableUnits: number;
-      }>
-    >();
-
-    for (const property of properties) {
-      const current = propertiesByAccountId.get(property.accountId) ?? [];
-      current.push(property);
-      propertiesByAccountId.set(property.accountId, current);
-    }
-
-    const items = pricingItems.map((pricing) => {
-      const tiers: TierSnapshot[] = pricing.tiers.map((tier) => ({
+    const normalizedPricings = pricingItems.map((pricing) => ({
+      id: pricing.id,
+      product: pricing.product,
+      internalName: pricing.internalName,
+      type: pricing.type,
+      fixedAmountCents: pricing.fixedAmountCents,
+      minimumPriceCents: pricing.minimumPriceCents,
+      currency: pricing.currency,
+      billingInterval: pricing.billingInterval,
+      isActive: pricing.isActive,
+      createdAt: pricing.createdAt,
+      subscriptionsCount: pricing.subscriptionLink.length,
+      tiers: pricing.tiers.map((tier) => ({
         fromUnit: tier.fromUnit,
         toUnit: tier.toUnit,
         unitAmountCents: tier.unitAmountCents
-      }));
+      })),
+      subscriptions: pricing.subscriptionLink.map((link) => ({
+        id: link.subscription.id,
+        scope: link.subscription.scope,
+        status: link.subscription.status,
+        createdAt: link.subscription.createdAt,
+        accountId: link.subscription.accountId,
+        propertyId: link.subscription.propertyId,
+        account: link.subscription.account
+      }))
+    }));
 
-      const includedSubscriptions = pricing.subscriptionLink
-        .map((link) => link.subscription)
-        .filter((subscription) => isSubscriptionIncludedInPricingTree(subscription.status));
-
-      const groupedByAccount = new Map<
-        string,
-        {
-          account: (typeof includedSubscriptions)[number]['account'];
-          accountSubscriptions: typeof includedSubscriptions;
-          propertySubscriptions: typeof includedSubscriptions;
-        }
-      >();
-
-      for (const subscription of includedSubscriptions) {
-        const existing = groupedByAccount.get(subscription.accountId);
-        if (!existing) {
-          groupedByAccount.set(subscription.accountId, {
-            account: subscription.account,
-            accountSubscriptions: subscription.scope === 'ACCOUNT' ? [subscription] : [],
-            propertySubscriptions: subscription.scope === 'PROPERTY' ? [subscription] : []
-          });
-          continue;
-        }
-
-        if (subscription.scope === 'ACCOUNT') {
-          existing.accountSubscriptions.push(subscription);
-        } else {
-          existing.propertySubscriptions.push(subscription);
-        }
-      }
-
-      const accounts = Array.from(groupedByAccount.values())
-        .map((grouped) => {
-          const accountSubscription = pickPreferredSubscription(grouped.accountSubscriptions);
-
-          const preferredPropertySubscriptionByPropertyId = new Map<
-            string,
-            (typeof includedSubscriptions)[number]
-          >();
-
-          for (const subscription of grouped.propertySubscriptions) {
-            if (!subscription.property) {
-              continue;
-            }
-
-            const current = preferredPropertySubscriptionByPropertyId.get(subscription.property.id);
-            if (!current) {
-              preferredPropertySubscriptionByPropertyId.set(subscription.property.id, subscription);
-              continue;
-            }
-
-            const preferred = pickPreferredSubscription([current, subscription]);
-            if (preferred) {
-              preferredPropertySubscriptionByPropertyId.set(subscription.property.id, preferred);
-            }
-          }
-
-          const allAccountProperties = propertiesByAccountId.get(grouped.account.id) ?? [];
-          const effectiveProperties =
-            accountSubscription !== null
-              ? allAccountProperties
-              : Array.from(preferredPropertySubscriptionByPropertyId.values())
-                  .map((item) => item.property)
-                  .filter((item): item is NonNullable<typeof item> => Boolean(item));
-
-          const propertyRows = effectiveProperties
-            .map((property) => {
-              const overrideSubscription = preferredPropertySubscriptionByPropertyId.get(property.id);
-              const source = overrideSubscription ? 'OVERRIDE' : 'INHERITED';
-
-              const propertyTier = resolveCurrentTier(tiers, property.billableUnits);
-              const currentUnitAmountCents =
-                pricing.type === PricingType.FIXED
-                  ? pricing.fixedAmountCents
-                  : propertyTier?.unitAmountCents ?? null;
-
-              return {
-                property: {
-                  id: property.id,
-                  name: property.name,
-                  address: property.address,
-                  billableUnits: property.billableUnits
-                },
-                source,
-                subscriptionId: overrideSubscription?.id ?? accountSubscription?.id ?? null,
-                currentTier: propertyTier,
-                currentUnitAmountCents
-              };
-            })
-            .sort((left, right) => left.property.name.localeCompare(right.property.name));
-
-          const totalBillableUnits = propertyRows.reduce(
-            (sum, property) => sum + property.property.billableUnits,
-            0
-          );
-
-          const accountTier = resolveCurrentTier(tiers, totalBillableUnits);
-          const currentUnitAmountCents =
-            pricing.type === PricingType.FIXED
-              ? pricing.fixedAmountCents
-              : accountTier?.unitAmountCents ?? null;
-
-          return {
-            account: grouped.account,
-            source: accountSubscription ? 'ACCOUNT' : 'PROPERTY_ONLY',
-            accountSubscriptionId: accountSubscription?.id ?? null,
-            propertiesMatched: propertyRows.length,
-            totalBillableUnits,
-            currentTier: accountTier,
-            currentUnitAmountCents,
-            properties: propertyRows
-          };
-        })
-        .sort((left, right) => left.account.companyName.localeCompare(right.account.companyName));
-
-      return {
-        id: pricing.id,
-        product: pricing.product,
-        internalName: pricing.internalName,
-        type: pricing.type,
-        fixedAmountCents: pricing.fixedAmountCents,
-        minimumPriceCents: pricing.minimumPriceCents,
-        currency: pricing.currency,
-        billingInterval: pricing.billingInterval,
-        isActive: pricing.isActive,
-        createdAt: pricing.createdAt,
-        subscriptionsCount: pricing.subscriptionLink.length,
-        tiers: pricing.tiers.map((tier) => ({
+    const tiersByPricingId = new Map(
+      pricingItems.map((pricing) => [
+        pricing.id,
+        pricing.tiers.map((tier) => ({
           id: tier.id,
           fromUnit: tier.fromUnit,
           toUnit: tier.toUnit,
           unitAmountCents: tier.unitAmountCents
-        })),
-        accounts
-      };
-    });
+        }))
+      ])
+    );
+
+    const items = resolvePricingTree(normalizedPricings, properties).map((item) => ({
+      ...item,
+      tiers: tiersByPricingId.get(item.id) ?? []
+    }));
 
     return {
       items

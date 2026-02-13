@@ -129,6 +129,8 @@ export type PricingTreeResolvedTier = {
   unitAmountCents: number;
 } | null;
 
+export type PricingTierScope = 'ACCOUNT_POOL' | 'PROPERTY';
+
 export type PricingTreePropertyUsage = {
   property: {
     id: string;
@@ -138,6 +140,9 @@ export type PricingTreePropertyUsage = {
   };
   source: 'INHERITED' | 'OVERRIDE';
   subscriptionId: string | null;
+  resolvedBySubscriptionId: string | null;
+  excludedFromAccountPool: boolean;
+  tierScope: PricingTierScope;
   currentTier: PricingTreeResolvedTier;
   currentUnitAmountCents: number | null;
 };
@@ -151,7 +156,11 @@ export type PricingTreeAccountUsage = {
   source: 'ACCOUNT' | 'PROPERTY_ONLY';
   accountSubscriptionId: string | null;
   propertiesMatched: number;
+  inheritedPropertiesCount: number;
+  overridePropertiesCount: number;
+  totalProperties: number;
   totalBillableUnits: number;
+  tierScope: PricingTierScope;
   currentTier: PricingTreeResolvedTier;
   currentUnitAmountCents: number | null;
   properties: PricingTreePropertyUsage[];

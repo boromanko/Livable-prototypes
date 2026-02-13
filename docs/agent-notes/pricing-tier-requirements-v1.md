@@ -12,6 +12,9 @@
 
 `PRD` залишається source of truth на рівні продукту; цей документ деталізує імплементаційні правила.
 
+Для правил резолюції `ACCOUNT` vs `PROPERTY` (merge/override по `productId`) див.:
+- `pricing-resolution-v1.md`
+
 ## 2) Терміни та канонічні поля
 
 - `Fixed pricing`: статична сума (`fixedAmountCents`) за період або за одиницю (визначається продуктом/метрикою).

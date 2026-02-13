@@ -28,6 +28,7 @@ import {
   useDeletePricingMutation,
   usePricingsTreeQuery,
   useProductsQuery,
+  type BillingScope,
   type PricingItem,
   type PricingTreeItem,
   type PricingTreeResolvedTier,
@@ -50,6 +51,11 @@ type RowMenuTarget = {
   pricingId: string;
   subscriptionId: string;
   title: string;
+};
+
+type PricingActionsMenuTarget = {
+  anchorEl: HTMLElement;
+  pricingId: string;
 };
 
 function formatMoneyCents(amountCents: number | null, currency: string): string {
@@ -159,7 +165,7 @@ export function PricingsTab(): JSX.Element {
 
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
   const [expandedPricings, setExpandedPricings] = useState<Set<string>>(new Set());
-  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
+  const [collapsedUsageSections, setCollapsedUsageSections] = useState<Set<string>>(new Set());
 
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
   const [pricingModalMode, setPricingModalMode] = useState<'create' | 'edit'>('create');
@@ -169,9 +175,12 @@ export function PricingsTab(): JSX.Element {
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
   const [defaultSubscriptionAccountId, setDefaultSubscriptionAccountId] = useState<string | undefined>(undefined);
   const [defaultSubscriptionPricingIds, setDefaultSubscriptionPricingIds] = useState<string[]>([]);
+  const [defaultSubscriptionScope, setDefaultSubscriptionScope] = useState<BillingScope>('ACCOUNT');
 
   const [deletingPricing, setDeletingPricing] = useState<PricingTreeItem | null>(null);
   const [detachTarget, setDetachTarget] = useState<RowMenuTarget | null>(null);
+  const [pricingActionsTarget, setPricingActionsTarget] =
+    useState<PricingActionsMenuTarget | null>(null);
   const [detachConfirmTarget, setDetachConfirmTarget] = useState<{
     pricingId: string;
     subscriptionId: string;
@@ -258,9 +267,13 @@ export function PricingsTab(): JSX.Element {
     setDefaultProductId(undefined);
   }
 
-  function openCreateSubscription(pricingId: string, accountId?: string): void {
+  function openCreateSubscription(
+    pricingId: string,
+    options?: { accountId?: string; scope?: BillingScope }
+  ): void {
     setDefaultSubscriptionPricingIds([pricingId]);
-    setDefaultSubscriptionAccountId(accountId);
+    setDefaultSubscriptionAccountId(options?.accountId);
+    setDefaultSubscriptionScope(options?.scope ?? 'ACCOUNT');
     setSubscriptionModalOpen(true);
   }
 
@@ -268,6 +281,7 @@ export function PricingsTab(): JSX.Element {
     setSubscriptionModalOpen(false);
     setDefaultSubscriptionAccountId(undefined);
     setDefaultSubscriptionPricingIds([]);
+    setDefaultSubscriptionScope('ACCOUNT');
   }
 
   async function confirmDeletePricing(): Promise<void> {
@@ -416,12 +430,6 @@ export function PricingsTab(): JSX.Element {
 
                         <Typography sx={{ fontWeight: 700 }}>{product.name}</Typography>
                         <Chip size="small" label={`${productPricings.length} pricings`} />
-
-                        <Box sx={{ flex: 1 }} />
-
-                        <Button size="small" startIcon={<AddIcon />} onClick={() => openCreatePricing(product.id)}>
-                          Add pricing
-                        </Button>
                       </Stack>
 
                       {isProductExpanded ? (
@@ -434,6 +442,24 @@ export function PricingsTab(): JSX.Element {
                             productPricings.map((pricing) => {
                               const pricingKey = `pricing:${pricing.id}`;
                               const isPricingExpanded = expandedPricings.has(pricingKey);
+                              const accountsSectionKey = `accounts:${pricing.id}`;
+                              const specificPropertiesSectionKey = `specific-properties:${pricing.id}`;
+                              const isAccountsCollapsed = collapsedUsageSections.has(accountsSectionKey);
+                              const isSpecificPropertiesCollapsed = collapsedUsageSections.has(
+                                specificPropertiesSectionKey
+                              );
+                              const accountRows = pricing.accounts.filter(
+                                (accountUsage) => accountUsage.source === 'ACCOUNT'
+                              );
+                              const specificPropertyRows = pricing.accounts.flatMap((accountUsage) =>
+                                accountUsage.properties
+                                  .filter((propertyUsage) => propertyUsage.source === 'OVERRIDE')
+                                  .map((propertyUsage) => ({
+                                    accountUsage,
+                                    propertyUsage
+                                  }))
+                              );
+                              const specificPropertiesCount = specificPropertyRows.length;
 
                               return (
                                 <Box key={pricing.id}>
@@ -472,11 +498,17 @@ export function PricingsTab(): JSX.Element {
                                       {summarizePricing(pricing)}
                                     </Typography>
 
-                                    <Chip size="small" label={`${pricing.accounts.length} accounts`} />
-
-                                    <Button size="small" startIcon={<AddIcon />} onClick={() => openCreateSubscription(pricing.id)}>
-                                      Add usage
-                                    </Button>
+                                    <IconButton
+                                      size="small"
+                                      onClick={(event) =>
+                                        setPricingActionsTarget({
+                                          anchorEl: event.currentTarget,
+                                          pricingId: pricing.id
+                                        })
+                                      }
+                                    >
+                                      <MoreHorizIcon fontSize="small" />
+                                    </IconButton>
 
                                     <IconButton size="small" onClick={() => openEditPricing(pricing)}>
                                       <EditOutlinedIcon fontSize="small" />
@@ -489,18 +521,50 @@ export function PricingsTab(): JSX.Element {
 
                                   {isPricingExpanded ? (
                                     <Stack spacing={0}>
-                                      {pricing.accounts.length === 0 ? (
-                                        <Typography sx={{ py: 1, px: 10, color: '#4B617C', fontSize: 13 }}>
-                                          No account/property usage for this pricing.
+                                      <Stack
+                                        direction="row"
+                                        alignItems="center"
+                                        spacing={0.75}
+                                        sx={{
+                                          minHeight: 34,
+                                          px: 1.5,
+                                          borderTop: '1px dashed #E1E7EC',
+                                          backgroundColor: '#FCFDFE'
+                                        }}
+                                      >
+                                        <Box sx={{ width: 56 }} />
+                                        <IconButton
+                                          size="small"
+                                          onClick={() =>
+                                            toggleExpanded(setCollapsedUsageSections, accountsSectionKey)
+                                          }
+                                          aria-label={
+                                            isAccountsCollapsed ? 'Expand accounts section' : 'Collapse accounts section'
+                                          }
+                                        >
+                                          {isAccountsCollapsed ? (
+                                            <ExpandMoreIcon fontSize="small" />
+                                          ) : (
+                                            <ExpandLessIcon fontSize="small" />
+                                          )}
+                                        </IconButton>
+                                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#212934' }}>
+                                          {accountRows.length} accounts
                                         </Typography>
-                                      ) : (
-                                        pricing.accounts.map((accountUsage) => {
-                                          const accountKey = `account:${pricing.id}:${accountUsage.account.id}`;
-                                          const isAccountExpanded = expandedAccounts.has(accountKey);
-                                          const accountTierLabel =
-                                            pricing.type === 'FIXED'
-                                              ? formatMoneyCents(pricing.fixedAmountCents, pricing.currency)
-                                              : `${getTierRangeLabel(accountUsage.currentTier)} · ${formatMoneyCents(accountUsage.currentUnitAmountCents, pricing.currency)}`;
+                                      </Stack>
+
+                                      {!isAccountsCollapsed && accountRows.length > 0 ? (
+                                        accountRows.map((accountUsage) => {
+                                          const accountTierLabel = (() => {
+                                            if (pricing.type === 'FIXED') {
+                                              return formatMoneyCents(
+                                                pricing.fixedAmountCents,
+                                                pricing.currency
+                                              );
+                                            }
+
+                                            return `${getTierRangeLabel(accountUsage.currentTier)} · ${formatMoneyCents(accountUsage.currentUnitAmountCents, pricing.currency)}`;
+                                          })();
 
                                           return (
                                             <Box key={`${pricing.id}:${accountUsage.account.id}`}>
@@ -510,30 +574,17 @@ export function PricingsTab(): JSX.Element {
                                                 spacing={1}
                                                 sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
                                               >
-                                                <Box sx={{ width: 56 }} />
-                                                <IconButton
-                                                  size="small"
-                                                  onClick={() => toggleExpanded(setExpandedAccounts, accountKey)}
-                                                  aria-label={isAccountExpanded ? 'Collapse account' : 'Expand account'}
-                                                >
-                                                  {isAccountExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                                                </IconButton>
-
-                                                <Typography sx={{ minWidth: 220, fontSize: 14 }}>
+                                                <Box sx={{ width: 96 }} />
+                                                <Typography sx={{ minWidth: 260, fontSize: 14 }}>
                                                   {accountUsage.account.companyName}
                                                 </Typography>
 
-                                                <Chip
-                                                  size="small"
-                                                  label={accountUsage.source === 'ACCOUNT' ? 'ACCOUNT' : 'PROPERTY ONLY'}
-                                                  color={accountUsage.source === 'ACCOUNT' ? 'default' : 'warning'}
-                                                />
-
                                                 <Typography sx={{ minWidth: 170, color: '#4B617C', fontSize: 13 }}>
-                                                  {accountUsage.propertiesMatched} properties
+                                                  {accountUsage.inheritedPropertiesCount}/
+                                                  {accountUsage.totalProperties} properties
                                                 </Typography>
 
-                                                <Typography sx={{ minWidth: 120, color: '#4B617C', fontSize: 13 }}>
+                                                <Typography sx={{ minWidth: 130, color: '#4B617C', fontSize: 13 }}>
                                                   {accountUsage.totalBillableUnits} units
                                                 </Typography>
 
@@ -558,95 +609,164 @@ export function PricingsTab(): JSX.Element {
                                                 ) : (
                                                   <Box sx={{ width: 30 }} />
                                                 )}
-
-                                                <Button
-                                                  size="small"
-                                                  startIcon={<AddIcon />}
-                                                  onClick={() =>
-                                                    openCreateSubscription(pricing.id, accountUsage.account.id)
-                                                  }
-                                                >
-                                                  Add
-                                                </Button>
                                               </Stack>
-
-                                              {isAccountExpanded ? (
-                                                <Stack spacing={0}>
-                                                  {accountUsage.properties.map((propertyUsage) => {
-                                                    const propertyTierLabel =
-                                                      pricing.type === 'FIXED'
-                                                        ? formatMoneyCents(pricing.fixedAmountCents, pricing.currency)
-                                                        : `${getTierRangeLabel(propertyUsage.currentTier)} · ${formatMoneyCents(propertyUsage.currentUnitAmountCents, pricing.currency)}`;
-
-                                                    return (
-                                                      <Stack
-                                                        key={`${pricing.id}:${accountUsage.account.id}:${propertyUsage.property.id}`}
-                                                        direction="row"
-                                                        alignItems="center"
-                                                        spacing={1}
-                                                        sx={{ minHeight: 32, px: 1.5, borderTop: '1px dotted #E1E7EC' }}
-                                                      >
-                                                        <Box sx={{ width: 94 }} />
-
-                                                        <Typography sx={{ minWidth: 220, fontSize: 13 }}>
-                                                          {propertyUsage.property.name}
-                                                        </Typography>
-
-                                                        <Chip
-                                                          size="small"
-                                                          label={propertyUsage.source}
-                                                          color={propertyUsage.source === 'OVERRIDE' ? 'warning' : 'default'}
-                                                        />
-
-                                                        <Typography sx={{ minWidth: 170, color: '#4B617C', fontSize: 12 }}>
-                                                          {propertyUsage.property.billableUnits} units
-                                                        </Typography>
-
-                                                        <Typography sx={{ flex: 1, color: '#4B617C', fontSize: 12 }}>
-                                                          {propertyTierLabel}
-                                                        </Typography>
-
-                                                        {propertyUsage.source === 'OVERRIDE' && propertyUsage.subscriptionId ? (
-                                                          <IconButton
-                                                            size="small"
-                                                            onClick={(event) =>
-                                                              setDetachTarget({
-                                                                anchorEl: event.currentTarget,
-                                                                pricingId: pricing.id,
-                                                                subscriptionId: propertyUsage.subscriptionId ?? '',
-                                                                title: `Detach override from ${propertyUsage.property.name}`
-                                                              })
-                                                            }
-                                                          >
-                                                            <MoreHorizIcon fontSize="small" />
-                                                          </IconButton>
-                                                        ) : (
-                                                          <Box sx={{ width: 30 }} />
-                                                        )}
-                                                      </Stack>
-                                                    );
-                                                  })}
-                                                </Stack>
-                                              ) : null}
                                             </Box>
                                           );
                                         })
-                                      )}
+                                      ) : !isAccountsCollapsed ? (
+                                        <Typography sx={{ py: 1, px: 10, color: '#4B617C', fontSize: 13 }}>
+                                          No accounts for this pricing.
+                                        </Typography>
+                                      ) : null}
+
+                                      {!isAccountsCollapsed ? (
+                                        <Stack
+                                          direction="row"
+                                          alignItems="center"
+                                          sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
+                                        >
+                                          <Box sx={{ width: 96 }} />
+                                          <Button
+                                            size="small"
+                                            startIcon={<AddIcon />}
+                                            onClick={() =>
+                                              openCreateSubscription(pricing.id, {
+                                                scope: 'ACCOUNT'
+                                              })
+                                            }
+                                          >
+                                            Assign account
+                                          </Button>
+                                        </Stack>
+                                      ) : null}
 
                                       <Stack
                                         direction="row"
                                         alignItems="center"
-                                        sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
+                                        spacing={0.75}
+                                        sx={{
+                                          minHeight: 34,
+                                          px: 1.5,
+                                          borderTop: '1px dashed #E1E7EC',
+                                          backgroundColor: '#FCFDFE'
+                                        }}
                                       >
                                         <Box sx={{ width: 56 }} />
-                                        <Button
+                                        <IconButton
                                           size="small"
-                                          startIcon={<AddIcon />}
-                                          onClick={() => openCreateSubscription(pricing.id)}
+                                          onClick={() =>
+                                            toggleExpanded(
+                                              setCollapsedUsageSections,
+                                              specificPropertiesSectionKey
+                                            )
+                                          }
+                                          aria-label={
+                                            isSpecificPropertiesCollapsed
+                                              ? 'Expand specific properties section'
+                                              : 'Collapse specific properties section'
+                                          }
                                         >
-                                          Add account/property usage
-                                        </Button>
+                                          {isSpecificPropertiesCollapsed ? (
+                                            <ExpandMoreIcon fontSize="small" />
+                                          ) : (
+                                            <ExpandLessIcon fontSize="small" />
+                                          )}
+                                        </IconButton>
+                                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#212934' }}>
+                                          {specificPropertiesCount}{' '}
+                                          specific properties
+                                        </Typography>
                                       </Stack>
+
+                                      {!isSpecificPropertiesCollapsed
+                                        ? specificPropertyRows.map(({ accountUsage, propertyUsage }) => {
+                                          const propertyTierLabel = (() => {
+                                            if (pricing.type === 'FIXED') {
+                                              return formatMoneyCents(
+                                                pricing.fixedAmountCents,
+                                                pricing.currency
+                                              );
+                                            }
+
+                                            return `${getTierRangeLabel(propertyUsage.currentTier)} · ${formatMoneyCents(propertyUsage.currentUnitAmountCents, pricing.currency)}`;
+                                          })();
+
+                                          return (
+                                            <Stack
+                                              key={`${pricing.id}:${accountUsage.account.id}:${propertyUsage.property.id}`}
+                                              direction="row"
+                                              alignItems="center"
+                                              spacing={1}
+                                              sx={{ minHeight: 32, px: 1.5, borderTop: '1px dotted #E1E7EC' }}
+                                            >
+                                              <Box sx={{ width: 96 }} />
+
+                                              <Typography sx={{ minWidth: 260, fontSize: 13 }}>
+                                                {propertyUsage.property.name}
+                                              </Typography>
+
+                                              <Typography sx={{ minWidth: 170, color: '#4B617C', fontSize: 12 }}>
+                                                {accountUsage.account.companyName}
+                                              </Typography>
+
+                                              <Typography sx={{ minWidth: 130, color: '#4B617C', fontSize: 12 }}>
+                                                {propertyUsage.property.billableUnits} units
+                                              </Typography>
+
+                                              <Typography sx={{ flex: 1, color: '#4B617C', fontSize: 12 }}>
+                                                {propertyTierLabel}
+                                              </Typography>
+
+                                              {propertyUsage.resolvedBySubscriptionId ? (
+                                                <IconButton
+                                                  size="small"
+                                                  onClick={(event) =>
+                                                    setDetachTarget({
+                                                      anchorEl: event.currentTarget,
+                                                      pricingId: pricing.id,
+                                                      subscriptionId:
+                                                        propertyUsage.resolvedBySubscriptionId ?? '',
+                                                      title: `Detach override from ${propertyUsage.property.name}`
+                                                    })
+                                                  }
+                                                >
+                                                  <MoreHorizIcon fontSize="small" />
+                                                </IconButton>
+                                              ) : (
+                                                <Box sx={{ width: 30 }} />
+                                              )}
+                                            </Stack>
+                                          );
+                                        })
+                                        : null}
+
+                                      {!isSpecificPropertiesCollapsed && specificPropertiesCount === 0 ? (
+                                        <Typography sx={{ py: 1, px: 10, color: '#4B617C', fontSize: 13 }}>
+                                          No specific properties for this pricing.
+                                        </Typography>
+                                      ) : null}
+
+                                      {!isSpecificPropertiesCollapsed ? (
+                                        <Stack
+                                          direction="row"
+                                          alignItems="center"
+                                          sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
+                                        >
+                                          <Box sx={{ width: 96 }} />
+                                          <Button
+                                            size="small"
+                                            startIcon={<AddIcon />}
+                                            onClick={() =>
+                                              openCreateSubscription(pricing.id, {
+                                                scope: 'PROPERTY'
+                                              })
+                                            }
+                                          >
+                                            Assign property
+                                          </Button>
+                                        </Stack>
+                                      ) : null}
+
                                     </Stack>
                                   ) : null}
                                 </Box>
@@ -657,13 +777,19 @@ export function PricingsTab(): JSX.Element {
                           <Stack
                             direction="row"
                             alignItems="center"
-                            sx={{ minHeight: 34, px: 1.5, borderTop: '1px solid #E1E7EC', backgroundColor: '#FCFDFE' }}
+                            sx={{
+                              minHeight: 34,
+                              px: 1.5,
+                              borderTop: '1px solid #E1E7EC',
+                              backgroundColor: '#FCFDFE'
+                            }}
                           >
                             <Box sx={{ width: 56 }} />
                             <Button size="small" startIcon={<AddIcon />} onClick={() => openCreatePricing(product.id)}>
                               Add pricing
                             </Button>
                           </Stack>
+
                         </Stack>
                       ) : null}
                     </Box>
@@ -695,10 +821,42 @@ export function PricingsTab(): JSX.Element {
             initialSubscription={null}
             defaultAccountId={defaultSubscriptionAccountId}
             defaultPricingIds={defaultSubscriptionPricingIds}
+            defaultScope={defaultSubscriptionScope}
             onClose={closeSubscriptionModal}
           />
         </Suspense>
       ) : null}
+
+      <Menu
+        open={Boolean(pricingActionsTarget)}
+        anchorEl={pricingActionsTarget?.anchorEl ?? null}
+        onClose={() => setPricingActionsTarget(null)}
+      >
+        <MenuItem
+          onClick={() => {
+            if (!pricingActionsTarget) {
+              return;
+            }
+
+            openCreateSubscription(pricingActionsTarget.pricingId, { scope: 'ACCOUNT' });
+            setPricingActionsTarget(null);
+          }}
+        >
+          Assign account
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!pricingActionsTarget) {
+              return;
+            }
+
+            openCreateSubscription(pricingActionsTarget.pricingId, { scope: 'PROPERTY' });
+            setPricingActionsTarget(null);
+          }}
+        >
+          Assign property
+        </MenuItem>
+      </Menu>
 
       <Menu
         open={Boolean(detachTarget)}
