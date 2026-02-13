@@ -2,12 +2,12 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
   Alert,
+  Box,
   Button,
   Chip,
   Dialog,
@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import {
   ApiError,
   useDeletePricingMutation,
@@ -31,8 +31,12 @@ import {
   type PricingItem,
   type PricingType
 } from '../../api';
-import { EmptyState, SectionCard } from '../../components/layout';
-import { PricingFormDrawer } from './PricingFormDrawer';
+import { EmptyState, FiltersToolbar } from '../../components/layout';
+
+const PricingFormDrawer = lazy(async () => {
+  const module = await import('./PricingFormDrawer');
+  return { default: module.PricingFormDrawer };
+});
 
 function formatMoneyCents(amountCents: number | null, currency: string): string {
   if (amountCents === null) {
@@ -135,61 +139,59 @@ export function PricingsTab(): JSX.Element {
 
   return (
     <>
-      <SectionCard
-        title="Pricings"
-        description="Tree-by-product view for fixed and tiered pricing definitions."
-        actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDrawer}>
-            Create Pricing
-          </Button>
-        }
-      >
-        <Stack spacing={2}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField
-              label="Search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Pricing name or product"
-              sx={{ minWidth: { md: 260 } }}
-            />
+      <Stack spacing={0}>
+        <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1.5, borderBottom: '1px solid #e1e7ec' }}>
+          <FiltersToolbar
+            left={
+              <>
+                <TextField
+                  size="small"
+                  label="Search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Pricing name or product"
+                  sx={{ minWidth: { md: 220 } }}
+                />
 
-            <TextField
-              select
-              label="Type"
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as 'ALL' | PricingType)}
-              sx={{ minWidth: 140 }}
-            >
-              <MenuItem value="ALL">ALL</MenuItem>
-              <MenuItem value="FIXED">FIXED</MenuItem>
-              <MenuItem value="TIERED">TIERED</MenuItem>
-            </TextField>
+                <TextField
+                  size="small"
+                  select
+                  label="Type"
+                  value={typeFilter}
+                  onChange={(event) => setTypeFilter(event.target.value as 'ALL' | PricingType)}
+                  sx={{ minWidth: 120 }}
+                >
+                  <MenuItem value="ALL">ALL</MenuItem>
+                  <MenuItem value="FIXED">FIXED</MenuItem>
+                  <MenuItem value="TIERED">TIERED</MenuItem>
+                </TextField>
 
-            <TextField
-              select
-              label="Product"
-              value={productIdFilter}
-              onChange={(event) => setProductIdFilter(event.target.value)}
-              sx={{ minWidth: 260 }}
-            >
-              <MenuItem value="">All products</MenuItem>
-              {(productsQuery.data?.items ?? []).map((product) => (
-                <MenuItem key={product.id} value={product.id}>
-                  {product.name}
-                </MenuItem>
-              ))}
-            </TextField>
+                <TextField
+                  size="small"
+                  select
+                  label="Product"
+                  value={productIdFilter}
+                  onChange={(event) => setProductIdFilter(event.target.value)}
+                  sx={{ minWidth: 220 }}
+                >
+                  <MenuItem value="">All products</MenuItem>
+                  {(productsQuery.data?.items ?? []).map((product) => (
+                    <MenuItem key={product.id} value={product.id}>
+                      {product.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </>
+            }
+            right={
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDrawer}>
+                Create Pricing
+              </Button>
+            }
+          />
+        </Box>
 
-            <Tooltip title="Refresh pricings">
-              <span>
-                <IconButton onClick={() => pricingsQuery.refetch()}>
-                  <RefreshOutlinedIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-
+        <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
           {pricingsQuery.isError ? <Alert severity="error">Failed to load pricings.</Alert> : null}
 
           {pricingsQuery.isPending ? (
@@ -205,93 +207,97 @@ export function PricingsTab(): JSX.Element {
             />
           ) : (
             <Stack spacing={1.5}>
-              {(productsQuery.data?.items ?? []).map((product) => {
-                const pricings = groupedPricings.get(product.id) ?? [];
-                if (pricings.length === 0) {
-                  return null;
-                }
+            {(productsQuery.data?.items ?? []).map((product) => {
+              const pricings = groupedPricings.get(product.id) ?? [];
+              if (pricings.length === 0) {
+                return null;
+              }
 
-                return (
-                  <Accordion key={product.id} defaultExpanded elevation={0}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                          {product.name}
-                        </Typography>
-                        <Chip size="small" label={`${pricings.length} pricing(s)`} />
-                      </Stack>
-                    </AccordionSummary>
+              return (
+                <Accordion key={product.id} defaultExpanded elevation={0}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        {product.name}
+                      </Typography>
+                      <Chip size="small" label={`${pricings.length} pricing(s)`} />
+                    </Stack>
+                  </AccordionSummary>
 
-                    <AccordionDetails>
-                      <Stack spacing={1}>
-                        {pricings.map((pricing) => (
-                          <Stack
-                            key={pricing.id}
-                            direction={{ xs: 'column', md: 'row' }}
-                            spacing={1}
-                            sx={{
-                              border: '1px solid #d9e0ea',
-                              borderRadius: 2,
-                              p: 1.5
-                            }}
-                          >
-                            <Stack spacing={0.6} sx={{ flex: 1 }}>
-                              <Stack direction="row" spacing={1} alignItems="center">
-                                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                                  {pricing.internalName}
-                                </Typography>
-                                <Chip size="small" label={pricing.type} />
-                                {!pricing.isActive ? (
-                                  <Chip size="small" color="default" label="Inactive" />
-                                ) : null}
-                              </Stack>
-                              <Typography variant="body2" color="text.secondary">
-                                {pricing.type === 'FIXED'
-                                  ? `${formatMoneyCents(pricing.fixedAmountCents, pricing.currency)} / ${pricing.billingInterval}`
-                                  : `${summarizeTiers(pricing)} • Min ${formatMoneyCents(
-                                      pricing.minimumPriceCents,
-                                      pricing.currency
-                                    )}`}
+                  <AccordionDetails>
+                    <Stack spacing={1}>
+                      {pricings.map((pricing) => (
+                        <Stack
+                          key={pricing.id}
+                          direction={{ xs: 'column', md: 'row' }}
+                          spacing={1}
+                          sx={{
+                            border: '1px solid #d9e0ea',
+                            borderRadius: 2,
+                            p: 1.5
+                          }}
+                        >
+                          <Stack spacing={0.6} sx={{ flex: 1 }}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {pricing.internalName}
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                Used by {pricing.subscriptionsCount} subscription(s)
-                              </Typography>
+                              <Chip size="small" label={pricing.type} />
+                              {!pricing.isActive ? (
+                                <Chip size="small" color="default" label="Inactive" />
+                              ) : null}
                             </Stack>
-
-                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                              <Tooltip title="Edit pricing">
-                                <IconButton size="small" onClick={() => openEditDrawer(pricing)}>
-                                  <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Delete pricing">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => setDeletingPricing(pricing)}
-                                >
-                                  <DeleteOutlineIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
+                            <Typography variant="body2" color="text.secondary">
+                              {pricing.type === 'FIXED'
+                                ? `${formatMoneyCents(pricing.fixedAmountCents, pricing.currency)} / ${pricing.billingInterval}`
+                                : `${summarizeTiers(pricing)} • Min ${formatMoneyCents(
+                                    pricing.minimumPriceCents,
+                                    pricing.currency
+                                  )}`}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Used by {pricing.subscriptionsCount} subscription(s)
+                            </Typography>
                           </Stack>
-                        ))}
-                      </Stack>
-                    </AccordionDetails>
-                  </Accordion>
-                );
-              })}
+
+                          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                            <Tooltip title="Edit pricing">
+                              <IconButton size="small" onClick={() => openEditDrawer(pricing)}>
+                                <EditOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete pricing">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => setDeletingPricing(pricing)}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              );
+            })}
             </Stack>
           )}
-        </Stack>
-      </SectionCard>
+        </Box>
+      </Stack>
 
-      <PricingFormDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        initialPricing={editingPricing}
-        onClose={closeDrawer}
-      />
+      {drawerOpen ? (
+        <Suspense fallback={null}>
+          <PricingFormDrawer
+            open={drawerOpen}
+            mode={drawerMode}
+            initialPricing={editingPricing}
+            onClose={closeDrawer}
+          />
+        </Suspense>
+      ) : null}
 
       <Dialog open={Boolean(deletingPricing)} onClose={() => setDeletingPricing(null)}>
         <DialogTitle>Delete Pricing</DialogTitle>
