@@ -1,66 +1,68 @@
-# Stripe Integration V2.1 (UX Prototype Scaffold)
+# Stripe Integration V2.1 (UX Prototype)
 
-Local monorepo scaffold for web + api + db packages with TypeScript everywhere.
+Monorepo for the Stripe Integration UX prototype (web, API, and local DB).
 
-## Stack
+## Tech Stack
 
 - Monorepo: pnpm workspaces
 - Frontend: Vite + React + MUI + React Router + TanStack Query
-- Backend: Node 20 + Fastify + @fastify/cors + Zod
-- Database: SQLite + Prisma ORM
+- Backend: Node 20 + Fastify + Zod
+- Database: SQLite + Prisma
 
-## Repository Layout
+## Project Structure
 
-- `apps/web` - React + Vite app
+- `apps/web` - React app (prototype UI)
 - `apps/api` - Fastify API
-- `packages/db` - Prisma schema, SQLite, seed, Prisma client export
-- `packages/shared` - shared workspace package placeholder
-- `docs/agent-notes` - empty placeholder docs
+- `packages/db` - Prisma schema, migrations, seed data
+- `packages/shared` - shared package placeholder
+- `docs/agent-notes` - product and prototype notes
 
-## Quick Start (Designer-Friendly)
+## Demo Run (One Command)
 
-1. Ensure Node.js 20+ and pnpm are installed.
-2. Run one command from repo root:
+Prerequisites:
+- Node.js 20+
+- pnpm
+
+From the repository root:
 
 ```bash
 pnpm demo
 ```
 
-This command will:
-- install dependencies,
-- prepare DB schema,
-- fill DB with demo data,
-- start web + api.
+What this does:
+1. Installs dependencies.
+2. Generates Prisma client.
+3. Syncs DB schema.
+4. Seeds demo data.
+5. Starts web + API in dev mode.
 
-Open:
-- Web UI: `http://localhost:5173`
+Open after start:
+- Web: `http://localhost:5173`
 - API: `http://localhost:3001`
 
-## If You Need Fresh Demo Data
+## Refresh Demo Data
+
+Use this when you want to reset local runtime data back to the standard demo dataset:
 
 ```bash
 pnpm demo:refresh
-```
-
-Then start app:
-
-```bash
 pnpm dev
 ```
+
+Note: seeding clears and recreates data in local `packages/db/dev.db`.
 
 ## Useful Commands
 
 ```bash
+pnpm dev
 pnpm dev:web
 pnpm dev:api
 pnpm setup:demo
-pnpm db:migrate
 pnpm db:studio
 pnpm typecheck
 pnpm lint
 ```
 
-## Current Scope
+## Scope
 
-This repository intentionally contains only scaffolding, placeholders, and seed data.
-No production business logic is implemented yet.
+This repository is a prototype-focused implementation with seed data and non-production flows.
