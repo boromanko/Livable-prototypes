@@ -810,6 +810,16 @@ export function PricingsTab(): JSX.Element {
                                   }))
                               );
                               const specificPropertiesCount = specificPropertyRows.length;
+                              const hasAccountRows = accountRows.length > 0;
+                              const hasSpecificPropertyRows = specificPropertiesCount > 0;
+                              const hasMixedUsageSections = hasAccountRows && hasSpecificPropertyRows;
+                              const showAccountsSectionHeader = hasMixedUsageSections;
+                              const showPropertiesSectionHeader = hasMixedUsageSections;
+                              const isAccountsVisible =
+                                hasAccountRows && (!showAccountsSectionHeader || !isAccountsCollapsed);
+                              const isSpecificPropertiesVisible =
+                                hasSpecificPropertyRows &&
+                                (!showPropertiesSectionHeader || !isSpecificPropertiesCollapsed);
 
                               return (
                                 <Box key={pricing.id}>
@@ -889,48 +899,56 @@ export function PricingsTab(): JSX.Element {
                                           >
                                             {pricing.type === 'TIERED' ? 'Tiered' : 'Fixed'}
                                           </Typography>
-                                          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-                                            |
-                                          </Typography>
-                                          <Link
-                                            href="#"
-                                            onClick={(event) => {
-                                              event.preventDefault();
-                                              event.stopPropagation();
-                                              togglePricingSectionLink(pricing.id, 'accounts');
-                                            }}
-                                            sx={{
-                                              fontWeight: 600,
-                                              fontSize: 15,
-                                              color: '#98A4B3',
-                                              textDecoration: 'none',
-                                              cursor: 'pointer',
-                                              '&:hover': { textDecoration: 'underline' }
-                                            }}
-                                          >
-                                            {accountRows.length} Accounts
-                                          </Link>
-                                          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-                                            |
-                                          </Typography>
-                                          <Link
-                                            href="#"
-                                            onClick={(event) => {
-                                              event.preventDefault();
-                                              event.stopPropagation();
-                                              togglePricingSectionLink(pricing.id, 'specific-properties');
-                                            }}
-                                            sx={{
-                                              fontWeight: 600,
-                                              fontSize: 15,
-                                              color: '#98A4B3',
-                                              textDecoration: 'none',
-                                              cursor: 'pointer',
-                                              '&:hover': { textDecoration: 'underline' }
-                                            }}
-                                          >
-                                            {specificPropertiesCount} Properties
-                                          </Link>
+                                          {hasAccountRows || hasSpecificPropertyRows ? (
+                                            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                              |
+                                            </Typography>
+                                          ) : null}
+                                          {hasAccountRows ? (
+                                            <Link
+                                              href="#"
+                                              onClick={(event) => {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                                togglePricingSectionLink(pricing.id, 'accounts');
+                                              }}
+                                              sx={{
+                                                fontWeight: 600,
+                                                fontSize: 15,
+                                                color: '#98A4B3',
+                                                textDecoration: 'none',
+                                                cursor: 'pointer',
+                                                '&:hover': { textDecoration: 'underline' }
+                                              }}
+                                            >
+                                              {accountRows.length} Accounts
+                                            </Link>
+                                          ) : null}
+                                          {hasAccountRows && hasSpecificPropertyRows ? (
+                                            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                              |
+                                            </Typography>
+                                          ) : null}
+                                          {hasSpecificPropertyRows ? (
+                                            <Link
+                                              href="#"
+                                              onClick={(event) => {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                                togglePricingSectionLink(pricing.id, 'specific-properties');
+                                              }}
+                                              sx={{
+                                                fontWeight: 600,
+                                                fontSize: 15,
+                                                color: '#98A4B3',
+                                                textDecoration: 'none',
+                                                cursor: 'pointer',
+                                                '&:hover': { textDecoration: 'underline' }
+                                              }}
+                                            >
+                                              {specificPropertiesCount} Properties
+                                            </Link>
+                                          ) : null}
                                         </Stack>
                                         {!groupByProduct ? (
                                           <Typography
@@ -1071,60 +1089,64 @@ export function PricingsTab(): JSX.Element {
 
                                   {isPricingExpanded ? (
                                     <Stack spacing={0}>
-                                      <Stack
-                                        direction="row"
-                                        alignItems="center"
-                                        spacing={0}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() =>
-                                          toggleExpanded(setCollapsedUsageSections, accountsSectionKey)
-                                        }
-                                        onKeyDown={(event) => {
-                                          if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
-                                            toggleExpanded(setCollapsedUsageSections, accountsSectionKey);
+                                      {showAccountsSectionHeader ? (
+                                        <Stack
+                                          direction="row"
+                                          alignItems="center"
+                                          spacing={0}
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() =>
+                                            toggleExpanded(setCollapsedUsageSections, accountsSectionKey)
                                           }
-                                        }}
-                                        sx={{
-                                          minHeight: 34,
-                                          px: 1.5,
-                                          borderTop: '1px dashed #E1E7EC',
-                                          backgroundColor: '#F8F9FA',
-                                          cursor: 'pointer'
-                                        }}
-                                      >
-                                        <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
-                                        <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
-                                          <Box
-                                            sx={{
-                                              width: TREE_TOGGLE_SLOT_WIDTH,
-                                              height: TREE_TOGGLE_SLOT_WIDTH,
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              borderRadius: '2px',
-                                              transition: 'background-color 120ms ease',
-                                              '&:hover': { backgroundColor: '#EAF0F5' }
-                                            }}
-                                            aria-label={
-                                              isAccountsCollapsed ? 'Expand accounts section' : 'Collapse accounts section'
+                                          onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                              event.preventDefault();
+                                              toggleExpanded(setCollapsedUsageSections, accountsSectionKey);
                                             }
-                                          >
-                                            {isAccountsCollapsed ? (
-                                              <ChevronRightIcon fontSize="small" />
-                                            ) : (
-                                              <ExpandMoreIcon fontSize="small" />
-                                            )}
+                                          }}
+                                          sx={{
+                                            minHeight: 34,
+                                            px: 1.5,
+                                            borderTop: '1px dashed #E1E7EC',
+                                            backgroundColor: '#F8F9FA',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
+                                          <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                                            <Box
+                                              sx={{
+                                                width: TREE_TOGGLE_SLOT_WIDTH,
+                                                height: TREE_TOGGLE_SLOT_WIDTH,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                borderRadius: '2px',
+                                                transition: 'background-color 120ms ease',
+                                                '&:hover': { backgroundColor: '#EAF0F5' }
+                                              }}
+                                              aria-label={
+                                                isAccountsCollapsed
+                                                  ? 'Expand accounts section'
+                                                  : 'Collapse accounts section'
+                                              }
+                                            >
+                                              {isAccountsCollapsed ? (
+                                                <ChevronRightIcon fontSize="small" />
+                                              ) : (
+                                                <ExpandMoreIcon fontSize="small" />
+                                              )}
+                                            </Box>
                                           </Box>
-                                        </Box>
-                                        <Box sx={{ width: TREE_LABEL_GAP }} />
-                                        <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
-                                          {accountRows.length} accounts
-                                        </Typography>
-                                      </Stack>
+                                          <Box sx={{ width: TREE_LABEL_GAP }} />
+                                          <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
+                                            {accountRows.length} accounts
+                                          </Typography>
+                                        </Stack>
+                                      ) : null}
 
-                                      {!isAccountsCollapsed && accountRows.length > 0 ? (
+                                      {isAccountsVisible ? (
                                         accountRows.map((accountUsage) => {
                                           const activeTierColumnIndex = getActiveTierColumnIndex(
                                             pricing,
@@ -1146,8 +1168,8 @@ export function PricingsTab(): JSX.Element {
                                                 spacing={0}
                                                 sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}
                                               >
-                                                <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
-                                                <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                                <Box sx={{ width: TREE_INDENT_STEP * (showAccountsSectionHeader ? 3 : 2) }} />
+                                                <Box sx={{ width: showAccountsSectionHeader ? TREE_TOGGLE_SLOT_WIDTH : 0 }} />
                                                 <Box sx={{ width: TREE_LABEL_GAP }} />
                                                 <Box sx={{ mr: 1 }}>
                                                   <EntityTypeIndicator type="ACCOUNT" />
@@ -1265,7 +1287,7 @@ export function PricingsTab(): JSX.Element {
                                         })
                                       ) : null}
 
-                                      {!isAccountsCollapsed ? (
+                                      {isAccountsVisible ? (
                                         <Stack
                                           direction="row"
                                           alignItems="center"
@@ -1278,8 +1300,8 @@ export function PricingsTab(): JSX.Element {
                                             backgroundColor: '#FFFFFF'
                                           }}
                                         >
-                                          <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
-                                          <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                          <Box sx={{ width: TREE_INDENT_STEP * (showAccountsSectionHeader ? 3 : 2) }} />
+                                          <Box sx={{ width: showAccountsSectionHeader ? TREE_TOGGLE_SLOT_WIDTH : 0 }} />
                                           <Box sx={{ width: TREE_LABEL_GAP }} />
                                           <GhostButton
                                             size="small"
@@ -1305,69 +1327,71 @@ export function PricingsTab(): JSX.Element {
                                         </Stack>
                                       ) : null}
 
-                                      <Stack
-                                        direction="row"
-                                        alignItems="center"
-                                        spacing={0}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() =>
-                                          toggleExpanded(
-                                            setCollapsedUsageSections,
-                                            specificPropertiesSectionKey
-                                          )
-                                        }
-                                        onKeyDown={(event) => {
-                                          if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
+                                      {showPropertiesSectionHeader ? (
+                                        <Stack
+                                          direction="row"
+                                          alignItems="center"
+                                          spacing={0}
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={() =>
                                             toggleExpanded(
                                               setCollapsedUsageSections,
                                               specificPropertiesSectionKey
-                                            );
+                                            )
                                           }
-                                        }}
-                                        sx={{
-                                          minHeight: 34,
-                                          px: 1.5,
-                                          borderTop: '1px dashed #E1E7EC',
-                                          backgroundColor: '#F8F9FA',
-                                          cursor: 'pointer'
-                                        }}
-                                      >
-                                        <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
-                                        <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
-                                          <Box
-                                            sx={{
-                                              width: TREE_TOGGLE_SLOT_WIDTH,
-                                              height: TREE_TOGGLE_SLOT_WIDTH,
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              borderRadius: '2px',
-                                              transition: 'background-color 120ms ease',
-                                              '&:hover': { backgroundColor: '#EAF0F5' }
-                                            }}
-                                            aria-label={
-                                              isSpecificPropertiesCollapsed
-                                                ? 'Expand specific properties section'
-                                                : 'Collapse specific properties section'
+                                          onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                              event.preventDefault();
+                                              toggleExpanded(
+                                                setCollapsedUsageSections,
+                                                specificPropertiesSectionKey
+                                              );
                                             }
-                                          >
-                                            {isSpecificPropertiesCollapsed ? (
-                                              <ChevronRightIcon fontSize="small" />
-                                            ) : (
-                                              <ExpandMoreIcon fontSize="small" />
-                                            )}
+                                          }}
+                                          sx={{
+                                            minHeight: 34,
+                                            px: 1.5,
+                                            borderTop: '1px dashed #E1E7EC',
+                                            backgroundColor: '#F8F9FA',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
+                                          <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                                            <Box
+                                              sx={{
+                                                width: TREE_TOGGLE_SLOT_WIDTH,
+                                                height: TREE_TOGGLE_SLOT_WIDTH,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                borderRadius: '2px',
+                                                transition: 'background-color 120ms ease',
+                                                '&:hover': { backgroundColor: '#EAF0F5' }
+                                              }}
+                                              aria-label={
+                                                isSpecificPropertiesCollapsed
+                                                  ? 'Expand specific properties section'
+                                                  : 'Collapse specific properties section'
+                                              }
+                                            >
+                                              {isSpecificPropertiesCollapsed ? (
+                                                <ChevronRightIcon fontSize="small" />
+                                              ) : (
+                                                <ExpandMoreIcon fontSize="small" />
+                                              )}
+                                            </Box>
                                           </Box>
-                                        </Box>
-                                        <Box sx={{ width: TREE_LABEL_GAP }} />
-                                        <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
-                                          {specificPropertiesCount}{' '}
-                                          specific properties
-                                        </Typography>
-                                      </Stack>
+                                          <Box sx={{ width: TREE_LABEL_GAP }} />
+                                          <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
+                                            {specificPropertiesCount}{' '}
+                                            specific properties
+                                          </Typography>
+                                        </Stack>
+                                      ) : null}
 
-                                      {!isSpecificPropertiesCollapsed
+                                      {isSpecificPropertiesVisible
                                         ? specificPropertyRows.map(({ accountUsage, propertyUsage }) => {
                                           const activeTierColumnIndex = getActiveTierColumnIndex(
                                             pricing,
@@ -1389,8 +1413,14 @@ export function PricingsTab(): JSX.Element {
                                                 spacing={0}
                                                 sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}
                                               >
-                                                <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
-                                                <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                                <Box
+                                                  sx={{
+                                                    width: TREE_INDENT_STEP * (showPropertiesSectionHeader ? 3 : 2)
+                                                  }}
+                                                />
+                                                <Box
+                                                  sx={{ width: showPropertiesSectionHeader ? TREE_TOGGLE_SLOT_WIDTH : 0 }}
+                                                />
                                                 <Box sx={{ width: TREE_LABEL_GAP }} />
                                                 <Box sx={{ mr: 1 }}>
                                                   <EntityTypeIndicator type="PROPERTY" />
@@ -1511,7 +1541,7 @@ export function PricingsTab(): JSX.Element {
                                         })
                                         : null}
 
-                                      {!isSpecificPropertiesCollapsed ? (
+                                      {isSpecificPropertiesVisible ? (
                                         <Stack
                                           direction="row"
                                           alignItems="center"
@@ -1524,8 +1554,12 @@ export function PricingsTab(): JSX.Element {
                                             backgroundColor: '#FFFFFF'
                                           }}
                                         >
-                                          <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
-                                          <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
+                                          <Box
+                                            sx={{
+                                              width: TREE_INDENT_STEP * (showPropertiesSectionHeader ? 3 : 2)
+                                            }}
+                                          />
+                                          <Box sx={{ width: showPropertiesSectionHeader ? TREE_TOGGLE_SLOT_WIDTH : 0 }} />
                                           <Box sx={{ width: TREE_LABEL_GAP }} />
                                           <GhostButton
                                             size="small"
