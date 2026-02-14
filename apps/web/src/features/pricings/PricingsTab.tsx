@@ -11,10 +11,12 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import {
   Alert,
   Box,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   Link,
   Menu,
@@ -301,6 +303,7 @@ export function PricingsTab(): JSX.Element {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | PricingType>('ALL');
   const [productIdFilter, setProductIdFilter] = useState('');
+  const [groupByProduct, setGroupByProduct] = useState(true);
 
   const [collapsedProducts, setCollapsedProducts] = useState<Set<string>>(new Set());
   const [expandedPricings, setExpandedPricings] = useState<Set<string>>(new Set());
@@ -340,6 +343,21 @@ export function PricingsTab(): JSX.Element {
         matchesPricingFilters(pricing, search, typeFilter, productIdFilter)
       ),
     [pricingsTreeQuery.data?.items, search, typeFilter, productIdFilter]
+  );
+
+  const flatPricings = useMemo(
+    () =>
+      [...filteredPricings].sort((left, right) =>
+        left.internalName.localeCompare(right.internalName, undefined, {
+          sensitivity: 'base'
+        })
+      ),
+    [filteredPricings]
+  );
+
+  const flatTierColumnCount = useMemo(
+    () => getProductTierColumnCount(flatPricings),
+    [flatPricings]
   );
 
   const pricingsByProductId = useMemo(() => {
@@ -390,12 +408,16 @@ export function PricingsTab(): JSX.Element {
   }, [productIdFilter, productsQuery.data?.items, pricingsByProductId, search]);
 
   const minTreeWidthPx = useMemo(() => {
+    if (!groupByProduct) {
+      return Math.max(BASE_TREE_MIN_WIDTH, getProductMinRowWidth(flatTierColumnCount));
+    }
+
     return visibleProducts.reduce((maxWidth, product) => {
       const productPricings = pricingsByProductId.get(product.id) ?? [];
       const tierColumnCount = getProductTierColumnCount(productPricings);
       return Math.max(maxWidth, getProductMinRowWidth(tierColumnCount));
     }, BASE_TREE_MIN_WIDTH);
-  }, [pricingsByProductId, visibleProducts]);
+  }, [flatTierColumnCount, groupByProduct, pricingsByProductId, visibleProducts]);
 
   function toggleExpanded(setter: React.Dispatch<React.SetStateAction<Set<string>>>, key: string): void {
     setter((prev) => {
@@ -478,6 +500,34 @@ export function PricingsTab(): JSX.Element {
       next.delete(sectionKey);
       return next;
     });
+  }
+
+  function togglePricingFromCaret(pricingId: string): void {
+    const pricingKey = `pricing:${pricingId}`;
+    const accountsSectionKey = `accounts:${pricingId}`;
+    const specificPropertiesSectionKey = `specific-properties:${pricingId}`;
+
+    const isExpanded = expandedPricings.has(pricingKey);
+
+    setExpandedPricings((prev) => {
+      const next = new Set(prev);
+      if (isExpanded) {
+        next.delete(pricingKey);
+      } else {
+        next.add(pricingKey);
+      }
+      return next;
+    });
+
+    if (!isExpanded) {
+      // Opening a pricing from its caret should keep child sections collapsed.
+      setCollapsedUsageSections((prev) => {
+        const next = new Set(prev);
+        next.add(accountsSectionKey);
+        next.add(specificPropertiesSectionKey);
+        return next;
+      });
+    }
   }
 
   async function confirmDeletePricing(): Promise<void> {
@@ -600,6 +650,18 @@ export function PricingsTab(): JSX.Element {
                     </MenuItem>
                   ))}
                 </TextField>
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={groupByProduct}
+                      onChange={(event) => setGroupByProduct(event.target.checked)}
+                    />
+                  }
+                  label="Group by product"
+                  sx={{ ml: 0.5, mr: 0, '& .MuiFormControlLabel-label': { fontSize: 13, color: '#4B617C' } }}
+                />
               </>
             }
             right={
@@ -628,7 +690,7 @@ export function PricingsTab(): JSX.Element {
             <Typography variant="body2" color="text.secondary">
               Loading pricing tree...
             </Typography>
-          ) : visibleProducts.length === 0 ? (
+          ) : (groupByProduct ? visibleProducts.length === 0 : flatPricings.length === 0) ? (
             <EmptyState
               title="No pricings found"
               description="Create your first pricing or adjust filters."
@@ -648,77 +710,86 @@ export function PricingsTab(): JSX.Element {
                   borderRadius: 1
                 }}
               >
-                {visibleProducts.map((product, productIndex) => {
-                  const productPricings = pricingsByProductId.get(product.id) ?? [];
-                  const productTierColumnCount = getProductTierColumnCount(productPricings);
-                  const isProductExpanded = !collapsedProducts.has(product.id);
+                {(groupByProduct
+                  ? visibleProducts
+                  : [{ id: '__flat__', name: '', code: '__flat__' }]
+                ).map((product, productIndex) => {
+                  const productPricings = groupByProduct
+                    ? (pricingsByProductId.get(product.id) ?? [])
+                    : flatPricings;
+                  const productTierColumnCount = groupByProduct
+                    ? getProductTierColumnCount(productPricings)
+                    : flatTierColumnCount;
+                  const isProductExpanded = groupByProduct ? !collapsedProducts.has(product.id) : true;
 
                   return (
                     <Box key={product.id}>
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        spacing={0}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => toggleExpanded(setCollapsedProducts, product.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            toggleExpanded(setCollapsedProducts, product.id);
-                          }
-                        }}
-                        sx={{
-                          minHeight: 40,
-                          px: 1.5,
-                          py: 0.5,
-                          backgroundColor: '#EEF2F6',
-                          borderTop: productIndex === 0 ? 'none' : '1px solid #E1E7EC',
-                          cursor: 'pointer',
-                          position: 'sticky',
-                          top: PRODUCT_ROW_STICKY_TOP,
-                          zIndex: 30
-                        }}
-                      >
-                        <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
-                          <Box
-                            sx={{
-                              width: TREE_TOGGLE_SLOT_WIDTH,
-                              height: TREE_TOGGLE_SLOT_WIDTH,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '2px',
-                              transition: 'background-color 120ms ease',
-                              '&:hover': { backgroundColor: '#EAF0F5' }
-                            }}
-                            aria-label={isProductExpanded ? 'Collapse product' : 'Expand product'}
-                          >
-                            {isProductExpanded ? (
-                              <ExpandMoreIcon fontSize="small" />
-                            ) : (
-                              <ChevronRightIcon fontSize="small" />
-                            )}
+                      {groupByProduct ? (
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          spacing={0}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => toggleExpanded(setCollapsedProducts, product.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              toggleExpanded(setCollapsedProducts, product.id);
+                            }
+                          }}
+                          sx={{
+                            minHeight: 40,
+                            px: 1.5,
+                            py: 0.5,
+                            backgroundColor: '#EEF2F6',
+                            borderTop: productIndex === 0 ? 'none' : '1px solid #E1E7EC',
+                            cursor: 'pointer',
+                            position: 'sticky',
+                            top: PRODUCT_ROW_STICKY_TOP,
+                            zIndex: 30
+                          }}
+                        >
+                          <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                            <Box
+                              sx={{
+                                width: TREE_TOGGLE_SLOT_WIDTH,
+                                height: TREE_TOGGLE_SLOT_WIDTH,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '2px',
+                                transition: 'background-color 120ms ease',
+                                '&:hover': { backgroundColor: '#EAF0F5' }
+                              }}
+                              aria-label={isProductExpanded ? 'Collapse product' : 'Expand product'}
+                            >
+                              {isProductExpanded ? (
+                                <ExpandMoreIcon fontSize="small" />
+                              ) : (
+                                <ChevronRightIcon fontSize="small" />
+                              )}
+                            </Box>
                           </Box>
-                        </Box>
-                        <Box sx={{ width: TREE_LABEL_GAP }} />
-                        <Stack direction="row" alignItems="center" spacing={1.25}>
-                          <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
-                            {product.name}
-                          </Typography>
-                          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-                            |
-                          </Typography>
-                          <Typography sx={{ fontWeight: 600, fontSize: 14, color: '#98A4B3' }}>
-                            {productPricings.length} pricings
-                          </Typography>
+                          <Box sx={{ width: TREE_LABEL_GAP }} />
+                          <Stack direction="row" alignItems="center" spacing={1.25}>
+                            <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
+                              {product.name}
+                            </Typography>
+                            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                              |
+                            </Typography>
+                            <Typography sx={{ fontWeight: 600, fontSize: 14, color: '#98A4B3' }}>
+                              {productPricings.length} pricings
+                            </Typography>
+                          </Stack>
                         </Stack>
-                      </Stack>
+                      ) : null}
 
                       {isProductExpanded ? (
                         <Stack spacing={0}>
                           {productPricings.length === 0 ? null : (
-                            productPricings.map((pricing) => {
+                            productPricings.map((pricing, pricingIndex) => {
                               const pricingKey = `pricing:${pricing.id}`;
                               const isPricingExpanded = expandedPricings.has(pricingKey);
                               const accountsSectionKey = `accounts:${pricing.id}`;
@@ -751,7 +822,10 @@ export function PricingsTab(): JSX.Element {
                                       minHeight: 44,
                                       px: 1.5,
                                       py: 0.25,
-                                      borderTop: '1px solid #E1E7EC',
+                                      borderTop:
+                                        groupByProduct || pricingIndex > 0
+                                          ? '1px solid #E1E7EC'
+                                          : 'none',
                                       backgroundColor: '#FFFFFF',
                                       transition: 'background-color 120ms ease',
                                       cursor: 'pointer',
@@ -763,7 +837,7 @@ export function PricingsTab(): JSX.Element {
                                         transition: 'background-color 120ms ease'
                                       },
                                       position: 'sticky',
-                                      top: PRICING_ROW_STICKY_TOP,
+                                      top: groupByProduct ? PRICING_ROW_STICKY_TOP : PRODUCT_ROW_STICKY_TOP,
                                       zIndex: 24
                                     }}
                                   >
@@ -773,14 +847,14 @@ export function PricingsTab(): JSX.Element {
                                       spacing={0}
                                       sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}
                                     >
-                                      <Box sx={{ width: TREE_INDENT_STEP }} />
+                                      <Box sx={{ width: groupByProduct ? TREE_INDENT_STEP : 0 }} />
                                       <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
                                         <IconButton
                                           size="small"
                                           sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
                                           onClick={(event) => {
                                             event.stopPropagation();
-                                            toggleExpanded(setExpandedPricings, pricingKey);
+                                            togglePricingFromCaret(pricing.id);
                                           }}
                                           aria-label={isPricingExpanded ? 'Collapse pricing' : 'Expand pricing'}
                                         >
@@ -792,70 +866,84 @@ export function PricingsTab(): JSX.Element {
                                         </IconButton>
                                       </Box>
                                       <Box sx={{ width: TREE_LABEL_GAP }} />
-                                      <Stack direction="row" alignItems="center" spacing={1.25}>
-                                        <Typography sx={{ fontWeight: 600, fontSize: 15, color: '#212934' }}>
-                                          {pricing.internalName}
-                                        </Typography>
-                                        <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-                                          |
-                                        </Typography>
-                                        <Typography
-                                          sx={{
-                                            fontWeight: 600,
-                                            fontSize: 14,
-                                            lineHeight: 1.1,
-                                            color: pricing.type === 'TIERED' ? '#1F9D55' : '#2B6CB0',
-                                            backgroundColor:
-                                              pricing.type === 'TIERED' ? '#E8F7EF' : '#E9F2FC',
-                                            py: '2px',
-                                            px: '4px',
-                                            borderRadius: '2px'
-                                          }}
-                                        >
-                                          {pricing.type === 'TIERED' ? 'Tiered' : 'Fixed'}
-                                        </Typography>
-                                        <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-                                          |
-                                        </Typography>
-                                        <Link
-                                          href="#"
-                                          onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            togglePricingSectionLink(pricing.id, 'accounts');
-                                          }}
-                                          sx={{
-                                            fontWeight: 600,
-                                            fontSize: 15,
-                                            color: '#98A4B3',
-                                            textDecoration: 'none',
-                                            cursor: 'pointer',
-                                            '&:hover': { textDecoration: 'underline' }
-                                          }}
-                                        >
-                                          {accountRows.length} Accounts
-                                        </Link>
-                                        <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-                                          |
-                                        </Typography>
-                                        <Link
-                                          href="#"
-                                          onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            togglePricingSectionLink(pricing.id, 'specific-properties');
-                                          }}
-                                          sx={{
-                                            fontWeight: 600,
-                                            fontSize: 15,
-                                            color: '#98A4B3',
-                                            textDecoration: 'none',
-                                            cursor: 'pointer',
-                                            '&:hover': { textDecoration: 'underline' }
-                                          }}
-                                        >
-                                          {specificPropertiesCount} Properties
-                                        </Link>
+                                      <Stack spacing={0.25}>
+                                        <Stack direction="row" alignItems="center" spacing={1.25}>
+                                          <Typography sx={{ fontWeight: 600, fontSize: 15, color: '#212934' }}>
+                                            {pricing.internalName}
+                                          </Typography>
+                                          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                            |
+                                          </Typography>
+                                          <Typography
+                                            sx={{
+                                              fontWeight: 600,
+                                              fontSize: 14,
+                                              lineHeight: 1.1,
+                                              color: pricing.type === 'TIERED' ? '#1F9D55' : '#2B6CB0',
+                                              backgroundColor:
+                                                pricing.type === 'TIERED' ? '#E8F7EF' : '#E9F2FC',
+                                              py: '2px',
+                                              px: '4px',
+                                              borderRadius: '2px'
+                                            }}
+                                          >
+                                            {pricing.type === 'TIERED' ? 'Tiered' : 'Fixed'}
+                                          </Typography>
+                                          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                            |
+                                          </Typography>
+                                          <Link
+                                            href="#"
+                                            onClick={(event) => {
+                                              event.preventDefault();
+                                              event.stopPropagation();
+                                              togglePricingSectionLink(pricing.id, 'accounts');
+                                            }}
+                                            sx={{
+                                              fontWeight: 600,
+                                              fontSize: 15,
+                                              color: '#98A4B3',
+                                              textDecoration: 'none',
+                                              cursor: 'pointer',
+                                              '&:hover': { textDecoration: 'underline' }
+                                            }}
+                                          >
+                                            {accountRows.length} Accounts
+                                          </Link>
+                                          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                            |
+                                          </Typography>
+                                          <Link
+                                            href="#"
+                                            onClick={(event) => {
+                                              event.preventDefault();
+                                              event.stopPropagation();
+                                              togglePricingSectionLink(pricing.id, 'specific-properties');
+                                            }}
+                                            sx={{
+                                              fontWeight: 600,
+                                              fontSize: 15,
+                                              color: '#98A4B3',
+                                              textDecoration: 'none',
+                                              cursor: 'pointer',
+                                              '&:hover': { textDecoration: 'underline' }
+                                            }}
+                                          >
+                                            {specificPropertiesCount} Properties
+                                          </Link>
+                                        </Stack>
+                                        {!groupByProduct ? (
+                                          <Typography
+                                            sx={{
+                                              fontSize: 11,
+                                              lineHeight: 1.1,
+                                              color: '#7A8EA8',
+                                              fontWeight: 600
+                                            }}
+                                          >
+                                            {pricing.product.name}
+                                          </Typography>
+                                        ) : null}
                                       </Stack>
                                     </Stack>
 
@@ -1470,37 +1558,39 @@ export function PricingsTab(): JSX.Element {
                             })
                           )}
 
-                          <Stack
-                            direction="row"
-                            alignItems="center"
-                            sx={{
-                              minHeight: 48,
-                              pl: 0,
-                              pr: 1.5,
-                              py: 0.75,
-                              borderTop: '1px solid #E1E7EC',
-                              backgroundColor: '#FFFFFF'
-                            }}
-                          >
-                            <Box sx={{ width: TREE_INDENT_STEP }} />
-                            <GhostButton
-                              size="small"
-                              startIcon={<AddIcon />}
+                          {groupByProduct ? (
+                            <Stack
+                              direction="row"
+                              alignItems="center"
                               sx={{
-                                ...TABLE_GHOST_BUTTON_SX,
-                                '& .MuiButton-startIcon': {
-                                  marginLeft: 0,
-                                  marginRight: `${TREE_LABEL_GAP}px`,
-                                  width: TREE_TOGGLE_SLOT_WIDTH,
-                                  display: 'flex',
-                                  justifyContent: 'center'
-                                }
+                                minHeight: 48,
+                                pl: 0,
+                                pr: 1.5,
+                                py: 0.75,
+                                borderTop: '1px solid #E1E7EC',
+                                backgroundColor: '#FFFFFF'
                               }}
-                              onClick={() => openCreatePricing(product.id)}
                             >
-                              Add pricing
-                            </GhostButton>
-                          </Stack>
+                              <Box sx={{ width: TREE_INDENT_STEP }} />
+                              <GhostButton
+                                size="small"
+                                startIcon={<AddIcon />}
+                                sx={{
+                                  ...TABLE_GHOST_BUTTON_SX,
+                                  '& .MuiButton-startIcon': {
+                                    marginLeft: 0,
+                                    marginRight: `${TREE_LABEL_GAP}px`,
+                                    width: TREE_TOGGLE_SLOT_WIDTH,
+                                    display: 'flex',
+                                    justifyContent: 'center'
+                                  }
+                                }}
+                                onClick={() => openCreatePricing(product.id)}
+                              >
+                                Add pricing
+                              </GhostButton>
+                            </Stack>
+                          ) : null}
 
                         </Stack>
                       ) : null}
