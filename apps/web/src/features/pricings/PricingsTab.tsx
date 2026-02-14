@@ -79,7 +79,11 @@ function getTierRangeLabel(tier: PricingTreeResolvedTier): string {
     return 'No tier';
   }
 
-  return `${tier.fromUnit}-${tier.toUnit ?? '∞'}`;
+  if (tier.toUnit === null) {
+    return `> ${Math.max(0, tier.fromUnit - 1)}`;
+  }
+
+  return `${tier.fromUnit}-${tier.toUnit}`;
 }
 
 const MAX_TIER_COLUMNS = 7;
@@ -866,7 +870,7 @@ export function PricingsTab(): JSX.Element {
                                           >
                                             {isFixedCell ? (
                                               <>
-                                                <Typography sx={{ fontSize: 11, color: '#4B617C', fontWeight: 600 }}>
+                                                <Typography sx={{ fontSize: 11, color: '#6F8298', fontWeight: 600 }}>
                                                   FIXED
                                                 </Typography>
                                                 <Typography
@@ -882,8 +886,15 @@ export function PricingsTab(): JSX.Element {
                                               </>
                                             ) : tier ? (
                                               <>
-                                                <Typography sx={{ fontSize: 11, color: '#4B617C' }}>
-                                                  {getTierRangeLabel(tier)} Unit
+                                                <Typography
+                                                  sx={{
+                                                    fontSize: 11,
+                                                    color: '#6F8298',
+                                                    fontWeight: 600,
+                                                    textTransform: 'uppercase'
+                                                  }}
+                                                >
+                                                  {getTierRangeLabel(tier)} Units
                                                 </Typography>
                                                 <Typography
                                                   sx={{

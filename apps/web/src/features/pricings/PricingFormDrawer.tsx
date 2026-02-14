@@ -933,7 +933,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                             value={tier.maxUnits}
                             onChange={(event) => updateTierMaxUnits(tier.id, event.target.value)}
                             onBlur={() => normalizeTierMaxUnitsOnBlur(tier.id)}
-                            placeholder={isLastTier ? `${start} - ∞` : `${start}`}
+                            placeholder={isLastTier ? `> ${Math.max(0, start - 1)}` : `${start}`}
                             inputProps={{
                               inputMode: 'numeric',
                               pattern: '[0-9]*',
