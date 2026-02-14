@@ -185,6 +185,9 @@ Accounts will NOT see:
   - Given we plan to charge on the 5th, this is not a limitation.
 - Refunds will be done in Stripe UI.
 
+<!--
+Temporarily commented out for current prototype phase (2026-02-14).
+
 ## Future Plans (not part of current implementation)
 
 ### Coupon (Account and Property Level)
@@ -216,3 +219,4 @@ A customer can:
 - View discounts applied to the account
 - View and download invoices
 - View (limited details) and update payment method
+-->

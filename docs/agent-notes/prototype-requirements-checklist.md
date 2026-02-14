@@ -68,6 +68,9 @@
 - [x] Inputs суми в UI вводяться в доларах (конвертація в cents на submit)
 - [x] Numeric inputs дозволяють тимчасово порожнє значення без автопідстановки `0`
 
+<!--
+Temporarily commented out for current prototype phase (2026-02-14).
+
 ## 8) Account/Customer Views
 - [ ] Account subscriptions table (read-only)
 - [ ] Property subscription section (read-only)
@@ -81,6 +84,7 @@
 - [ ] Set default method
 - [ ] Add payment method (prototype flow)
 - [ ] Remove payment method (з guardrails-повідомленням)
+-->
 
 ## 10) Небізнесові критерії прототипу
 - [x] Seed-дані для демонстрації сценаріїв
