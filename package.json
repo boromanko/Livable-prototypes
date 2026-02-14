@@ -3,8 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@10.6.2",
+  "engines": {
+    "node": ">=22 <23",
+    "pnpm": ">=10"
+  },
   "scripts": {
-    "dev": "pnpm --parallel --filter @stripe-integration/web --filter @stripe-integration/api dev",
+    "dev": "pnpm db:generate && pnpm db:push && pnpm dev:runtime",
+    "dev:runtime": "pnpm --parallel --filter @stripe-integration/web --filter @stripe-integration/api dev",
     "dev:web": "pnpm --filter @stripe-integration/web dev",
     "dev:api": "pnpm --filter @stripe-integration/api dev",
     "db:generate": "pnpm --filter @stripe-integration/db db:generate",

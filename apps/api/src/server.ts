@@ -5,6 +5,37 @@ import { ZodError } from 'zod';
 import { registerAdminRoutes } from './routes/admin.js';
 
 const app = Fastify({ logger: true });
+const REQUIRED_TABLES = [
+  'accounts',
+  'properties',
+  'products',
+  'pricings',
+  'pricing_tiers',
+  'subscriptions',
+  'subscription_pricings',
+  'payment_methods'
+] as const;
+
+type SqliteTable = { name: string };
+
+async function assertDatabaseIsInitialized(): Promise<void> {
+  const tables = await prisma.$queryRawUnsafe<SqliteTable[]>(
+    "SELECT name FROM sqlite_master WHERE type = 'table';"
+  );
+  const tableNames = new Set(tables.map((table) => table.name));
+  const missing = REQUIRED_TABLES.filter((table) => !tableNames.has(table));
+
+  if (missing.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    [
+      `Database is not initialized. Missing tables: ${missing.join(', ')}.`,
+      'Run `pnpm db:push` to create schema, or `pnpm setup:demo` for schema + seed data.'
+    ].join(' ')
+  );
+}
 
 await app.register(cors, {
   origin: ['http://localhost:5173']
@@ -51,4 +82,12 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 const port = Number(process.env.PORT ?? 4000);
+try {
+  await assertDatabaseIsInitialized();
+} catch (error) {
+  app.log.error({ err: error }, 'Startup database check failed');
+  await prisma.$disconnect();
+  process.exit(1);
+}
+
 await app.listen({ port, host: '0.0.0.0' });

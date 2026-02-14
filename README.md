@@ -6,7 +6,7 @@ Monorepo for the Stripe Integration UX prototype (web, API, and local DB).
 
 - Monorepo: pnpm workspaces
 - Frontend: Vite + React + MUI + React Router + TanStack Query
-- Backend: Node 20 + Fastify + Zod
+- Backend: Node 22 LTS + Fastify + Zod
 - Database: SQLite + Prisma
 
 ## Project Structure
@@ -20,7 +20,7 @@ Monorepo for the Stripe Integration UX prototype (web, API, and local DB).
 ## Demo Run (One Command)
 
 Prerequisites:
-- Node.js 20+
+- Node.js 22 LTS (recommended)
 - pnpm
 
 From the repository root:
@@ -38,7 +38,7 @@ What this does:
 
 Open after start:
 - Web: `http://localhost:5173`
-- API: `http://localhost:3001`
+- API: `http://localhost:4000`
 
 ## Quick Recipes (Copy/Paste)
 
@@ -58,8 +58,6 @@ pnpm dev
 ### I want to run without demo data
 
 ```bash
-pnpm db:generate
-pnpm db:push
 pnpm dev
 ```
 
@@ -89,6 +87,12 @@ Note: seeding clears and recreates data in local `packages/db/dev.db`.
 Use this if you want to run the prototype with an empty/local-only dataset:
 
 ```bash
+pnpm dev
+```
+
+Optional (first run / recovery):
+
+```bash
 pnpm db:generate
 pnpm db:push
 pnpm dev
@@ -104,6 +108,25 @@ Important: do not run `pnpm demo`, `pnpm setup:demo`, or `pnpm db:seed` if you w
   - Run: `pnpm install`
 - DB looks empty or broken
   - Run: `pnpm setup:demo`
+- Error: `P2021` / `table ... does not exist`
+  - Run: `pnpm db:push`
+  - Optional (for demo content): `pnpm setup:demo`
+- API returns `500` on all `/api/admin/*` endpoints
+  - Ensure both apps are running from root with: `pnpm dev`
+  - Do not run only `apps/web` without API
+- API fails on startup with Prisma client error
+  - Run: `pnpm db:generate`
+  - Then run: `pnpm dev`
+
+## Runtime Notes
+
+- `pnpm dev` now auto-runs `db:generate` and `db:push` before starting web + api.
+- This makes startup more stable after cache cleanup or fresh clone.
+- If you use `nvm`, run:
+  ```bash
+  nvm use
+  ```
+  (uses `.nvmrc`, pinned to Node 22).
 
 ## Useful Commands
 
@@ -120,3 +143,35 @@ pnpm lint
 ## Scope
 
 This repository is a prototype-focused implementation with seed data and non-production flows.
+
+
+
+## For Bohdan
+
+<!-- Повне очищення (кеш/артефакти) + запуск -->
+git clean -fdX <!-- Це видалить node_modules, локальну БД, кеші. -->
+
+<!-- Потім відновлення: -->
+source ~/.zshrc
+pnpm install
+
+<!-- Запустити демо (з готовими даними): -->
+pnpm setup:demo
+pnpm dev
+
+<!-- Запустити не демо (порожня БД): -->
+pnpm db:generate
+pnpm db:push
+pnpm dev
+
+<!-- Звичайний щоденний запуск -->
+pnpm dev
+
+<!-- Якщо хочеш оновити демо-дані: -->
+pnpm demo:refresh
+pnpm dev
+
+<!-- Якщо бачиш помилку про зайнятий порт (EADDRINUSE): -->
+lsof -nP -iTCP:4000 -sTCP:LISTEN -t | xargs kill -9
+lsof -nP -iTCP:5173 -sTCP:LISTEN -t | xargs kill -9
+pnpm dev

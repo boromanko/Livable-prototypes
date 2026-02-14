@@ -14,6 +14,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import {
   Alert,
+  Autocomplete,
   Box,
   Checkbox,
   Dialog,
@@ -34,6 +35,7 @@ import {
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ApiError,
+  useAccountsQuery,
   useBulkSubscriptionsMutation,
   useDeletePricingMutation,
   usePricingsTreeQuery,
@@ -278,13 +280,21 @@ function matchesPricingFilters(
   pricing: PricingTreeItem,
   search: string,
   typeFilter: 'ALL' | PricingType,
-  productIdFilter: string[]
+  productIdFilter: string[],
+  accountIdFilter: string[]
 ): boolean {
   if (typeFilter !== 'ALL' && pricing.type !== typeFilter) {
     return false;
   }
 
   if (productIdFilter.length > 0 && !productIdFilter.includes(pricing.product.id)) {
+    return false;
+  }
+
+  if (
+    accountIdFilter.length > 0 &&
+    !pricing.accounts.some((accountUsage) => accountIdFilter.includes(accountUsage.account.id))
+  ) {
     return false;
   }
 
@@ -390,6 +400,7 @@ export function PricingsTab(): JSX.Element {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | PricingType>('ALL');
   const [productIdFilter, setProductIdFilter] = useState<string[]>([]);
+  const [accountIdFilter, setAccountIdFilter] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<PricingSortField>('NAME');
   const [sortDirection, setSortDirection] = useState<SortDirection>('ASC');
   const [groupByProduct, setGroupByProduct] = useState(true);
@@ -423,6 +434,7 @@ export function PricingsTab(): JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const accountsQuery = useAccountsQuery({ page: 1, pageSize: 100 });
   const productsQuery = useProductsQuery();
   const pricingsTreeQuery = usePricingsTreeQuery();
   const deleteMutation = useDeletePricingMutation();
@@ -431,9 +443,9 @@ export function PricingsTab(): JSX.Element {
   const filteredPricings = useMemo(
     () =>
       (pricingsTreeQuery.data?.items ?? []).filter((pricing) =>
-        matchesPricingFilters(pricing, search, typeFilter, productIdFilter)
+        matchesPricingFilters(pricing, search, typeFilter, productIdFilter, accountIdFilter)
       ),
-    [pricingsTreeQuery.data?.items, search, typeFilter, productIdFilter]
+    [pricingsTreeQuery.data?.items, search, typeFilter, productIdFilter, accountIdFilter]
   );
 
   const sortedPricings = useMemo(
@@ -473,10 +485,18 @@ export function PricingsTab(): JSX.Element {
     return order;
   }, [sortedPricings]);
 
+  const hasAppliedStructuredFilters =
+    typeFilter !== 'ALL' || productIdFilter.length > 0 || accountIdFilter.length > 0;
+
   const visibleProducts = useMemo(() => {
     const allProducts = productsQuery.data?.items ?? [];
 
     const filteredProducts = allProducts.filter((product) => {
+      const hasFilteredPricings = (pricingsByProductId.get(product.id)?.length ?? 0) > 0;
+      if (hasAppliedStructuredFilters && !hasFilteredPricings) {
+        return false;
+      }
+
       if (productIdFilter.length > 0 && !productIdFilter.includes(product.id)) {
         return false;
       }
@@ -485,7 +505,6 @@ export function PricingsTab(): JSX.Element {
         return true;
       }
 
-      const hasFilteredPricings = (pricingsByProductId.get(product.id)?.length ?? 0) > 0;
       const matchesProductSearch =
         product.name.toLowerCase().includes(search.trim().toLowerCase()) ||
         product.code.toLowerCase().includes(search.trim().toLowerCase());
@@ -519,7 +538,14 @@ export function PricingsTab(): JSX.Element {
         return left.index - right.index;
       })
       .map((item) => item.product);
-  }, [productIdFilter, productOrderBySortedPricings, productsQuery.data?.items, pricingsByProductId, search]);
+  }, [
+    hasAppliedStructuredFilters,
+    productIdFilter,
+    productOrderBySortedPricings,
+    productsQuery.data?.items,
+    pricingsByProductId,
+    search
+  ]);
 
   const minTreeWidthPx = useMemo(() => {
     if (!groupByProduct) {
@@ -541,8 +567,16 @@ export function PricingsTab(): JSX.Element {
     if (productIdFilter.length > 0) {
       count += 1;
     }
+    if (accountIdFilter.length > 0) {
+      count += 1;
+    }
     return count;
-  }, [productIdFilter, typeFilter]);
+  }, [accountIdFilter.length, productIdFilter.length, typeFilter]);
+
+  const productOptions = productsQuery.data?.items ?? [];
+  const selectedProductOptions = productOptions.filter((product) => productIdFilter.includes(product.id));
+  const accountOptions = accountsQuery.data?.items ?? [];
+  const selectedAccountOptions = accountOptions.filter((account) => accountIdFilter.includes(account.id));
 
   const isFiltersPopoverOpen = Boolean(filtersAnchorEl);
   const isSortMenuOpen = Boolean(sortMenuAnchorEl);
@@ -606,6 +640,7 @@ export function PricingsTab(): JSX.Element {
   function clearFilters(): void {
     setTypeFilter('ALL');
     setProductIdFilter([]);
+    setAccountIdFilter([]);
   }
 
   function openSortMenu(event: React.MouseEvent<HTMLElement>): void {
@@ -907,7 +942,7 @@ export function PricingsTab(): JSX.Element {
             paper: {
               sx: {
                 mt: 0.75,
-                width: 340,
+                width: 420,
                 p: 1.5,
                 border: '1px solid #E1E7EC'
               }
@@ -932,48 +967,66 @@ export function PricingsTab(): JSX.Element {
               <MenuItem value="TIERED">TIERED</MenuItem>
             </TextField>
 
-            <TextField
-              size="small"
-              select
-              label="Product"
-              value={productIdFilter}
-              onChange={(event) => {
-                const value = event.target.value;
-                setProductIdFilter(
-                  typeof value === 'string'
-                    ? value.split(',').filter((item) => item.length > 0)
-                    : value
-                );
-              }}
+            <Autocomplete
+              multiple
+              disableCloseOnSelect
+              options={productOptions}
+              value={selectedProductOptions}
+              onChange={(_event, nextValue) => setProductIdFilter(nextValue.map((item) => item.id))}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              loading={productsQuery.isPending}
+              noOptionsText="No products"
               fullWidth
-              SelectProps={{
-                multiple: true,
-                renderValue: (selected) => {
-                  const selectedIds = Array.isArray(selected) ? (selected as string[]) : [];
-                  if (selectedIds.length === 0) {
-                    return '';
-                  }
+              renderOption={(props, option, { selected }) => (
+                <li {...props}>
+                  <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
+                  {option.name}
+                </li>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  label="Product"
+                  placeholder={selectedProductOptions.length === 0 ? 'Search products' : ''}
+                />
+              )}
+            />
 
-                  const allProducts = productsQuery.data?.items ?? [];
-                  const selectedNames = selectedIds
-                    .map((selectedId) => allProducts.find((product) => product.id === selectedId)?.name)
-                    .filter((name): name is string => Boolean(name));
-
-                  if (selectedNames.length <= 2) {
-                    return selectedNames.join(', ');
-                  }
-
-                  return `${selectedNames.length} products`;
-                }
-              }}
-            >
-              {(productsQuery.data?.items ?? []).map((product) => (
-                <MenuItem key={product.id} value={product.id}>
-                  <Checkbox size="small" checked={productIdFilter.includes(product.id)} sx={{ mr: 1 }} />
-                  {product.name}
-                </MenuItem>
-              ))}
-            </TextField>
+            <Autocomplete
+              multiple
+              disableCloseOnSelect
+              options={accountOptions}
+              value={selectedAccountOptions}
+              onChange={(_event, nextValue) => setAccountIdFilter(nextValue.map((item) => item.id))}
+              getOptionLabel={(option) => option.companyName}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              loading={accountsQuery.isPending}
+              noOptionsText="No accounts"
+              fullWidth
+              renderOption={(props, option, { selected }) => (
+                <li {...props}>
+                  <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
+                  <Stack spacing={0}>
+                    <Typography variant="body2" sx={{ color: '#212934' }}>
+                      {option.companyName}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#6B7F99' }}>
+                      {option.email}
+                    </Typography>
+                  </Stack>
+                </li>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  label="Account"
+                  placeholder={selectedAccountOptions.length === 0 ? 'Search accounts' : ''}
+                />
+              )}
+            />
 
             <Stack direction="row" justifyContent="flex-end">
               <GhostButton
