@@ -12,6 +12,9 @@
     "db:migrate": "pnpm --filter @stripe-integration/db db:migrate",
     "db:seed": "pnpm --filter @stripe-integration/db db:seed",
     "db:studio": "pnpm --filter @stripe-integration/db db:studio",
+    "setup:demo": "pnpm db:generate && pnpm db:push && pnpm db:seed",
+    "demo": "pnpm install && pnpm setup:demo && pnpm dev",
+    "demo:refresh": "pnpm db:push && pnpm db:seed",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint"
   }

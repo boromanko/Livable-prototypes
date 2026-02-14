@@ -17,34 +17,32 @@ Local monorepo scaffold for web + api + db packages with TypeScript everywhere.
 - `packages/shared` - shared workspace package placeholder
 - `docs/agent-notes` - empty placeholder docs
 
-## Run From Scratch
+## Quick Start (Designer-Friendly)
 
 1. Ensure Node.js 20+ and pnpm are installed.
-2. Install dependencies:
+2. Run one command from repo root:
 
 ```bash
-pnpm install
+pnpm demo
 ```
 
-3. Generate Prisma client:
+This command will:
+- install dependencies,
+- prepare DB schema,
+- fill DB with demo data,
+- start web + api.
+
+Open:
+- Web UI: `http://localhost:5173`
+- API: `http://localhost:3001`
+
+## If You Need Fresh Demo Data
 
 ```bash
-pnpm db:generate
+pnpm demo:refresh
 ```
 
-4. Create/update SQLite schema:
-
-```bash
-pnpm db:push
-```
-
-5. Seed data:
-
-```bash
-pnpm db:seed
-```
-
-6. Start both web and api in dev mode:
+Then start app:
 
 ```bash
 pnpm dev
@@ -55,6 +53,7 @@ pnpm dev
 ```bash
 pnpm dev:web
 pnpm dev:api
+pnpm setup:demo
 pnpm db:migrate
 pnpm db:studio
 pnpm typecheck
