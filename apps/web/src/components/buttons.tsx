@@ -20,6 +20,26 @@ function composeSx(base: SxProps<Theme>, sx?: SxProps<Theme>): SxProps<Theme> {
   return [base, ...additional] as SxProps<Theme>;
 }
 
+const BASE_TEXT_BUTTON_SX: SxProps<Theme> = {
+  textTransform: 'none',
+  fontWeight: 600,
+  borderRadius: 1,
+  minHeight: 40,
+  px: 1.5,
+  py: 0.75,
+  lineHeight: 1.25,
+  '&.MuiButton-sizeSmall': {
+    minHeight: 32,
+    px: 1.25,
+    py: 0.5
+  },
+  '&.MuiButton-sizeLarge': {
+    minHeight: 44,
+    px: 2,
+    py: 1
+  }
+};
+
 function getIconButtonToneSx(tone: AppIconButtonTone): SxProps<Theme> {
   if (tone === 'subtle') {
     return {
@@ -88,6 +108,7 @@ export function SecondaryButton({ sx, variant, ...props }: AppButtonProps): JSX.
       variant={variant ?? 'text'}
       sx={composeSx(
         {
+          ...BASE_TEXT_BUTTON_SX,
           backgroundColor: '#F8F9FA',
           color: '#212934',
           '&:hover': {
@@ -107,10 +128,11 @@ export function GhostButton({ sx, variant, ...props }: AppButtonProps): JSX.Elem
       variant={variant ?? 'text'}
       sx={composeSx(
         {
+          ...BASE_TEXT_BUTTON_SX,
           backgroundColor: 'transparent',
           color: '#212934',
           '&:hover': {
-            backgroundColor: 'rgba(33, 41, 52, 0.08)'
+            backgroundColor: '#EBF0F5'
           }
         },
         sx

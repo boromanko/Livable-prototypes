@@ -1,11 +1,13 @@
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CheckIcon from '@mui/icons-material/Check';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import HomeIcon from '@mui/icons-material/Home';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import PersonIcon from '@mui/icons-material/Person';
@@ -22,6 +24,7 @@ import {
   Link,
   Menu,
   MenuItem,
+  Popover,
   Snackbar,
   Stack,
   TextField,
@@ -62,6 +65,16 @@ type PricingActionsMenuTarget = {
 
 type PricingSortField = 'NAME' | 'PRICE' | 'SUBSCRIPTIONS';
 type SortDirection = 'ASC' | 'DESC';
+const SORT_FIELD_LABELS: Record<PricingSortField, string> = {
+  NAME: 'Sort by name',
+  PRICE: 'Sort by price',
+  SUBSCRIPTIONS: 'Sort by subscription count'
+};
+const SORT_MENU_LABELS: Record<PricingSortField, string> = {
+  NAME: 'Name',
+  PRICE: 'Price',
+  SUBSCRIPTIONS: 'Subscription count'
+};
 
 function formatMoneyCents(amountCents: number | null, currency: string): string {
   if (amountCents === null) {
@@ -380,6 +393,8 @@ export function PricingsTab(): JSX.Element {
   const [sortBy, setSortBy] = useState<PricingSortField>('NAME');
   const [sortDirection, setSortDirection] = useState<SortDirection>('ASC');
   const [groupByProduct, setGroupByProduct] = useState(true);
+  const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
+  const [sortMenuAnchorEl, setSortMenuAnchorEl] = useState<HTMLElement | null>(null);
 
   const [collapsedProducts, setCollapsedProducts] = useState<Set<string>>(new Set());
   const [expandedPricings, setExpandedPricings] = useState<Set<string>>(new Set());
@@ -518,6 +533,20 @@ export function PricingsTab(): JSX.Element {
     }, BASE_TREE_MIN_WIDTH);
   }, [flatTierColumnCount, groupByProduct, pricingsByProductId, visibleProducts]);
 
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (typeFilter !== 'ALL') {
+      count += 1;
+    }
+    if (productIdFilter.length > 0) {
+      count += 1;
+    }
+    return count;
+  }, [productIdFilter, typeFilter]);
+
+  const isFiltersPopoverOpen = Boolean(filtersAnchorEl);
+  const isSortMenuOpen = Boolean(sortMenuAnchorEl);
+
   function toggleExpanded(setter: React.Dispatch<React.SetStateAction<Set<string>>>, key: string): void {
     setter((prev) => {
       const next = new Set(prev);
@@ -564,6 +593,32 @@ export function PricingsTab(): JSX.Element {
     setDefaultSubscriptionAccountId(undefined);
     setDefaultSubscriptionPricingIds([]);
     setDefaultSubscriptionScope('ACCOUNT');
+  }
+
+  function openFiltersPopover(event: React.MouseEvent<HTMLElement>): void {
+    setFiltersAnchorEl(event.currentTarget);
+  }
+
+  function closeFiltersPopover(): void {
+    setFiltersAnchorEl(null);
+  }
+
+  function clearFilters(): void {
+    setTypeFilter('ALL');
+    setProductIdFilter([]);
+  }
+
+  function openSortMenu(event: React.MouseEvent<HTMLElement>): void {
+    setSortMenuAnchorEl(event.currentTarget);
+  }
+
+  function closeSortMenu(): void {
+    setSortMenuAnchorEl(null);
+  }
+
+  function selectSortBy(nextSortBy: PricingSortField): void {
+    setSortBy(nextSortBy);
+    closeSortMenu();
   }
 
   function togglePricingSectionLink(pricingId: string, section: 'accounts' | 'specific-properties'): void {
@@ -721,96 +776,95 @@ export function PricingsTab(): JSX.Element {
                   sx={{ minWidth: { md: 220 } }}
                 />
 
-                <TextField
-                  size="small"
-                  select
-                  label="Type"
-                  value={typeFilter}
-                  onChange={(event) => setTypeFilter(event.target.value as 'ALL' | PricingType)}
-                  sx={{ minWidth: 120 }}
-                >
-                  <MenuItem value="ALL">ALL</MenuItem>
-                  <MenuItem value="FIXED">FIXED</MenuItem>
-                  <MenuItem value="TIERED">TIERED</MenuItem>
-                </TextField>
-
-                <TextField
-                  size="small"
-                  select
-                  label="Product"
-                  value={productIdFilter}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setProductIdFilter(
-                      typeof value === 'string'
-                        ? value.split(',').filter((item) => item.length > 0)
-                        : value
-                    );
-                  }}
-                  sx={{ minWidth: 220 }}
-                  SelectProps={{
-                    multiple: true,
-                    renderValue: (selected) => {
-                      const selectedIds = Array.isArray(selected) ? (selected as string[]) : [];
-                      if (selectedIds.length === 0) {
-                        return '';
-                      }
-
-                      const allProducts = productsQuery.data?.items ?? [];
-                      const selectedNames = selectedIds
-                        .map((selectedId) => allProducts.find((product) => product.id === selectedId)?.name)
-                        .filter((name): name is string => Boolean(name));
-
-                      if (selectedNames.length <= 2) {
-                        return selectedNames.join(', ');
-                      }
-
-                      return `${selectedNames.length} products`;
-                    }
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    p: '1px',
+                    backgroundColor: '#D7DEE6',
+                    borderRadius: 1,
+                    overflow: 'hidden'
                   }}
                 >
-                  {(productsQuery.data?.items ?? []).map((product) => (
-                    <MenuItem key={product.id} value={product.id}>
-                      <Checkbox size="small" checked={productIdFilter.includes(product.id)} sx={{ mr: 1 }} />
-                      {product.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <TextField
-                    size="small"
-                    select
-                    label="Sort by"
-                    value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value as PricingSortField)}
+                  <SecondaryButton
+                    onClick={openFiltersPopover}
+                    startIcon={<FilterListIcon fontSize="small" />}
                     sx={{
-                      minWidth: 170,
-                      '& .MuiOutlinedInput-root': {
-                        borderTopRightRadius: 0,
-                        borderBottomRightRadius: 0
-                      },
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderRight: 'none'
-                      }
+                      border: 'none',
+                      borderRadius: 0,
+                      px: 1.5
                     }}
                   >
-                    <MenuItem value="NAME">Name</MenuItem>
-                    <MenuItem value="PRICE">Price</MenuItem>
-                    <MenuItem value="SUBSCRIPTIONS">Subscriptions count</MenuItem>
-                  </TextField>
+                    <Stack direction="row" alignItems="center" spacing={0.75}>
+                      <Box component="span">Filters</Box>
+                      {activeFiltersCount > 0 ? (
+                        <Box
+                          component="span"
+                          sx={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            backgroundColor: '#009299',
+                            color: '#FFFFFF',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            lineHeight: 1
+                          }}
+                        >
+                          {activeFiltersCount}
+                        </Box>
+                      ) : null}
+                    </Stack>
+                  </SecondaryButton>
+                </Box>
 
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    gap: '1px',
+                    p: '1px',
+                    backgroundColor: '#D7DEE6',
+                    borderRadius: 1,
+                    overflow: 'hidden'
+                  }}
+                >
+                  <SecondaryButton
+                    onClick={openSortMenu}
+                    sx={{
+                      width: 'auto',
+                      minWidth: 'unset',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                      border: 'none',
+                      borderRadius: 0,
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                      px: 1.5
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <Box component="span">{SORT_FIELD_LABELS[sortBy]}</Box>
+                      <ArrowDropDownIcon sx={{ fontSize: 18 }} />
+                    </Stack>
+                  </SecondaryButton>
                   <Tooltip title={sortDirection === 'ASC' ? 'Ascending' : 'Descending'}>
-                    <AppIconButton
-                      tone="subtle"
+                    <SecondaryButton
                       onClick={() =>
                         setSortDirection((prev) => (prev === 'ASC' ? 'DESC' : 'ASC'))
                       }
                       sx={{
                         width: 40,
-                        height: 40,
+                        minWidth: 40,
+                        height: '100%',
                         borderTopLeftRadius: 0,
-                        borderBottomLeftRadius: 0
+                        borderBottomLeftRadius: 0,
+                        border: 'none',
+                        borderRadius: 0,
+                        px: 0
                       }}
                     >
                       {sortDirection === 'ASC' ? (
@@ -818,7 +872,7 @@ export function PricingsTab(): JSX.Element {
                       ) : (
                         <ArrowDownwardIcon fontSize="small" />
                       )}
-                    </AppIconButton>
+                    </SecondaryButton>
                   </Tooltip>
                 </Box>
 
@@ -842,6 +896,112 @@ export function PricingsTab(): JSX.Element {
             }
           />
         </Box>
+
+        <Popover
+          open={isFiltersPopoverOpen}
+          anchorEl={filtersAnchorEl}
+          onClose={closeFiltersPopover}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          slotProps={{
+            paper: {
+              sx: {
+                mt: 0.75,
+                width: 340,
+                p: 1.5,
+                border: '1px solid #E1E7EC'
+              }
+            }
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#212934' }}>
+              Filters
+            </Typography>
+
+            <TextField
+              size="small"
+              select
+              label="Type"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as 'ALL' | PricingType)}
+              fullWidth
+            >
+              <MenuItem value="ALL">ALL</MenuItem>
+              <MenuItem value="FIXED">FIXED</MenuItem>
+              <MenuItem value="TIERED">TIERED</MenuItem>
+            </TextField>
+
+            <TextField
+              size="small"
+              select
+              label="Product"
+              value={productIdFilter}
+              onChange={(event) => {
+                const value = event.target.value;
+                setProductIdFilter(
+                  typeof value === 'string'
+                    ? value.split(',').filter((item) => item.length > 0)
+                    : value
+                );
+              }}
+              fullWidth
+              SelectProps={{
+                multiple: true,
+                renderValue: (selected) => {
+                  const selectedIds = Array.isArray(selected) ? (selected as string[]) : [];
+                  if (selectedIds.length === 0) {
+                    return '';
+                  }
+
+                  const allProducts = productsQuery.data?.items ?? [];
+                  const selectedNames = selectedIds
+                    .map((selectedId) => allProducts.find((product) => product.id === selectedId)?.name)
+                    .filter((name): name is string => Boolean(name));
+
+                  if (selectedNames.length <= 2) {
+                    return selectedNames.join(', ');
+                  }
+
+                  return `${selectedNames.length} products`;
+                }
+              }}
+            >
+              {(productsQuery.data?.items ?? []).map((product) => (
+                <MenuItem key={product.id} value={product.id}>
+                  <Checkbox size="small" checked={productIdFilter.includes(product.id)} sx={{ mr: 1 }} />
+                  {product.name}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <Stack direction="row" justifyContent="flex-end">
+              <GhostButton
+                onClick={clearFilters}
+                disabled={activeFiltersCount === 0}
+                sx={{ minHeight: 34, px: 1.25 }}
+              >
+                Clear all
+              </GhostButton>
+            </Stack>
+          </Stack>
+        </Popover>
+
+        <Menu
+          open={isSortMenuOpen}
+          anchorEl={sortMenuAnchorEl}
+          onClose={closeSortMenu}
+        >
+          <MenuItem selected={sortBy === 'NAME'} onClick={() => selectSortBy('NAME')}>
+            {SORT_MENU_LABELS.NAME}
+          </MenuItem>
+          <MenuItem selected={sortBy === 'PRICE'} onClick={() => selectSortBy('PRICE')}>
+            {SORT_MENU_LABELS.PRICE}
+          </MenuItem>
+          <MenuItem selected={sortBy === 'SUBSCRIPTIONS'} onClick={() => selectSortBy('SUBSCRIPTIONS')}>
+            {SORT_MENU_LABELS.SUBSCRIPTIONS}
+          </MenuItem>
+        </Menu>
 
         <Box
           sx={{
