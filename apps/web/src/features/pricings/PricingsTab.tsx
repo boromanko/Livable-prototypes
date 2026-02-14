@@ -802,8 +802,14 @@ export function PricingsTab(): JSX.Element {
                                         <Typography
                                           sx={{
                                             fontWeight: 600,
-                                            fontSize: 15,
-                                            color: pricing.type === 'TIERED' ? '#1F9D55' : '#2B6CB0'
+                                            fontSize: 14,
+                                            lineHeight: 1.1,
+                                            color: pricing.type === 'TIERED' ? '#1F9D55' : '#2B6CB0',
+                                            backgroundColor:
+                                              pricing.type === 'TIERED' ? '#E8F7EF' : '#E9F2FC',
+                                            py: '2px',
+                                            px: '4px',
+                                            borderRadius: '2px'
                                           }}
                                         >
                                           {pricing.type === 'TIERED' ? 'Tiered' : 'Fixed'}
