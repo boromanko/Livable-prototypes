@@ -9,9 +9,10 @@ import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import { Box, IconButton, Stack } from '@mui/material';
+import { Box, Stack } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import livableLogo from '../assets/livable-logo.svg';
+import { AppIconButton } from './buttons';
 import { prototypeTokens } from '../theme/tokens';
 
 type RailItemProps = {
@@ -21,7 +22,8 @@ type RailItemProps = {
 
 function RailItem({ active = false, children }: RailItemProps): JSX.Element {
   return (
-    <IconButton
+    <AppIconButton
+      tone="nav"
       size="small"
       sx={{
         width: 40,
@@ -32,7 +34,7 @@ function RailItem({ active = false, children }: RailItemProps): JSX.Element {
       }}
     >
       {children}
-    </IconButton>
+    </AppIconButton>
   );
 }
 
@@ -58,9 +60,9 @@ export function AppShell(): JSX.Element {
           gap: 3
         }}
       >
-        <IconButton size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
+        <AppIconButton tone="plain" size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
           <MenuRoundedIcon />
-        </IconButton>
+        </AppIconButton>
 
         <Box
           sx={{
@@ -124,12 +126,12 @@ export function AppShell(): JSX.Element {
           <Box sx={{ flex: 1 }} />
 
           <Stack direction="row" spacing={0.5}>
-            <IconButton size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
+            <AppIconButton tone="plain" size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
               <NotificationsRoundedIcon />
-            </IconButton>
-            <IconButton size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
+            </AppIconButton>
+            <AppIconButton tone="plain" size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
               <PersonRoundedIcon />
-            </IconButton>
+            </AppIconButton>
           </Stack>
         </Box>
 

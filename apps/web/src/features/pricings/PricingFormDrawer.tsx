@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Dialog,
-  IconButton,
   InputAdornment,
   InputBase,
   MenuItem,
@@ -23,7 +22,7 @@ import {
   type PricingItem,
   type PricingType
 } from '../../api';
-import { PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 
 type TierDraft = {
   id: string;
@@ -709,9 +708,9 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           <Typography sx={{ color: '#212934', fontSize: 40 / 2, fontWeight: 600 }}>
             {title}
           </Typography>
-          <IconButton onClick={onClose} aria-label="Close dialog">
+          <AppIconButton tone="plain" onClick={onClose} aria-label="Close dialog">
             <CloseIcon sx={{ color: '#4B617C' }} />
-          </IconButton>
+          </AppIconButton>
         </Stack>
 
         <Stack
@@ -990,14 +989,13 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
 
                         <Stack justifyContent="center" alignItems="center" sx={{ backgroundColor: '#F8F9FA' }}>
                           {!isLastTier ? (
-                            <IconButton
+                            <AppIconButton
                               aria-label={`Remove tier ${index + 1}`}
                               onClick={() => removeTier(tier.id)}
-                              size="small"
-                              sx={{ color: '#4B617C' }}
+                              tone="ghost"
                             >
                               <DeleteOutlineIcon fontSize="small" />
-                            </IconButton>
+                            </AppIconButton>
                           ) : null}
                         </Stack>
                       </Box>

@@ -7,7 +7,6 @@ import {
   Drawer,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   MenuItem,
   OutlinedInput,
@@ -29,7 +28,7 @@ import {
   type SubscriptionItem,
   type SubscriptionStatus
 } from '../../api';
-import { PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 
 type SubscriptionFormDrawerProps = {
   open: boolean;
@@ -259,9 +258,9 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
               Configure account/property scope, dates, payment method and pricing set.
             </Typography>
           </Box>
-          <IconButton onClick={onClose} aria-label="Close drawer">
+          <AppIconButton tone="plain" onClick={onClose} aria-label="Close drawer">
             <CloseIcon />
-          </IconButton>
+          </AppIconButton>
         </Stack>
 
         <Divider />

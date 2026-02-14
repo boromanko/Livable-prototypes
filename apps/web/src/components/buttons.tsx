@@ -1,8 +1,14 @@
-import { Button, type ButtonProps } from '@mui/material';
+import { Button, IconButton, type ButtonProps, type IconButtonProps } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 
 type AppButtonProps = Omit<ButtonProps, 'variant'> & {
   variant?: ButtonProps['variant'];
+};
+
+type AppIconButtonTone = 'ghost' | 'subtle' | 'plain' | 'nav';
+
+type AppIconButtonProps = IconButtonProps & {
+  tone?: AppIconButtonTone;
 };
 
 function composeSx(base: SxProps<Theme>, sx?: SxProps<Theme>): SxProps<Theme> {
@@ -12,6 +18,48 @@ function composeSx(base: SxProps<Theme>, sx?: SxProps<Theme>): SxProps<Theme> {
 
   const additional = Array.isArray(sx) ? sx : [sx];
   return [base, ...additional] as SxProps<Theme>;
+}
+
+function getIconButtonToneSx(tone: AppIconButtonTone): SxProps<Theme> {
+  if (tone === 'subtle') {
+    return {
+      color: '#4B617C',
+      border: '1px solid #D7DEE6',
+      backgroundColor: '#FFFFFF',
+      '&:hover': {
+        backgroundColor: '#F3F7FA'
+      }
+    };
+  }
+
+  if (tone === 'plain') {
+    return {
+      color: '#4B617C',
+      backgroundColor: 'transparent',
+      '&:hover': {
+        backgroundColor: '#EBF0F5'
+      }
+    };
+  }
+
+  if (tone === 'nav') {
+    return {
+      color: '#8895A7',
+      backgroundColor: 'transparent',
+      '&:hover': {
+        backgroundColor: '#EAF0F5',
+        color: '#4B617C'
+      }
+    };
+  }
+
+  return {
+    color: '#4B617C',
+    backgroundColor: 'transparent',
+    '&:hover': {
+      backgroundColor: 'rgba(33, 41, 52, 0.08)'
+    }
+  };
 }
 
 export function PrimaryButton({ sx, variant, ...props }: AppButtonProps): JSX.Element {
@@ -67,6 +115,21 @@ export function GhostButton({ sx, variant, ...props }: AppButtonProps): JSX.Elem
         },
         sx
       )}
+    />
+  );
+}
+
+export function AppIconButton({
+  sx,
+  tone = 'ghost',
+  size,
+  ...props
+}: AppIconButtonProps): JSX.Element {
+  return (
+    <IconButton
+      {...props}
+      size={size ?? 'small'}
+      sx={composeSx(getIconButtonToneSx(tone), sx)}
     />
   );
 }

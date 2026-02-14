@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   OutlinedInput,
@@ -41,7 +40,7 @@ import {
   type SubscriptionItem,
   type SubscriptionStatus
 } from '../../api';
-import { GhostButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { AppIconButton, GhostButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import { EmptyState, FiltersToolbar } from '../../components/layout';
 
 const SubscriptionFormDrawer = lazy(async () => {
@@ -582,15 +581,15 @@ export function SubscriptionsTab(): JSX.Element {
 
                         <TableCell align="right">
                           <Tooltip title="Edit subscription">
-                            <IconButton
-                              size="small"
+                            <AppIconButton
+                              tone="ghost"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 openEditDrawer(subscription);
                               }}
                             >
                               <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
+                            </AppIconButton>
                           </Tooltip>
                         </TableCell>
                       </TableRow>

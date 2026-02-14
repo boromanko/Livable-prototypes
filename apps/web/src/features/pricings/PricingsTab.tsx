@@ -1,4 +1,6 @@
 import AddIcon from '@mui/icons-material/Add';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CheckIcon from '@mui/icons-material/Check';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -17,7 +19,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
-  IconButton,
   Link,
   Menu,
   MenuItem,
@@ -41,7 +42,7 @@ import {
   type PricingTreeResolvedTier,
   type PricingType
 } from '../../api';
-import { GhostButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { AppIconButton, GhostButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import { EmptyState, FiltersToolbar } from '../../components/layout';
 
 const PricingFormDrawer = lazy(async () => {
@@ -58,6 +59,9 @@ type PricingActionsMenuTarget = {
   anchorEl: HTMLElement;
   pricingId: string;
 };
+
+type PricingSortField = 'NAME' | 'PRICE' | 'SUBSCRIPTIONS';
+type SortDirection = 'ASC' | 'DESC';
 
 function formatMoneyCents(amountCents: number | null, currency: string): string {
   if (amountCents === null) {
@@ -261,13 +265,13 @@ function matchesPricingFilters(
   pricing: PricingTreeItem,
   search: string,
   typeFilter: 'ALL' | PricingType,
-  productIdFilter: string
+  productIdFilter: string[]
 ): boolean {
   if (typeFilter !== 'ALL' && pricing.type !== typeFilter) {
     return false;
   }
 
-  if (productIdFilter && pricing.product.id !== productIdFilter) {
+  if (productIdFilter.length > 0 && !productIdFilter.includes(pricing.product.id)) {
     return false;
   }
 
@@ -299,10 +303,82 @@ function matchesPricingFilters(
   });
 }
 
+function getPricingSortPriceCents(pricing: PricingTreeItem): number | null {
+  if (pricing.type === 'FIXED') {
+    return pricing.fixedAmountCents;
+  }
+
+  return pricing.tiers[0]?.unitAmountCents ?? null;
+}
+
+function compareNullableNumbers(
+  left: number | null,
+  right: number | null,
+  direction: SortDirection
+): number {
+  if (left === null && right === null) {
+    return 0;
+  }
+
+  if (left === null) {
+    return 1;
+  }
+
+  if (right === null) {
+    return -1;
+  }
+
+  return direction === 'ASC' ? left - right : right - left;
+}
+
+function compareStrings(left: string, right: string, direction: SortDirection): number {
+  const compare = left.localeCompare(right, undefined, { sensitivity: 'base' });
+  return direction === 'ASC' ? compare : -compare;
+}
+
+function comparePricings(
+  left: PricingTreeItem,
+  right: PricingTreeItem,
+  sortBy: PricingSortField,
+  sortDirection: SortDirection
+): number {
+  let primaryCompare = 0;
+
+  if (sortBy === 'NAME') {
+    primaryCompare = compareStrings(left.internalName, right.internalName, sortDirection);
+  } else if (sortBy === 'PRICE') {
+    primaryCompare = compareNullableNumbers(
+      getPricingSortPriceCents(left),
+      getPricingSortPriceCents(right),
+      sortDirection
+    );
+  } else if (sortBy === 'SUBSCRIPTIONS') {
+    const leftCount = left.subscriptionsCount;
+    const rightCount = right.subscriptionsCount;
+    primaryCompare = sortDirection === 'ASC' ? leftCount - rightCount : rightCount - leftCount;
+  }
+
+  if (primaryCompare !== 0) {
+    return primaryCompare;
+  }
+
+  const byName = left.internalName.localeCompare(right.internalName, undefined, {
+    sensitivity: 'base'
+  });
+
+  if (byName !== 0) {
+    return byName;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
 export function PricingsTab(): JSX.Element {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'ALL' | PricingType>('ALL');
-  const [productIdFilter, setProductIdFilter] = useState('');
+  const [productIdFilter, setProductIdFilter] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<PricingSortField>('NAME');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('ASC');
   const [groupByProduct, setGroupByProduct] = useState(true);
 
   const [collapsedProducts, setCollapsedProducts] = useState<Set<string>>(new Set());
@@ -345,15 +421,12 @@ export function PricingsTab(): JSX.Element {
     [pricingsTreeQuery.data?.items, search, typeFilter, productIdFilter]
   );
 
-  const flatPricings = useMemo(
-    () =>
-      [...filteredPricings].sort((left, right) =>
-        left.internalName.localeCompare(right.internalName, undefined, {
-          sensitivity: 'base'
-        })
-      ),
-    [filteredPricings]
+  const sortedPricings = useMemo(
+    () => [...filteredPricings].sort((left, right) => comparePricings(left, right, sortBy, sortDirection)),
+    [filteredPricings, sortBy, sortDirection]
   );
+
+  const flatPricings = useMemo(() => sortedPricings, [sortedPricings]);
 
   const flatTierColumnCount = useMemo(
     () => getProductTierColumnCount(flatPricings),
@@ -363,20 +436,33 @@ export function PricingsTab(): JSX.Element {
   const pricingsByProductId = useMemo(() => {
     const grouped = new Map<string, PricingTreeItem[]>();
 
-    for (const pricing of filteredPricings) {
+    for (const pricing of sortedPricings) {
       const current = grouped.get(pricing.product.id) ?? [];
       current.push(pricing);
       grouped.set(pricing.product.id, current);
     }
 
     return grouped;
-  }, [filteredPricings]);
+  }, [sortedPricings]);
+
+  const productOrderBySortedPricings = useMemo(() => {
+    const order = new Map<string, number>();
+
+    for (let index = 0; index < sortedPricings.length; index += 1) {
+      const productId = sortedPricings[index]?.product.id;
+      if (productId && !order.has(productId)) {
+        order.set(productId, index);
+      }
+    }
+
+    return order;
+  }, [sortedPricings]);
 
   const visibleProducts = useMemo(() => {
     const allProducts = productsQuery.data?.items ?? [];
 
     const filteredProducts = allProducts.filter((product) => {
-      if (productIdFilter && product.id !== productIdFilter) {
+      if (productIdFilter.length > 0 && !productIdFilter.includes(product.id)) {
         return false;
       }
 
@@ -395,6 +481,19 @@ export function PricingsTab(): JSX.Element {
     return filteredProducts
       .map((product, index) => ({ product, index }))
       .sort((left, right) => {
+        const leftSortedOrder = productOrderBySortedPricings.get(left.product.id);
+        const rightSortedOrder = productOrderBySortedPricings.get(right.product.id);
+
+        if (leftSortedOrder !== undefined && rightSortedOrder !== undefined) {
+          if (leftSortedOrder !== rightSortedOrder) {
+            return leftSortedOrder - rightSortedOrder;
+          }
+        } else if (leftSortedOrder !== undefined) {
+          return -1;
+        } else if (rightSortedOrder !== undefined) {
+          return 1;
+        }
+
         const leftPriority = PRODUCT_DISPLAY_PRIORITY[left.product.code] ?? Number.POSITIVE_INFINITY;
         const rightPriority = PRODUCT_DISPLAY_PRIORITY[right.product.code] ?? Number.POSITIVE_INFINITY;
 
@@ -405,7 +504,7 @@ export function PricingsTab(): JSX.Element {
         return left.index - right.index;
       })
       .map((item) => item.product);
-  }, [productIdFilter, productsQuery.data?.items, pricingsByProductId, search]);
+  }, [productIdFilter, productOrderBySortedPricings, productsQuery.data?.items, pricingsByProductId, search]);
 
   const minTreeWidthPx = useMemo(() => {
     if (!groupByProduct) {
@@ -640,16 +739,88 @@ export function PricingsTab(): JSX.Element {
                   select
                   label="Product"
                   value={productIdFilter}
-                  onChange={(event) => setProductIdFilter(event.target.value)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setProductIdFilter(
+                      typeof value === 'string'
+                        ? value.split(',').filter((item) => item.length > 0)
+                        : value
+                    );
+                  }}
                   sx={{ minWidth: 220 }}
+                  SelectProps={{
+                    multiple: true,
+                    renderValue: (selected) => {
+                      const selectedIds = Array.isArray(selected) ? (selected as string[]) : [];
+                      if (selectedIds.length === 0) {
+                        return '';
+                      }
+
+                      const allProducts = productsQuery.data?.items ?? [];
+                      const selectedNames = selectedIds
+                        .map((selectedId) => allProducts.find((product) => product.id === selectedId)?.name)
+                        .filter((name): name is string => Boolean(name));
+
+                      if (selectedNames.length <= 2) {
+                        return selectedNames.join(', ');
+                      }
+
+                      return `${selectedNames.length} products`;
+                    }
+                  }}
                 >
-                  <MenuItem value="">All products</MenuItem>
                   {(productsQuery.data?.items ?? []).map((product) => (
                     <MenuItem key={product.id} value={product.id}>
+                      <Checkbox size="small" checked={productIdFilter.includes(product.id)} sx={{ mr: 1 }} />
                       {product.name}
                     </MenuItem>
                   ))}
                 </TextField>
+
+                <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <TextField
+                    size="small"
+                    select
+                    label="Sort by"
+                    value={sortBy}
+                    onChange={(event) => setSortBy(event.target.value as PricingSortField)}
+                    sx={{
+                      minWidth: 170,
+                      '& .MuiOutlinedInput-root': {
+                        borderTopRightRadius: 0,
+                        borderBottomRightRadius: 0
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderRight: 'none'
+                      }
+                    }}
+                  >
+                    <MenuItem value="NAME">Name</MenuItem>
+                    <MenuItem value="PRICE">Price</MenuItem>
+                    <MenuItem value="SUBSCRIPTIONS">Subscriptions count</MenuItem>
+                  </TextField>
+
+                  <Tooltip title={sortDirection === 'ASC' ? 'Ascending' : 'Descending'}>
+                    <AppIconButton
+                      tone="subtle"
+                      onClick={() =>
+                        setSortDirection((prev) => (prev === 'ASC' ? 'DESC' : 'ASC'))
+                      }
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0
+                      }}
+                    >
+                      {sortDirection === 'ASC' ? (
+                        <ArrowUpwardIcon fontSize="small" />
+                      ) : (
+                        <ArrowDownwardIcon fontSize="small" />
+                      )}
+                    </AppIconButton>
+                  </Tooltip>
+                </Box>
 
                 <FormControlLabel
                   control={
@@ -859,8 +1030,8 @@ export function PricingsTab(): JSX.Element {
                                     >
                                       <Box sx={{ width: groupByProduct ? TREE_INDENT_STEP : 0 }} />
                                       <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
-                                        <IconButton
-                                          size="small"
+                                        <AppIconButton
+                                          tone="plain"
                                           sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
                                           onClick={(event) => {
                                             event.stopPropagation();
@@ -873,7 +1044,7 @@ export function PricingsTab(): JSX.Element {
                                           ) : (
                                             <ChevronRightIcon fontSize="small" />
                                           )}
-                                        </IconButton>
+                                        </AppIconButton>
                                       </Box>
                                       <Box sx={{ width: TREE_LABEL_GAP }} />
                                       <Stack spacing={0.25}>
@@ -1052,28 +1223,28 @@ export function PricingsTab(): JSX.Element {
                                         borderLeft: '1px solid #E1E7EC'
                                       }}
                                     >
-                                      <IconButton
-                                        size="small"
+                                      <AppIconButton
+                                        tone="ghost"
                                         onClick={(event) => {
                                           event.stopPropagation();
                                           openEditPricing(pricing);
                                         }}
                                       >
                                         <EditIcon fontSize="small" />
-                                      </IconButton>
+                                      </AppIconButton>
 
-                                      <IconButton
-                                        size="small"
+                                      <AppIconButton
+                                        tone="ghost"
                                         onClick={(event) => {
                                           event.stopPropagation();
                                           setDeletingPricing(pricing);
                                         }}
                                       >
                                         <DeleteIcon fontSize="small" />
-                                      </IconButton>
+                                      </AppIconButton>
 
-                                      <IconButton
-                                        size="small"
+                                      <AppIconButton
+                                        tone="ghost"
                                         onClick={(event) => {
                                           event.stopPropagation();
                                           setPricingActionsTarget({
@@ -1083,7 +1254,7 @@ export function PricingsTab(): JSX.Element {
                                         }}
                                       >
                                         <MoreHorizIcon fontSize="small" />
-                                      </IconButton>
+                                      </AppIconButton>
                                     </Stack>
                                   </Stack>
 
@@ -1264,8 +1435,8 @@ export function PricingsTab(): JSX.Element {
                                                 >
                                                   {accountUsage.accountSubscriptionId ? (
                                                     <Tooltip title="Detach pricing from account">
-                                                      <IconButton
-                                                        size="small"
+                                                      <AppIconButton
+                                                        tone="ghost"
                                                         aria-label={`Detach pricing from ${accountUsage.account.companyName}`}
                                                         onClick={() =>
                                                           setDetachConfirmTarget({
@@ -1277,7 +1448,7 @@ export function PricingsTab(): JSX.Element {
                                                         }
                                                       >
                                                         <CancelOutlinedIcon fontSize="small" />
-                                                      </IconButton>
+                                                      </AppIconButton>
                                                     </Tooltip>
                                                   ) : null}
                                                 </Box>
@@ -1519,8 +1690,8 @@ export function PricingsTab(): JSX.Element {
                                               >
                                                 {propertyUsage.resolvedBySubscriptionId ? (
                                                   <Tooltip title="Detach pricing from property">
-                                                    <IconButton
-                                                      size="small"
+                                                    <AppIconButton
+                                                      tone="ghost"
                                                       aria-label={`Detach pricing from ${propertyUsage.property.address}`}
                                                       onClick={() =>
                                                         setDetachConfirmTarget({
@@ -1532,7 +1703,7 @@ export function PricingsTab(): JSX.Element {
                                                       }
                                                     >
                                                       <CancelOutlinedIcon fontSize="small" />
-                                                    </IconButton>
+                                                    </AppIconButton>
                                                   </Tooltip>
                                                 ) : null}
                                               </Box>
