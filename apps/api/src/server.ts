@@ -15,7 +15,9 @@ app.get('/api/health', async () => ({ status: 'ok' }));
 
 await registerAdminRoutes(app);
 
-app.setErrorHandler((error, _request, reply) => {
+app.setErrorHandler((error, request, reply) => {
+  request.log.error({ err: error }, 'Unhandled request error');
+
   if (error instanceof ZodError) {
     reply.status(400).send({
       message: 'Validation error',
@@ -24,7 +26,19 @@ app.setErrorHandler((error, _request, reply) => {
     return;
   }
 
-  reply.status(500).send({ message: 'Internal server error' });
+  const statusCode =
+    typeof (error as { statusCode?: unknown }).statusCode === 'number'
+      ? (error as { statusCode: number }).statusCode
+      : 500;
+
+  const message =
+    statusCode >= 500 && process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
+      : error instanceof Error
+        ? error.message
+        : 'Internal server error';
+
+  reply.status(statusCode).send({ message });
 });
 
 const shutdown = async (): Promise<void> => {

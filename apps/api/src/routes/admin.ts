@@ -161,6 +161,44 @@ type SubscriptionCandidate = {
   pricingIds: string[];
 };
 
+type SqliteTableRow = {
+  name: string;
+};
+
+type SqliteForeignKeyRow = {
+  table: string;
+  from: string;
+};
+
+function quoteSqlIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
+
+async function cleanupUnknownPricingReferences(
+  tx: Prisma.TransactionClient,
+  pricingId: string
+): Promise<void> {
+  const tables = await tx.$queryRawUnsafe<SqliteTableRow[]>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
+  );
+
+  for (const table of tables) {
+    if (table.name === 'pricings') {
+      continue;
+    }
+
+    const foreignKeys = await tx.$queryRawUnsafe<SqliteForeignKeyRow[]>(
+      `PRAGMA foreign_key_list(${quoteSqlIdentifier(table.name)});`
+    );
+
+    const pricingReferences = foreignKeys.filter((key) => key.table === 'pricings');
+    for (const reference of pricingReferences) {
+      const deleteSql = `DELETE FROM ${quoteSqlIdentifier(table.name)} WHERE ${quoteSqlIdentifier(reference.from)} = ?`;
+      await tx.$executeRawUnsafe(deleteSql, pricingId);
+    }
+  }
+}
+
 function toPricingResponse(pricing: PricingWithRelations) {
   return {
     id: pricing.id,
@@ -1209,22 +1247,29 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   app.delete('/api/admin/pricings/:id', async (request, reply) => {
     const { id } = pricingParamsSchema.parse(request.params);
 
-    const existing = await prisma.pricing.findUnique({
-      where: { id },
-      select: { id: true }
-    });
+    const deletedPricingCount = await prisma.$transaction(async (tx) => {
+      // Defensive cleanup for legacy local DBs that may still contain
+      // old tables with FK references to "pricings".
+      await cleanupUnknownPricingReferences(tx, id);
 
-    if (!existing) {
-      reply.status(404).send({ message: 'Pricing not found' });
-      return;
-    }
+      // Be explicit about link cleanup to avoid relying on DB-level cascade behavior.
+      await tx.subscriptionPricing.deleteMany({
+        where: { pricingId: id }
+      });
 
-    await prisma.pricing.delete({
-      where: { id }
+      await tx.pricingTier.deleteMany({
+        where: { pricingId: id }
+      });
+
+      const deleted = await tx.pricing.deleteMany({
+        where: { id }
+      });
+
+      return deleted.count;
     });
 
     return {
-      deleted: true,
+      deleted: deletedPricingCount > 0,
       id
     };
   });

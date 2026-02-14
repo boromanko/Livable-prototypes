@@ -40,6 +40,39 @@ Open after start:
 - Web: `http://localhost:5173`
 - API: `http://localhost:3001`
 
+## Quick Recipes (Copy/Paste)
+
+### I just want to run everything with demo data
+
+```bash
+pnpm demo
+```
+
+### I want to reset demo data and run again
+
+```bash
+pnpm demo:refresh
+pnpm dev
+```
+
+### I want to run without demo data
+
+```bash
+pnpm db:generate
+pnpm db:push
+pnpm dev
+```
+
+### I ran `git clean -fdX` and now app does not start
+
+```bash
+pnpm install
+pnpm setup:demo
+pnpm dev
+```
+
+Why: `git clean -fdX` removes ignored files, including `node_modules` and local DB files.
+
 ## Refresh Demo Data
 
 Use this when you want to reset local runtime data back to the standard demo dataset:
@@ -50,6 +83,27 @@ pnpm dev
 ```
 
 Note: seeding clears and recreates data in local `packages/db/dev.db`.
+
+## Run Without Demo Data
+
+Use this if you want to run the prototype with an empty/local-only dataset:
+
+```bash
+pnpm db:generate
+pnpm db:push
+pnpm dev
+```
+
+Important: do not run `pnpm demo`, `pnpm setup:demo`, or `pnpm db:seed` if you want to avoid demo data.
+
+## Troubleshooting
+
+- Error: `spawn ENOENT` or `vite not found`
+  - Run: `pnpm install`
+- Warning: `node_modules missing`
+  - Run: `pnpm install`
+- DB looks empty or broken
+  - Run: `pnpm setup:demo`
 
 ## Useful Commands
 

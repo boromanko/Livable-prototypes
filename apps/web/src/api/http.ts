@@ -48,16 +48,29 @@ export async function apiRequest<TResponse>(
   }
 ): Promise<TResponse> {
   const url = buildUrl(path, options?.query);
+  const hasBody = options?.body !== undefined;
+  const headers = hasBody
+    ? {
+        'content-type': 'application/json'
+      }
+    : undefined;
+
   const response = await fetch(url, {
     method: options?.method ?? 'GET',
-    headers: {
-      'content-type': 'application/json'
-    },
-    body: options?.body ? JSON.stringify(options.body) : undefined
+    headers,
+    body: hasBody ? JSON.stringify(options.body) : undefined
   });
 
   const text = await response.text();
-  const payload = text ? (JSON.parse(text) as unknown) : null;
+  let payload: unknown = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text) as unknown;
+    } catch {
+      payload = { message: text };
+    }
+  }
 
   if (!response.ok) {
     throw new ApiError(response.status, payload);

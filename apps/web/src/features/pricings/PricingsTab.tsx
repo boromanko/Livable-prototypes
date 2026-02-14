@@ -7,6 +7,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HomeIcon from '@mui/icons-material/Home';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import PersonIcon from '@mui/icons-material/Person';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import {
   Alert,
   Box,
@@ -21,6 +22,7 @@ import {
   Snackbar,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
@@ -49,13 +51,6 @@ const SubscriptionFormDrawer = lazy(async () => {
   const module = await import('../subscriptions/SubscriptionFormDrawer');
   return { default: module.SubscriptionFormDrawer };
 });
-
-type RowMenuTarget = {
-  anchorEl: HTMLElement;
-  pricingId: string;
-  subscriptionId: string;
-  title: string;
-};
 
 type PricingActionsMenuTarget = {
   anchorEl: HTMLElement;
@@ -99,6 +94,11 @@ const TREE_TOGGLE_SLOT_WIDTH = 24;
 const TREE_LABEL_GAP = 8;
 const PRODUCT_ROW_STICKY_TOP = 0;
 const PRICING_ROW_STICKY_TOP = 40;
+const PRODUCT_DISPLAY_PRIORITY: Record<string, number> = {
+  UNIT_SUBSCRIPTION_PRO: 0,
+  UNIT_SUBSCRIPTION_APPFOLIO: 1,
+  UNIT_SUBSCRIPTION_CIB: 2
+};
 const TABLE_GHOST_BUTTON_SX = {
   width: 'fit-content',
   px: 1.5,
@@ -318,7 +318,6 @@ export function PricingsTab(): JSX.Element {
   const [defaultSubscriptionScope, setDefaultSubscriptionScope] = useState<BillingScope>('ACCOUNT');
 
   const [deletingPricing, setDeletingPricing] = useState<PricingTreeItem | null>(null);
-  const [detachTarget, setDetachTarget] = useState<RowMenuTarget | null>(null);
   const [pricingActionsTarget, setPricingActionsTarget] =
     useState<PricingActionsMenuTarget | null>(null);
   const [detachConfirmTarget, setDetachConfirmTarget] = useState<{
@@ -358,7 +357,7 @@ export function PricingsTab(): JSX.Element {
   const visibleProducts = useMemo(() => {
     const allProducts = productsQuery.data?.items ?? [];
 
-    return allProducts.filter((product) => {
+    const filteredProducts = allProducts.filter((product) => {
       if (productIdFilter && product.id !== productIdFilter) {
         return false;
       }
@@ -374,6 +373,20 @@ export function PricingsTab(): JSX.Element {
 
       return hasFilteredPricings || matchesProductSearch;
     });
+
+    return filteredProducts
+      .map((product, index) => ({ product, index }))
+      .sort((left, right) => {
+        const leftPriority = PRODUCT_DISPLAY_PRIORITY[left.product.code] ?? Number.POSITIVE_INFINITY;
+        const rightPriority = PRODUCT_DISPLAY_PRIORITY[right.product.code] ?? Number.POSITIVE_INFINITY;
+
+        if (leftPriority !== rightPriority) {
+          return leftPriority - rightPriority;
+        }
+
+        return left.index - right.index;
+      })
+      .map((item) => item.product);
   }, [productIdFilter, productsQuery.data?.items, pricingsByProductId, search]);
 
   const minTreeWidthPx = useMemo(() => {
@@ -468,7 +481,7 @@ export function PricingsTab(): JSX.Element {
   }
 
   async function confirmDeletePricing(): Promise<void> {
-    if (!deletingPricing) {
+    if (!deletingPricing || deleteMutation.isPending) {
       return;
     }
 
@@ -659,7 +672,7 @@ export function PricingsTab(): JSX.Element {
                           minHeight: 40,
                           px: 1.5,
                           py: 0.5,
-                          backgroundColor: '#F8F9FA',
+                          backgroundColor: '#EEF2F6',
                           borderTop: productIndex === 0 ? 'none' : '1px solid #E1E7EC',
                           cursor: 'pointer',
                           position: 'sticky',
@@ -697,7 +710,7 @@ export function PricingsTab(): JSX.Element {
                             |
                           </Typography>
                           <Typography sx={{ fontWeight: 600, fontSize: 14, color: '#98A4B3' }}>
-                            ({productPricings.length})
+                            {productPricings.length} pricings
                           </Typography>
                         </Stack>
                       </Stack>
@@ -1134,19 +1147,22 @@ export function PricingsTab(): JSX.Element {
                                                   }}
                                                 >
                                                   {accountUsage.accountSubscriptionId ? (
-                                                    <IconButton
-                                                      size="small"
-                                                      onClick={(event) =>
-                                                        setDetachTarget({
-                                                          anchorEl: event.currentTarget,
-                                                          pricingId: pricing.id,
-                                                          subscriptionId: accountUsage.accountSubscriptionId ?? '',
-                                                          title: `Detach pricing from ${accountUsage.account.companyName}`
-                                                        })
-                                                      }
-                                                    >
-                                                      <MoreHorizIcon fontSize="small" />
-                                                    </IconButton>
+                                                    <Tooltip title="Detach pricing from account">
+                                                      <IconButton
+                                                        size="small"
+                                                        aria-label={`Detach pricing from ${accountUsage.account.companyName}`}
+                                                        onClick={() =>
+                                                          setDetachConfirmTarget({
+                                                            pricingId: pricing.id,
+                                                            subscriptionId:
+                                                              accountUsage.accountSubscriptionId ?? '',
+                                                            title: `Detach pricing from ${accountUsage.account.companyName}`
+                                                          })
+                                                        }
+                                                      >
+                                                        <CancelOutlinedIcon fontSize="small" />
+                                                      </IconButton>
+                                                    </Tooltip>
                                                   ) : null}
                                                 </Box>
                                               </Stack>
@@ -1286,7 +1302,7 @@ export function PricingsTab(): JSX.Element {
                                                   <EntityTypeIndicator type="PROPERTY" />
                                                 </Box>
 
-                                                <Stack spacing={0} sx={{ minWidth: 360, py: 0.5 }}>
+                                                <Stack spacing={0} sx={{ py: 0.5 }}>
                                                   <Link
                                                     href="#"
                                                     onClick={(event) => event.preventDefault()}
@@ -1378,20 +1394,22 @@ export function PricingsTab(): JSX.Element {
                                                 }}
                                               >
                                                 {propertyUsage.resolvedBySubscriptionId ? (
-                                                  <IconButton
-                                                    size="small"
-                                                    onClick={(event) =>
-                                                      setDetachTarget({
-                                                        anchorEl: event.currentTarget,
-                                                        pricingId: pricing.id,
-                                                        subscriptionId:
-                                                          propertyUsage.resolvedBySubscriptionId ?? '',
-                                                        title: `Detach override from ${propertyUsage.property.address}`
-                                                      })
-                                                    }
-                                                  >
-                                                    <MoreHorizIcon fontSize="small" />
-                                                  </IconButton>
+                                                  <Tooltip title="Detach pricing from property">
+                                                    <IconButton
+                                                      size="small"
+                                                      aria-label={`Detach pricing from ${propertyUsage.property.address}`}
+                                                      onClick={() =>
+                                                        setDetachConfirmTarget({
+                                                          pricingId: pricing.id,
+                                                          subscriptionId:
+                                                            propertyUsage.resolvedBySubscriptionId ?? '',
+                                                          title: `Detach override from ${propertyUsage.property.address}`
+                                                        })
+                                                      }
+                                                    >
+                                                      <CancelOutlinedIcon fontSize="small" />
+                                                    </IconButton>
+                                                  </Tooltip>
                                                 ) : null}
                                               </Box>
                                             </Stack>
@@ -1546,29 +1564,6 @@ export function PricingsTab(): JSX.Element {
         </MenuItem>
       </Menu>
 
-      <Menu
-        open={Boolean(detachTarget)}
-        anchorEl={detachTarget?.anchorEl ?? null}
-        onClose={() => setDetachTarget(null)}
-      >
-        <MenuItem
-          onClick={() => {
-            if (!detachTarget) {
-              return;
-            }
-
-            setDetachConfirmTarget({
-              pricingId: detachTarget.pricingId,
-              subscriptionId: detachTarget.subscriptionId,
-              title: detachTarget.title
-            });
-            setDetachTarget(null);
-          }}
-        >
-          Detach pricing
-        </MenuItem>
-      </Menu>
-
       <Dialog open={Boolean(deletingPricing)} onClose={() => setDeletingPricing(null)}>
         <DialogTitle>Delete Pricing</DialogTitle>
         <DialogContent>
@@ -1577,7 +1572,7 @@ export function PricingsTab(): JSX.Element {
               This action will remove pricing <strong>{deletingPricing?.internalName ?? ''}</strong>.
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Deletion is blocked if this pricing is already attached to subscriptions.
+              If this pricing is attached to subscriptions, links will be removed automatically.
             </Typography>
             {actionError ? <Alert severity="error">{actionError}</Alert> : null}
           </Stack>
@@ -1587,6 +1582,7 @@ export function PricingsTab(): JSX.Element {
           <PrimaryButton
             sx={{ backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }}
             onClick={() => void confirmDeletePricing()}
+            disabled={deleteMutation.isPending}
           >
             Delete
           </PrimaryButton>
