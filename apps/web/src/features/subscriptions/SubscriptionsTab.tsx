@@ -3,7 +3,6 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import {
   Alert,
   Box,
-  Button,
   Checkbox,
   Chip,
   Dialog,
@@ -42,6 +41,7 @@ import {
   type SubscriptionItem,
   type SubscriptionStatus
 } from '../../api';
+import { GhostButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import { EmptyState, FiltersToolbar } from '../../components/layout';
 
 const SubscriptionFormDrawer = lazy(async () => {
@@ -386,9 +386,9 @@ export function SubscriptionsTab(): JSX.Element {
               </>
             }
             right={
-              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDrawer}>
+              <PrimaryButton startIcon={<AddIcon />} onClick={openCreateDrawer}>
                 Create Subscription
-              </Button>
+              </PrimaryButton>
             }
           />
         </Box>
@@ -405,22 +405,22 @@ export function SubscriptionsTab(): JSX.Element {
                   {selectedIds.length} subscription(s) selected
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Button size="small" onClick={() => openBulkDialog('ADD_PRICING')}>
+                  <GhostButton size="small" onClick={() => openBulkDialog('ADD_PRICING')}>
                     Add pricing
-                  </Button>
-                  <Button size="small" onClick={() => openBulkDialog('REPLACE_PRICINGS')}>
+                  </GhostButton>
+                  <GhostButton size="small" onClick={() => openBulkDialog('REPLACE_PRICINGS')}>
                     Replace pricings
-                  </Button>
-                  <Button size="small" onClick={() => openBulkDialog('DELETE_PRICING')}>
+                  </GhostButton>
+                  <GhostButton size="small" onClick={() => openBulkDialog('DELETE_PRICING')}>
                     Delete pricing
-                  </Button>
-                  <Button
+                  </GhostButton>
+                  <GhostButton
                     size="small"
-                    color="error"
+                    sx={{ color: '#B3261E', '&:hover': { backgroundColor: '#FDECEC' } }}
                     onClick={() => openBulkDialog('DELETE_SUBSCRIPTIONS')}
                   >
                     Delete subscriptions
-                  </Button>
+                  </GhostButton>
                 </Stack>
               </Stack>
             </Alert>
@@ -687,17 +687,20 @@ export function SubscriptionsTab(): JSX.Element {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeBulkDialog}>Cancel</Button>
-          <Button
-            variant="contained"
-            color={bulkDialogState.action === 'DELETE_SUBSCRIPTIONS' ? 'error' : 'primary'}
+          <SecondaryButton onClick={closeBulkDialog}>Cancel</SecondaryButton>
+          <PrimaryButton
+            sx={
+              bulkDialogState.action === 'DELETE_SUBSCRIPTIONS'
+                ? { backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }
+                : undefined
+            }
             onClick={() => {
               void applyBulkAction();
             }}
             disabled={bulkMutation.isPending}
           >
             {getActionLabel(bulkDialogState.action)}
-          </Button>
+          </PrimaryButton>
         </DialogActions>
       </Dialog>
 

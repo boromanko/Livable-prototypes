@@ -1,5 +1,6 @@
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
+import { SecondaryButton } from '../buttons';
 
 type EmptyStateProps = {
   title: string;
@@ -31,9 +32,9 @@ export function EmptyState(props: EmptyStateProps): JSX.Element {
         {description}
       </Typography>
       {actionLabel && onActionClick ? (
-        <Button size="small" variant="outlined" onClick={onActionClick}>
+        <SecondaryButton size="small" onClick={onActionClick}>
           {actionLabel}
-        </Button>
+        </SecondaryButton>
       ) : null}
     </Box>
   );

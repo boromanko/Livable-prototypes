@@ -4,7 +4,6 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import {
   Alert,
   Box,
-  Button,
   Dialog,
   IconButton,
   InputAdornment,
@@ -24,6 +23,7 @@ import {
   type PricingItem,
   type PricingType
 } from '../../api';
+import { PrimaryButton, SecondaryButton } from '../../components/buttons';
 
 type TierDraft = {
   id: string;
@@ -674,7 +674,6 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
   const fixedAmountError = showValidation && formValidation.fixedAmountError;
   const minimumPriceError = showValidation && formValidation.minimumPriceError;
   const productItems = productsQuery.data?.items ?? [];
-  const isProductLocked = mode === 'create' && Boolean(defaultProductId);
 
   return (
     <Dialog
@@ -756,7 +755,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                   productId: event.target.value
                 }))
               }
-              disabled={productsQuery.isPending || isEdit || isProductLocked}
+              disabled={productsQuery.isPending}
               error={productError}
               SelectProps={{
                 displayEmpty: true,
@@ -771,9 +770,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
               helperText={
                 productError
                   ? 'Product is required.'
-                  : (isEdit || isProductLocked
-                      ? 'Product is fixed for this flow.'
-                      : undefined)
+                  : undefined
               }
               sx={getFormFieldSx(productError)}
             >
@@ -799,30 +796,38 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                 overflow: 'hidden'
               }}
             >
-              <Button
+              <PrimaryButton
                 onClick={() => setFormState((prev) => ({ ...prev, type: 'FIXED' }))}
                 variant={formState.type === 'FIXED' ? 'contained' : 'text'}
                 sx={{
                   borderRadius: 0,
-                  px: 2.5,
-                  minHeight: 52,
-                  color: formState.type === 'FIXED' ? '#FFFFFF' : '#009299'
+                  ...(formState.type === 'FIXED'
+                    ? {}
+                    : {
+                        backgroundColor: 'transparent',
+                        color: '#009299',
+                        '&:hover': { backgroundColor: '#EAF6F6' }
+                      })
                 }}
               >
                 Fixed price
-              </Button>
-              <Button
+              </PrimaryButton>
+              <PrimaryButton
                 onClick={() => setFormState((prev) => ({ ...prev, type: 'TIERED' }))}
                 variant={formState.type === 'TIERED' ? 'contained' : 'text'}
                 sx={{
                   borderRadius: 0,
-                  px: 2.5,
-                  minHeight: 52,
-                  color: formState.type === 'TIERED' ? '#FFFFFF' : '#009299'
+                  ...(formState.type === 'TIERED'
+                    ? {}
+                    : {
+                        backgroundColor: 'transparent',
+                        color: '#009299',
+                        '&:hover': { backgroundColor: '#EAF6F6' }
+                      })
                 }}
               >
                 Tiered price
-              </Button>
+              </PrimaryButton>
             </Stack>
           </Stack>
 
@@ -1001,21 +1006,17 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                 </Box>
               </Box>
 
-              <Button
+              <SecondaryButton
                 startIcon={<AddIcon />}
                 onClick={addTier}
-                variant="text"
                 sx={{
                   width: 'fit-content',
                   px: 1.5,
-                  py: 0.75,
-                  backgroundColor: '#F8F9FA',
-                  color: '#212934',
-                  '&:hover': { backgroundColor: '#EBF0F5' }
+                  py: 0.75
                 }}
               >
                 Add tier
-              </Button>
+              </SecondaryButton>
 
               {showValidation && hasTierErrors ? (
                 <Typography sx={{ color: '#d32f2f', fontSize: 12 }}>
@@ -1066,12 +1067,12 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
             flexShrink: 0
           }}
         >
-          <Button variant="outlined" onClick={onClose} disabled={isSaving}>
+          <SecondaryButton onClick={onClose} disabled={isSaving}>
             Cancel
-          </Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={isSaving}>
+          </SecondaryButton>
+          <PrimaryButton onClick={handleSubmit} disabled={isSaving}>
             {isEdit ? 'Save pricing' : 'Save pricing'}
-          </Button>
+          </PrimaryButton>
         </Stack>
       </Stack>
     </Dialog>

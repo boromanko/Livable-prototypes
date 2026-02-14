@@ -1,8 +1,8 @@
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import HomeIcon from '@mui/icons-material/Home';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
@@ -10,8 +10,6 @@ import PersonIcon from '@mui/icons-material/Person';
 import {
   Alert,
   Box,
-  Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -25,7 +23,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ApiError,
   useBulkSubscriptionsMutation,
@@ -39,6 +37,7 @@ import {
   type PricingTreeResolvedTier,
   type PricingType
 } from '../../api';
+import { GhostButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import { EmptyState, FiltersToolbar } from '../../components/layout';
 
 const PricingFormDrawer = lazy(async () => {
@@ -84,28 +83,28 @@ function getTierRangeLabel(tier: PricingTreeResolvedTier): string {
 }
 
 const MAX_TIER_COLUMNS = 7;
+const BASE_TREE_MIN_WIDTH = 980;
 const ACTIONS_COLUMN_WIDTH = 118;
 const PROPERTIES_COLUMN_WIDTH = 176;
 const UNITS_COLUMN_WIDTH = 128;
-const TREE_INDENT_STEP = 32;
+const TIER_COLUMN_MIN_WIDTH = 124;
+const LEFT_CONTENT_MIN_WIDTH = 340;
+const ROW_HORIZONTAL_PADDING_PX = 24;
+const TREE_INDENT_STEP = 24;
 const TREE_TOGGLE_SLOT_WIDTH = 24;
 const TREE_LABEL_GAP = 8;
-const INLINE_ACTION_BUTTON_SX = {
+const PRODUCT_ROW_STICKY_TOP = 0;
+const PRICING_ROW_STICKY_TOP = 40;
+const TABLE_GHOST_BUTTON_SX = {
   width: 'fit-content',
   px: 1.5,
   py: 0.75,
-  minHeight: 36,
-  backgroundColor: '#F8F9FA',
-  color: '#212934',
-  '&:hover': { backgroundColor: '#EBF0F5' }
+  minHeight: 36
 } as const;
 
-const INLINE_TURQUOISE_ACTION_BUTTON_SX = {
-  ...INLINE_ACTION_BUTTON_SX,
-  color: '#009299'
-} as const;
 const CLICKABLE_ENTITY_LINK_SX = {
   color: '#009299',
+  fontWeight: 700,
   textDecoration: 'none',
   cursor: 'pointer',
   '&:hover': { textDecoration: 'underline' }
@@ -159,6 +158,17 @@ function getPricingColumnCount(pricing: PricingTreeItem): number {
 
 function getProductTierColumnCount(pricings: PricingTreeItem[]): number {
   return Math.max(1, pricings.reduce((maxCount, pricing) => Math.max(maxCount, getPricingColumnCount(pricing)), 1));
+}
+
+function getProductMinRowWidth(tierColumnCount: number): number {
+  return (
+    LEFT_CONTENT_MIN_WIDTH +
+    PROPERTIES_COLUMN_WIDTH +
+    UNITS_COLUMN_WIDTH +
+    tierColumnCount * TIER_COLUMN_MIN_WIDTH +
+    ACTIONS_COLUMN_WIDTH +
+    ROW_HORIZONTAL_PADDING_PX
+  );
 }
 
 function getPricingColumnOffset(pricing: PricingTreeItem, productTierColumnCount: number): number {
@@ -288,9 +298,10 @@ export function PricingsTab(): JSX.Element {
   const [typeFilter, setTypeFilter] = useState<'ALL' | PricingType>('ALL');
   const [productIdFilter, setProductIdFilter] = useState('');
 
-  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  const [collapsedProducts, setCollapsedProducts] = useState<Set<string>>(new Set());
   const [expandedPricings, setExpandedPricings] = useState<Set<string>>(new Set());
   const [collapsedUsageSections, setCollapsedUsageSections] = useState<Set<string>>(new Set());
+  const cascadeScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
   const [pricingModalMode, setPricingModalMode] = useState<'create' | 'edit'>('create');
@@ -361,6 +372,14 @@ export function PricingsTab(): JSX.Element {
     });
   }, [productIdFilter, productsQuery.data?.items, pricingsByProductId, search]);
 
+  const minTreeWidthPx = useMemo(() => {
+    return visibleProducts.reduce((maxWidth, product) => {
+      const productPricings = pricingsByProductId.get(product.id) ?? [];
+      const tierColumnCount = getProductTierColumnCount(productPricings);
+      return Math.max(maxWidth, getProductMinRowWidth(tierColumnCount));
+    }, BASE_TREE_MIN_WIDTH);
+  }, [pricingsByProductId, visibleProducts]);
+
   function toggleExpanded(setter: React.Dispatch<React.SetStateAction<Set<string>>>, key: string): void {
     setter((prev) => {
       const next = new Set(prev);
@@ -409,6 +428,41 @@ export function PricingsTab(): JSX.Element {
     setDefaultSubscriptionScope('ACCOUNT');
   }
 
+  function togglePricingSectionLink(pricingId: string, section: 'accounts' | 'specific-properties'): void {
+    const pricingKey = `pricing:${pricingId}`;
+    const sectionKey = `${section}:${pricingId}`;
+    const isPricingExpanded = expandedPricings.has(pricingKey);
+    const isSectionCollapsed = collapsedUsageSections.has(sectionKey);
+    const isSectionOpen = isPricingExpanded && !isSectionCollapsed;
+
+    if (isSectionOpen) {
+      setCollapsedUsageSections((prev) => {
+        const next = new Set(prev);
+        next.add(sectionKey);
+        return next;
+      });
+
+      setExpandedPricings((prev) => {
+        const next = new Set(prev);
+        next.delete(pricingKey);
+        return next;
+      });
+      return;
+    }
+
+    setExpandedPricings((prev) => {
+      const next = new Set(prev);
+      next.add(pricingKey);
+      return next;
+    });
+
+    setCollapsedUsageSections((prev) => {
+      const next = new Set(prev);
+      next.delete(sectionKey);
+      return next;
+    });
+  }
+
   async function confirmDeletePricing(): Promise<void> {
     if (!deletingPricing) {
       return;
@@ -446,9 +500,48 @@ export function PricingsTab(): JSX.Element {
     }
   }
 
+  useEffect(() => {
+    function handleGlobalWheel(event: WheelEvent): void {
+      const container = cascadeScrollRef.current;
+      if (!container) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest('[role="dialog"]') ||
+        target?.closest('[role="menu"]') ||
+        target?.closest('.MuiPopover-root')
+      ) {
+        return;
+      }
+
+      if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
+        return;
+      }
+
+      if (container.scrollHeight <= container.clientHeight) {
+        return;
+      }
+
+      event.preventDefault();
+      const maxScrollTop = container.scrollHeight - container.clientHeight;
+      const nextScrollTop = Math.min(
+        maxScrollTop,
+        Math.max(0, container.scrollTop + event.deltaY)
+      );
+      container.scrollTop = nextScrollTop;
+    }
+
+    window.addEventListener('wheel', handleGlobalWheel, { passive: false });
+    return () => {
+      window.removeEventListener('wheel', handleGlobalWheel);
+    };
+  }, []);
+
   return (
     <>
-      <Stack spacing={0}>
+      <Stack spacing={0} sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
         <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1.5, borderBottom: '1px solid #E1E7EC' }}>
           <FiltersToolbar
             left={
@@ -493,14 +586,23 @@ export function PricingsTab(): JSX.Element {
               </>
             }
             right={
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => openCreatePricing()}>
+              <PrimaryButton startIcon={<AddIcon />} onClick={() => openCreatePricing()}>
                 Add pricing
-              </Button>
+              </PrimaryButton>
             }
           />
         </Box>
 
-        <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+        <Box
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
           {productsQuery.isError || pricingsTreeQuery.isError ? (
             <Alert severity="error">Failed to load pricing tree.</Alert>
           ) : null}
@@ -517,20 +619,22 @@ export function PricingsTab(): JSX.Element {
               onActionClick={() => openCreatePricing()}
             />
           ) : (
-            <Box sx={{ overflowX: 'auto' }}>
+            <Box
+              ref={cascadeScrollRef}
+              sx={{ overflow: 'auto', minHeight: 0, flex: 1, overscrollBehavior: 'contain' }}
+            >
               <Stack
                 spacing={0}
                 sx={{
-                  minWidth: 980,
+                  minWidth: minTreeWidthPx,
                   border: '1px solid #E1E7EC',
-                  borderRadius: 1,
-                  overflow: 'hidden'
+                  borderRadius: 1
                 }}
               >
-                {visibleProducts.map((product) => {
+                {visibleProducts.map((product, productIndex) => {
                   const productPricings = pricingsByProductId.get(product.id) ?? [];
                   const productTierColumnCount = getProductTierColumnCount(productPricings);
-                  const isProductExpanded = expandedProducts.has(product.id);
+                  const isProductExpanded = !collapsedProducts.has(product.id);
 
                   return (
                     <Box key={product.id}>
@@ -538,19 +642,39 @@ export function PricingsTab(): JSX.Element {
                         direction="row"
                         alignItems="center"
                         spacing={0}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleExpanded(setCollapsedProducts, product.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleExpanded(setCollapsedProducts, product.id);
+                          }
+                        }}
                         sx={{
                           minHeight: 40,
                           px: 1.5,
                           py: 0.5,
                           backgroundColor: '#F8F9FA',
-                          borderTop: '1px solid #E1E7EC'
+                          borderTop: productIndex === 0 ? 'none' : '1px solid #E1E7EC',
+                          cursor: 'pointer',
+                          position: 'sticky',
+                          top: PRODUCT_ROW_STICKY_TOP,
+                          zIndex: 30
                         }}
                       >
                         <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
-                          <IconButton
-                            size="small"
-                            sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
-                            onClick={() => toggleExpanded(setExpandedProducts, product.id)}
+                          <Box
+                            sx={{
+                              width: TREE_TOGGLE_SLOT_WIDTH,
+                              height: TREE_TOGGLE_SLOT_WIDTH,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '2px',
+                              transition: 'background-color 120ms ease',
+                              '&:hover': { backgroundColor: '#EAF0F5' }
+                            }}
                             aria-label={isProductExpanded ? 'Collapse product' : 'Expand product'}
                           >
                             {isProductExpanded ? (
@@ -558,12 +682,19 @@ export function PricingsTab(): JSX.Element {
                             ) : (
                               <ChevronRightIcon fontSize="small" />
                             )}
-                          </IconButton>
+                          </Box>
                         </Box>
                         <Box sx={{ width: TREE_LABEL_GAP }} />
-                        <Stack direction="row" alignItems="center" spacing={0.75}>
-                          <Typography sx={{ fontWeight: 700 }}>{product.name}</Typography>
-                          <Chip size="small" label={`${productPricings.length} pricings`} />
+                        <Stack direction="row" alignItems="center" spacing={1.25}>
+                          <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
+                            {product.name}
+                          </Typography>
+                          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                            |
+                          </Typography>
+                          <Typography sx={{ fontWeight: 600, fontSize: 14, color: '#98A4B3' }}>
+                            ({productPricings.length})
+                          </Typography>
                         </Stack>
                       </Stack>
 
@@ -598,15 +729,42 @@ export function PricingsTab(): JSX.Element {
                                     direction="row"
                                     alignItems="stretch"
                                     spacing={0}
-                                    sx={{ minHeight: 44, px: 1.5, py: 0.25, borderTop: '1px solid #E1E7EC' }}
+                                    onClick={() => openEditPricing(pricing)}
+                                    sx={{
+                                      minHeight: 44,
+                                      px: 1.5,
+                                      py: 0.25,
+                                      borderTop: '1px solid #E1E7EC',
+                                      backgroundColor: '#FFFFFF',
+                                      transition: 'background-color 120ms ease',
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        backgroundColor: '#F8FBFD'
+                                      },
+                                      '& .pricing-row-cell': {
+                                        backgroundColor: 'inherit',
+                                        transition: 'background-color 120ms ease'
+                                      },
+                                      position: 'sticky',
+                                      top: PRICING_ROW_STICKY_TOP,
+                                      zIndex: 24
+                                    }}
                                   >
-                                    <Stack direction="row" alignItems="center" spacing={0} sx={{ flex: 1, minWidth: 340 }}>
+                                    <Stack
+                                      direction="row"
+                                      alignItems="center"
+                                      spacing={0}
+                                      sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}
+                                    >
                                       <Box sx={{ width: TREE_INDENT_STEP }} />
                                       <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
                                         <IconButton
                                           size="small"
                                           sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
-                                          onClick={() => toggleExpanded(setExpandedPricings, pricingKey)}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            toggleExpanded(setExpandedPricings, pricingKey);
+                                          }}
                                           aria-label={isPricingExpanded ? 'Collapse pricing' : 'Expand pricing'}
                                         >
                                           {isPricingExpanded ? (
@@ -617,9 +775,64 @@ export function PricingsTab(): JSX.Element {
                                         </IconButton>
                                       </Box>
                                       <Box sx={{ width: TREE_LABEL_GAP }} />
-                                      <Stack direction="row" alignItems="center" spacing={0.75}>
-                                        <Typography sx={{ fontWeight: 600 }}>{pricing.internalName}</Typography>
-                                        <Chip size="small" label={pricing.type} />
+                                      <Stack direction="row" alignItems="center" spacing={1.25}>
+                                        <Typography sx={{ fontWeight: 600, fontSize: 15, color: '#212934' }}>
+                                          {pricing.internalName}
+                                        </Typography>
+                                        <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                          |
+                                        </Typography>
+                                        <Typography
+                                          sx={{
+                                            fontWeight: 600,
+                                            fontSize: 15,
+                                            color: pricing.type === 'TIERED' ? '#1F9D55' : '#2B6CB0'
+                                          }}
+                                        >
+                                          {pricing.type === 'TIERED' ? 'Tiered' : 'Fixed'}
+                                        </Typography>
+                                        <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                          |
+                                        </Typography>
+                                        <Link
+                                          href="#"
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            togglePricingSectionLink(pricing.id, 'accounts');
+                                          }}
+                                          sx={{
+                                            fontWeight: 600,
+                                            fontSize: 15,
+                                            color: '#98A4B3',
+                                            textDecoration: 'none',
+                                            cursor: 'pointer',
+                                            '&:hover': { textDecoration: 'underline' }
+                                          }}
+                                        >
+                                          {accountRows.length} Accounts
+                                        </Link>
+                                        <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                                          |
+                                        </Typography>
+                                        <Link
+                                          href="#"
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            togglePricingSectionLink(pricing.id, 'specific-properties');
+                                          }}
+                                          sx={{
+                                            fontWeight: 600,
+                                            fontSize: 15,
+                                            color: '#98A4B3',
+                                            textDecoration: 'none',
+                                            cursor: 'pointer',
+                                            '&:hover': { textDecoration: 'underline' }
+                                          }}
+                                        >
+                                          {specificPropertiesCount} Properties
+                                        </Link>
                                       </Stack>
                                     </Stack>
 
@@ -628,19 +841,17 @@ export function PricingsTab(): JSX.Element {
                                         ml: 'auto',
                                         flexShrink: 0,
                                         display: 'grid',
-                                        gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(124px, 1fr))`
+                                        gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(${TIER_COLUMN_MIN_WIDTH}px, 1fr))`
                                       }}
                                     >
                                       {Array.from({ length: productTierColumnCount }).map((_, columnIndex) => {
-                                        const columnOffset = getPricingColumnOffset(pricing, productTierColumnCount);
-                                        const localTierIndex = columnIndex - columnOffset;
                                         const tier = getTierForColumn(pricing, productTierColumnCount, columnIndex);
                                         const isFixedCell =
                                           pricing.type === 'FIXED' && columnIndex === productTierColumnCount - 1;
-                                        const isFilled = isFixedCell || Boolean(tier);
 
                                         return (
                                           <Box
+                                            className="pricing-row-cell"
                                             key={`${pricing.id}:pricing-cell:${columnIndex}`}
                                             sx={{
                                               minHeight: 44,
@@ -650,8 +861,7 @@ export function PricingsTab(): JSX.Element {
                                               display: 'flex',
                                               flexDirection: 'column',
                                               justifyContent: 'center',
-                                              gap: 0.125,
-                                              backgroundColor: isFilled ? '#FCFDFE' : '#FFFFFF'
+                                              gap: 0.125
                                             }}
                                           >
                                             {isFixedCell ? (
@@ -673,7 +883,7 @@ export function PricingsTab(): JSX.Element {
                                             ) : tier ? (
                                               <>
                                                 <Typography sx={{ fontSize: 11, color: '#4B617C' }}>
-                                                  T{localTierIndex + 1} {getTierRangeLabel(tier)}
+                                                  {getTierRangeLabel(tier)} Unit
                                                 </Typography>
                                                 <Typography
                                                   sx={{
@@ -693,6 +903,7 @@ export function PricingsTab(): JSX.Element {
                                     </Box>
 
                                     <Stack
+                                      className="pricing-row-cell"
                                       direction="row"
                                       alignItems="center"
                                       spacing={0.25}
@@ -707,26 +918,35 @@ export function PricingsTab(): JSX.Element {
                                     >
                                       <IconButton
                                         size="small"
-                                        onClick={(event) =>
-                                          setPricingActionsTarget({
-                                            anchorEl: event.currentTarget,
-                                            pricingId: pricing.id
-                                          })
-                                        }
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          openEditPricing(pricing);
+                                        }}
                                       >
-                                        <MoreHorizIcon fontSize="small" />
-                                      </IconButton>
-
-                                      <IconButton size="small" onClick={() => openEditPricing(pricing)}>
-                                        <EditOutlinedIcon fontSize="small" />
+                                        <EditIcon fontSize="small" />
                                       </IconButton>
 
                                       <IconButton
                                         size="small"
-                                        color="error"
-                                        onClick={() => setDeletingPricing(pricing)}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setDeletingPricing(pricing);
+                                        }}
                                       >
-                                        <DeleteOutlineIcon fontSize="small" />
+                                        <DeleteIcon fontSize="small" />
+                                      </IconButton>
+
+                                      <IconButton
+                                        size="small"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setPricingActionsTarget({
+                                            anchorEl: event.currentTarget,
+                                            pricingId: pricing.id
+                                          });
+                                        }}
+                                      >
+                                        <MoreHorizIcon fontSize="small" />
                                       </IconButton>
                                     </Stack>
                                   </Stack>
@@ -737,21 +957,38 @@ export function PricingsTab(): JSX.Element {
                                         direction="row"
                                         alignItems="center"
                                         spacing={0}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() =>
+                                          toggleExpanded(setCollapsedUsageSections, accountsSectionKey)
+                                        }
+                                        onKeyDown={(event) => {
+                                          if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            toggleExpanded(setCollapsedUsageSections, accountsSectionKey);
+                                          }
+                                        }}
                                         sx={{
                                           minHeight: 34,
                                           px: 1.5,
                                           borderTop: '1px dashed #E1E7EC',
-                                          backgroundColor: '#FCFDFE'
+                                          backgroundColor: '#F8F9FA',
+                                          cursor: 'pointer'
                                         }}
                                       >
                                         <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
                                         <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
-                                          <IconButton
-                                            size="small"
-                                            sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
-                                            onClick={() =>
-                                              toggleExpanded(setCollapsedUsageSections, accountsSectionKey)
-                                            }
+                                          <Box
+                                            sx={{
+                                              width: TREE_TOGGLE_SLOT_WIDTH,
+                                              height: TREE_TOGGLE_SLOT_WIDTH,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              borderRadius: '2px',
+                                              transition: 'background-color 120ms ease',
+                                              '&:hover': { backgroundColor: '#EAF0F5' }
+                                            }}
                                             aria-label={
                                               isAccountsCollapsed ? 'Expand accounts section' : 'Collapse accounts section'
                                             }
@@ -761,10 +998,10 @@ export function PricingsTab(): JSX.Element {
                                             ) : (
                                               <ExpandMoreIcon fontSize="small" />
                                             )}
-                                          </IconButton>
+                                          </Box>
                                         </Box>
                                         <Box sx={{ width: TREE_LABEL_GAP }} />
-                                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#212934' }}>
+                                        <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
                                           {accountRows.length} accounts
                                         </Typography>
                                       </Stack>
@@ -789,7 +1026,7 @@ export function PricingsTab(): JSX.Element {
                                                 direction="row"
                                                 alignItems="center"
                                                 spacing={0}
-                                                sx={{ flex: 1, minWidth: 340 }}
+                                                sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}
                                               >
                                                 <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
                                                 <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
@@ -851,7 +1088,7 @@ export function PricingsTab(): JSX.Element {
                                                   sx={{
                                                     flexShrink: 0,
                                                     display: 'grid',
-                                                    gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(124px, 1fr))`
+                                                    gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(${TIER_COLUMN_MIN_WIDTH}px, 1fr))`
                                                   }}
                                                 >
                                                   {Array.from({ length: productTierColumnCount }).map(
@@ -913,19 +1150,29 @@ export function PricingsTab(): JSX.Element {
                                           alignItems="center"
                                           sx={{
                                             minHeight: 48,
-                                            px: 1.5,
+                                            pl: 0,
+                                            pr: 1.5,
                                             py: 0.75,
                                             borderTop: '1px dashed #E1E7EC',
-                                            backgroundColor: '#FCFDFE'
+                                            backgroundColor: '#FFFFFF'
                                           }}
                                         >
                                           <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
                                           <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
                                           <Box sx={{ width: TREE_LABEL_GAP }} />
-                                          <Button
+                                          <GhostButton
                                             size="small"
                                             startIcon={<AddIcon />}
-                                            sx={INLINE_ACTION_BUTTON_SX}
+                                            sx={{
+                                              ...TABLE_GHOST_BUTTON_SX,
+                                              '& .MuiButton-startIcon': {
+                                                marginLeft: 0,
+                                                marginRight: `${TREE_LABEL_GAP}px`,
+                                                width: TREE_TOGGLE_SLOT_WIDTH,
+                                                display: 'flex',
+                                                justifyContent: 'center'
+                                              }
+                                            }}
                                             onClick={() =>
                                               openCreateSubscription(pricing.id, {
                                                 scope: 'ACCOUNT'
@@ -933,7 +1180,7 @@ export function PricingsTab(): JSX.Element {
                                             }
                                           >
                                             Assign account
-                                          </Button>
+                                          </GhostButton>
                                         </Stack>
                                       ) : null}
 
@@ -941,24 +1188,44 @@ export function PricingsTab(): JSX.Element {
                                         direction="row"
                                         alignItems="center"
                                         spacing={0}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() =>
+                                          toggleExpanded(
+                                            setCollapsedUsageSections,
+                                            specificPropertiesSectionKey
+                                          )
+                                        }
+                                        onKeyDown={(event) => {
+                                          if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            toggleExpanded(
+                                              setCollapsedUsageSections,
+                                              specificPropertiesSectionKey
+                                            );
+                                          }
+                                        }}
                                         sx={{
                                           minHeight: 34,
                                           px: 1.5,
                                           borderTop: '1px dashed #E1E7EC',
-                                          backgroundColor: '#FCFDFE'
+                                          backgroundColor: '#F8F9FA',
+                                          cursor: 'pointer'
                                         }}
                                       >
                                         <Box sx={{ width: TREE_INDENT_STEP * 2 }} />
                                         <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
-                                          <IconButton
-                                            size="small"
-                                            sx={{ width: TREE_TOGGLE_SLOT_WIDTH, height: TREE_TOGGLE_SLOT_WIDTH, p: 0 }}
-                                            onClick={() =>
-                                              toggleExpanded(
-                                                setCollapsedUsageSections,
-                                                specificPropertiesSectionKey
-                                              )
-                                            }
+                                          <Box
+                                            sx={{
+                                              width: TREE_TOGGLE_SLOT_WIDTH,
+                                              height: TREE_TOGGLE_SLOT_WIDTH,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              borderRadius: '2px',
+                                              transition: 'background-color 120ms ease',
+                                              '&:hover': { backgroundColor: '#EAF0F5' }
+                                            }}
                                             aria-label={
                                               isSpecificPropertiesCollapsed
                                                 ? 'Expand specific properties section'
@@ -970,10 +1237,10 @@ export function PricingsTab(): JSX.Element {
                                             ) : (
                                               <ExpandMoreIcon fontSize="small" />
                                             )}
-                                          </IconButton>
+                                          </Box>
                                         </Box>
                                         <Box sx={{ width: TREE_LABEL_GAP }} />
-                                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#212934' }}>
+                                        <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
                                           {specificPropertiesCount}{' '}
                                           specific properties
                                         </Typography>
@@ -999,7 +1266,7 @@ export function PricingsTab(): JSX.Element {
                                                 direction="row"
                                                 alignItems="center"
                                                 spacing={0}
-                                                sx={{ flex: 1, minWidth: 340 }}
+                                                sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}
                                               >
                                                 <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
                                                 <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
@@ -1067,7 +1334,7 @@ export function PricingsTab(): JSX.Element {
                                                 sx={{
                                                   flexShrink: 0,
                                                   display: 'grid',
-                                                  gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(124px, 1fr))`
+                                                  gridTemplateColumns: `repeat(${productTierColumnCount}, minmax(${TIER_COLUMN_MIN_WIDTH}px, 1fr))`
                                                 }}
                                               >
                                                 {Array.from({ length: productTierColumnCount }).map((_, columnIndex) => (
@@ -1127,19 +1394,29 @@ export function PricingsTab(): JSX.Element {
                                           alignItems="center"
                                           sx={{
                                             minHeight: 48,
-                                            px: 1.5,
+                                            pl: 0,
+                                            pr: 1.5,
                                             py: 0.75,
                                             borderTop: '1px dashed #E1E7EC',
-                                            backgroundColor: '#FCFDFE'
+                                            backgroundColor: '#FFFFFF'
                                           }}
                                         >
                                           <Box sx={{ width: TREE_INDENT_STEP * 3 }} />
                                           <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
                                           <Box sx={{ width: TREE_LABEL_GAP }} />
-                                          <Button
+                                          <GhostButton
                                             size="small"
                                             startIcon={<AddIcon />}
-                                            sx={INLINE_ACTION_BUTTON_SX}
+                                            sx={{
+                                              ...TABLE_GHOST_BUTTON_SX,
+                                              '& .MuiButton-startIcon': {
+                                                marginLeft: 0,
+                                                marginRight: `${TREE_LABEL_GAP}px`,
+                                                width: TREE_TOGGLE_SLOT_WIDTH,
+                                                display: 'flex',
+                                                justifyContent: 'center'
+                                              }
+                                            }}
                                             onClick={() =>
                                               openCreateSubscription(pricing.id, {
                                                 scope: 'PROPERTY'
@@ -1147,7 +1424,7 @@ export function PricingsTab(): JSX.Element {
                                             }
                                           >
                                             Assign property
-                                          </Button>
+                                          </GhostButton>
                                         </Stack>
                                       ) : null}
 
@@ -1163,23 +1440,31 @@ export function PricingsTab(): JSX.Element {
                             alignItems="center"
                             sx={{
                               minHeight: 48,
-                              px: 1.5,
+                              pl: 0,
+                              pr: 1.5,
                               py: 0.75,
                               borderTop: '1px solid #E1E7EC',
-                              backgroundColor: '#F8F9FA'
+                              backgroundColor: '#FFFFFF'
                             }}
                           >
                             <Box sx={{ width: TREE_INDENT_STEP }} />
-                            <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH }} />
-                            <Box sx={{ width: TREE_LABEL_GAP }} />
-                            <Button
+                            <GhostButton
                               size="small"
                               startIcon={<AddIcon />}
-                              sx={INLINE_TURQUOISE_ACTION_BUTTON_SX}
+                              sx={{
+                                ...TABLE_GHOST_BUTTON_SX,
+                                '& .MuiButton-startIcon': {
+                                  marginLeft: 0,
+                                  marginRight: `${TREE_LABEL_GAP}px`,
+                                  width: TREE_TOGGLE_SLOT_WIDTH,
+                                  display: 'flex',
+                                  justifyContent: 'center'
+                                }
+                              }}
                               onClick={() => openCreatePricing(product.id)}
                             >
                               Add pricing
-                            </Button>
+                            </GhostButton>
                           </Stack>
 
                         </Stack>
@@ -1287,10 +1572,13 @@ export function PricingsTab(): JSX.Element {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeletingPricing(null)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={() => void confirmDeletePricing()}>
+          <SecondaryButton onClick={() => setDeletingPricing(null)}>Cancel</SecondaryButton>
+          <PrimaryButton
+            sx={{ backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }}
+            onClick={() => void confirmDeletePricing()}
+          >
             Delete
-          </Button>
+          </PrimaryButton>
         </DialogActions>
       </Dialog>
 
@@ -1306,10 +1594,13 @@ export function PricingsTab(): JSX.Element {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDetachConfirmTarget(null)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={() => void confirmDetach()}>
+          <SecondaryButton onClick={() => setDetachConfirmTarget(null)}>Cancel</SecondaryButton>
+          <PrimaryButton
+            sx={{ backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }}
+            onClick={() => void confirmDetach()}
+          >
             Detach
-          </Button>
+          </PrimaryButton>
         </DialogActions>
       </Dialog>
 

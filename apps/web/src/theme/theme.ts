@@ -28,6 +28,20 @@ export const appTheme = createTheme({
     }
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        html: {
+          height: '100%'
+        },
+        body: {
+          height: '100%',
+          overflow: 'hidden'
+        },
+        '#root': {
+          height: '100%'
+        }
+      }
+    },
     MuiDialog: {
       styleOverrides: {
         paper: {

@@ -121,6 +121,7 @@ export const createPricingBodySchema = pricingBaseSchema
 
 export const updatePricingBodySchema = z
   .object({
+    productId: z.string().min(1).optional(),
     internalName: z.string().trim().min(1).optional(),
     type: pricingTypeSchema.optional(),
     fixedAmountCents: z.number().int().nonnegative().nullable().optional(),

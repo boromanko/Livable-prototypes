@@ -2,7 +2,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import {
   Alert,
   Box,
-  Button,
   Checkbox,
   Divider,
   Drawer,
@@ -30,6 +29,7 @@ import {
   type SubscriptionItem,
   type SubscriptionStatus
 } from '../../api';
+import { PrimaryButton, SecondaryButton } from '../../components/buttons';
 
 type SubscriptionFormDrawerProps = {
   open: boolean;
@@ -460,12 +460,12 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
         <Divider />
 
         <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ p: 2 }}>
-          <Button variant="text" onClick={onClose} disabled={isSaving}>
+          <SecondaryButton onClick={onClose} disabled={isSaving}>
             Cancel
-          </Button>
-          <Button variant="contained" onClick={handleSubmit} disabled={!canSubmit || isSaving}>
+          </SecondaryButton>
+          <PrimaryButton onClick={handleSubmit} disabled={!canSubmit || isSaving}>
             {isEdit ? 'Save changes' : 'Create subscription'}
-          </Button>
+          </PrimaryButton>
         </Stack>
       </Stack>
     </Drawer>

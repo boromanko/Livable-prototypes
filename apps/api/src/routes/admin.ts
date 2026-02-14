@@ -1130,7 +1130,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     }));
 
     const candidatePayload = {
-      productId: existing.productId,
+      productId: payload.productId ?? existing.productId,
       internalName: payload.internalName ?? existing.internalName,
       type: targetType,
       fixedAmountCents:
@@ -1169,6 +1169,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       await tx.pricing.update({
         where: { id },
         data: {
+          productId: validated.productId,
           internalName: validated.internalName,
           type: validated.type,
           fixedAmountCents: validated.type === 'FIXED' ? validated.fixedAmountCents : null,

@@ -40,9 +40,10 @@ export function AppShell(): JSX.Element {
   return (
     <Box
       sx={{
-        minHeight: '100dvh',
+        height: '100dvh',
         display: 'flex',
-        bgcolor: prototypeTokens.color.bg.app
+        bgcolor: prototypeTokens.color.bg.app,
+        overflow: 'hidden'
       }}
     >
       <Box
@@ -132,7 +133,7 @@ export function AppShell(): JSX.Element {
           </Stack>
         </Box>
 
-        <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
+        <Box component="main" sx={{ flex: 1, minWidth: 0, minHeight: 0 }}>
           <Box
             sx={{
               height: '100%',
@@ -145,7 +146,7 @@ export function AppShell(): JSX.Element {
               flexDirection: 'column'
             }}
           >
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               <Outlet />
             </Box>
           </Box>

@@ -15,6 +15,219 @@ const COMPANIES = [
   { id: 'acct-westbridge', companyName: 'Westbridge Portfolio Management', email: 'ops@westbridge-demo.com' }
 ] as const;
 
+type TierSeed = {
+  fromUnit: number;
+  toUnit: number | null;
+  unitUsd: number;
+};
+
+type PricingSeed =
+  | {
+      id: string;
+      productId: string;
+      internalName: string;
+      type: 'FIXED';
+      fixedUsd: number;
+      minimumUsd?: null;
+      tiers?: never;
+    }
+  | {
+      id: string;
+      productId: string;
+      internalName: string;
+      type: 'TIERED';
+      fixedUsd?: null;
+      minimumUsd: number;
+      tiers: TierSeed[];
+    };
+
+const PRICINGS: PricingSeed[] = [
+  {
+    id: 'prc-unit-pro-standard',
+    productId: 'prod-unit-subscription-pro',
+    internalName: 'Unit Subscription Pro - Standard',
+    type: 'TIERED',
+    minimumUsd: 6.0,
+    tiers: [
+      { fromUnit: 1, toUnit: 100, unitUsd: 9.5 },
+      { fromUnit: 101, toUnit: 200, unitUsd: 8.4 },
+      { fromUnit: 201, toUnit: 400, unitUsd: 7.2 },
+      { fromUnit: 401, toUnit: 700, unitUsd: 6.1 },
+      { fromUnit: 701, toUnit: null, unitUsd: 5.2 }
+    ]
+  },
+  {
+    id: 'prc-unit-pro-volume',
+    productId: 'prod-unit-subscription-pro',
+    internalName: 'Unit Subscription Pro - Volume',
+    type: 'TIERED',
+    minimumUsd: 5.5,
+    tiers: [
+      { fromUnit: 1, toUnit: 80, unitUsd: 8.9 },
+      { fromUnit: 81, toUnit: 160, unitUsd: 7.8 },
+      { fromUnit: 161, toUnit: 320, unitUsd: 6.8 },
+      { fromUnit: 321, toUnit: 600, unitUsd: 5.9 },
+      { fromUnit: 601, toUnit: 900, unitUsd: 5.0 },
+      { fromUnit: 901, toUnit: null, unitUsd: 4.2 }
+    ]
+  },
+  {
+    id: 'prc-unit-appfolio-core',
+    productId: 'prod-unit-subscription-appfolio',
+    internalName: 'Unit Subscription Appfolio - Core',
+    type: 'TIERED',
+    minimumUsd: 6.5,
+    tiers: [
+      { fromUnit: 1, toUnit: 75, unitUsd: 10.2 },
+      { fromUnit: 76, toUnit: 150, unitUsd: 9.1 },
+      { fromUnit: 151, toUnit: 300, unitUsd: 8.0 },
+      { fromUnit: 301, toUnit: 600, unitUsd: 6.9 },
+      { fromUnit: 601, toUnit: null, unitUsd: 5.8 }
+    ]
+  },
+  {
+    id: 'prc-unit-appfolio-enterprise',
+    productId: 'prod-unit-subscription-appfolio',
+    internalName: 'Unit Subscription Appfolio - Enterprise',
+    type: 'TIERED',
+    minimumUsd: 6.0,
+    tiers: [
+      { fromUnit: 1, toUnit: 60, unitUsd: 9.4 },
+      { fromUnit: 61, toUnit: 140, unitUsd: 8.3 },
+      { fromUnit: 141, toUnit: 260, unitUsd: 7.4 },
+      { fromUnit: 261, toUnit: 500, unitUsd: 6.4 },
+      { fromUnit: 501, toUnit: 800, unitUsd: 5.4 },
+      { fromUnit: 801, toUnit: null, unitUsd: 4.6 }
+    ]
+  },
+  {
+    id: 'prc-unit-cib-core',
+    productId: 'prod-unit-subscription-cib',
+    internalName: 'Unit Subscription CIB - Core',
+    type: 'TIERED',
+    minimumUsd: 5.0,
+    tiers: [
+      { fromUnit: 1, toUnit: 120, unitUsd: 8.7 },
+      { fromUnit: 121, toUnit: 240, unitUsd: 7.7 },
+      { fromUnit: 241, toUnit: 480, unitUsd: 6.7 },
+      { fromUnit: 481, toUnit: 800, unitUsd: 5.8 },
+      { fromUnit: 801, toUnit: null, unitUsd: 4.9 }
+    ]
+  },
+  {
+    id: 'prc-unit-cib-volume',
+    productId: 'prod-unit-subscription-cib',
+    internalName: 'Unit Subscription CIB - Volume',
+    type: 'TIERED',
+    minimumUsd: 4.5,
+    tiers: [
+      { fromUnit: 1, toUnit: 100, unitUsd: 8.2 },
+      { fromUnit: 101, toUnit: 220, unitUsd: 7.1 },
+      { fromUnit: 221, toUnit: 420, unitUsd: 6.2 },
+      { fromUnit: 421, toUnit: 700, unitUsd: 5.3 },
+      { fromUnit: 701, toUnit: 1000, unitUsd: 4.5 },
+      { fromUnit: 1001, toUnit: null, unitUsd: 3.8 }
+    ]
+  },
+  {
+    id: 'prc-billing-auto-pro-core',
+    productId: 'prod-billing-automation-pro',
+    internalName: 'Billing Automation Pro - Core',
+    type: 'FIXED',
+    fixedUsd: 6.5
+  },
+  {
+    id: 'prc-billing-auto-pro-growth',
+    productId: 'prod-billing-automation-pro',
+    internalName: 'Billing Automation Pro - Growth',
+    type: 'FIXED',
+    fixedUsd: 7.75
+  },
+  {
+    id: 'prc-billing-plus-pro-advanced',
+    productId: 'prod-billing-automation-plus-pro',
+    internalName: 'Billing Automation Plus Pro - Advanced',
+    type: 'FIXED',
+    fixedUsd: 10.5
+  },
+  {
+    id: 'prc-billing-auto-appfolio-core',
+    productId: 'prod-billing-automation-appfolio',
+    internalName: 'Billing Automation Appfolio - Core',
+    type: 'FIXED',
+    fixedUsd: 7.25
+  },
+  {
+    id: 'prc-billing-auto-appfolio-growth',
+    productId: 'prod-billing-automation-appfolio',
+    internalName: 'Billing Automation Appfolio - Growth',
+    type: 'FIXED',
+    fixedUsd: 8.5
+  },
+  {
+    id: 'prc-billing-plus-appfolio-elite',
+    productId: 'prod-billing-automation-plus-appfolio',
+    internalName: 'Billing Automation Plus Appfolio - Elite',
+    type: 'FIXED',
+    fixedUsd: 11.75
+  },
+  {
+    id: 'prc-ap-auto-appfolio-core',
+    productId: 'prod-ap-automation-appfolio',
+    internalName: 'AP Automation Appfolio - Core',
+    type: 'FIXED',
+    fixedUsd: 9.25
+  },
+  {
+    id: 'prc-ap-auto-appfolio-scale',
+    productId: 'prod-ap-automation-appfolio',
+    internalName: 'AP Automation Appfolio - Scale',
+    type: 'FIXED',
+    fixedUsd: 10.95
+  },
+  {
+    id: 'prc-late-fee-standard',
+    productId: 'prod-late-fee',
+    internalName: 'Late Fee - Standard',
+    type: 'FIXED',
+    fixedUsd: 2.5
+  },
+  {
+    id: 'prc-late-fee-portfolio',
+    productId: 'prod-late-fee',
+    internalName: 'Late Fee - Portfolio',
+    type: 'FIXED',
+    fixedUsd: 3.25
+  }
+];
+
+const ACCOUNT_BUNDLES: string[][] = [
+  [
+    'prc-unit-pro-standard',
+    'prc-billing-auto-pro-core',
+    'prc-billing-plus-pro-advanced',
+    'prc-late-fee-standard'
+  ],
+  [
+    'prc-unit-appfolio-core',
+    'prc-billing-auto-appfolio-core',
+    'prc-ap-auto-appfolio-core',
+    'prc-late-fee-standard'
+  ],
+  [
+    'prc-unit-cib-core',
+    'prc-billing-auto-pro-core',
+    'prc-billing-plus-appfolio-elite',
+    'prc-late-fee-portfolio'
+  ],
+  [
+    'prc-unit-pro-volume',
+    'prc-billing-auto-appfolio-growth',
+    'prc-ap-auto-appfolio-scale',
+    'prc-late-fee-portfolio'
+  ]
+] as const;
+
 const PRODUCTS = [
   {
     id: 'prod-unit-subscription-pro',
@@ -110,6 +323,20 @@ function buildBillableUnits(accountIndex: number, propertyIndex: number): number
   return ((accountIndex * 17 + propertyIndex * 11 + 7) % span) + minUnits;
 }
 
+function toCents(usd: number): number {
+  return Math.round(usd * 100);
+}
+
+function assertPriceRange(usd: number, context: string): void {
+  if (usd < 1.5 || usd > 12.5) {
+    throw new Error(`${context} must be in 1.50..12.50 USD range (got ${usd.toFixed(2)})`);
+  }
+}
+
+function getPropertyId(accountId: string, propertyNumber: number): string {
+  return `prop-${accountId}-${String(propertyNumber).padStart(2, '0')}`;
+}
+
 async function main(): Promise<void> {
   await prisma.pricingTier.deleteMany();
   await prisma.subscriptionPricing.deleteMany();
@@ -168,6 +395,169 @@ async function main(): Promise<void> {
       description: product.description
     }))
   });
+
+  for (const pricing of PRICINGS) {
+    if (pricing.type === 'FIXED') {
+      assertPriceRange(pricing.fixedUsd, `${pricing.id} fixedUsd`);
+
+      await prisma.pricing.create({
+        data: {
+          id: pricing.id,
+          productId: pricing.productId,
+          internalName: pricing.internalName,
+          type: 'FIXED',
+          fixedAmountCents: toCents(pricing.fixedUsd),
+          minimumPriceCents: null,
+          currency: 'usd',
+          billingInterval: 'month',
+          isActive: true
+        }
+      });
+      continue;
+    }
+
+    if (pricing.tiers.length > 6) {
+      throw new Error(`${pricing.id} has more than 6 tiers`);
+    }
+    assertPriceRange(pricing.minimumUsd, `${pricing.id} minimumUsd`);
+
+    for (const tier of pricing.tiers) {
+      assertPriceRange(tier.unitUsd, `${pricing.id} tier ${tier.fromUnit}-${tier.toUnit ?? '∞'}`);
+    }
+
+    await prisma.pricing.create({
+      data: {
+        id: pricing.id,
+        productId: pricing.productId,
+        internalName: pricing.internalName,
+        type: 'TIERED',
+        fixedAmountCents: null,
+        minimumPriceCents: toCents(pricing.minimumUsd),
+        currency: 'usd',
+        billingInterval: 'month',
+        isActive: true,
+        tiers: {
+          create: pricing.tiers.map((tier) => ({
+            fromUnit: tier.fromUnit,
+            toUnit: tier.toUnit,
+            unitAmountCents: toCents(tier.unitUsd)
+          }))
+        }
+      }
+    });
+  }
+
+  const pricingById = new Map(PRICINGS.map((pricing) => [pricing.id, pricing]));
+
+  function getAlternatePricing(currentPricingId: string): string | null {
+    const current = pricingById.get(currentPricingId);
+    if (!current) {
+      return null;
+    }
+
+    const alternative = PRICINGS.find(
+      (candidate) =>
+        candidate.productId === current.productId &&
+        candidate.id !== current.id
+    );
+
+    return alternative?.id ?? null;
+  }
+
+  for (const [accountIndex, account] of COMPANIES.entries()) {
+    const defaultBundle = ACCOUNT_BUNDLES[accountIndex % ACCOUNT_BUNDLES.length] ?? [];
+    const accountStatus =
+      accountIndex % 7 === 0 ? 'PAUSED' : accountIndex % 5 === 0 ? 'DRAFT' : 'ACTIVE';
+    const accountStartDate = new Date(Date.UTC(2026, 0, 5 + accountIndex));
+
+    await prisma.subscription.create({
+      data: {
+        id: `sub-account-${account.id}`,
+        accountId: account.id,
+        scope: 'ACCOUNT',
+        propertyId: null,
+        startDate: accountStartDate,
+        endDate: null,
+        status: accountStatus,
+        paymentMethodId: `pm-${account.id}-card-default`,
+        subscriptionItems: {
+          create: defaultBundle.map((pricingId) => ({
+            pricingId,
+            quantity: 1
+          }))
+        }
+      }
+    });
+
+    const unitPricingId = defaultBundle.find((pricingId) =>
+      pricingId.startsWith('prc-unit-')
+    );
+    const lateFeePricingId = defaultBundle.find((pricingId) =>
+      pricingId.startsWith('prc-late-fee-')
+    );
+    const automationPricingId = defaultBundle.find((pricingId) =>
+      pricingId.includes('billing-auto')
+    );
+
+    const propertyUnitOverride = unitPricingId ? getAlternatePricing(unitPricingId) : null;
+    if (propertyUnitOverride) {
+      await prisma.subscription.create({
+        data: {
+          id: `sub-property-unit-${account.id}`,
+          accountId: account.id,
+          scope: 'PROPERTY',
+          propertyId: getPropertyId(account.id, 3),
+          startDate: new Date(Date.UTC(2026, 0, 10 + accountIndex)),
+          endDate: null,
+          status: 'ACTIVE',
+          paymentMethodId: `pm-${account.id}-card-default`,
+          subscriptionItems: {
+            create: [{ pricingId: propertyUnitOverride, quantity: 1 }]
+          }
+        }
+      });
+    }
+
+    const propertyLateFeeOverride = lateFeePricingId ? getAlternatePricing(lateFeePricingId) : null;
+    if (propertyLateFeeOverride) {
+      await prisma.subscription.create({
+        data: {
+          id: `sub-property-latefee-${account.id}`,
+          accountId: account.id,
+          scope: 'PROPERTY',
+          propertyId: getPropertyId(account.id, 8),
+          startDate: new Date(Date.UTC(2026, 0, 15 + accountIndex)),
+          endDate: null,
+          status: accountIndex % 4 === 0 ? 'DRAFT' : 'ACTIVE',
+          paymentMethodId: `pm-${account.id}-card-default`,
+          subscriptionItems: {
+            create: [{ pricingId: propertyLateFeeOverride, quantity: 1 }]
+          }
+        }
+      });
+    }
+
+    const propertyAutomationOverride = automationPricingId
+      ? getAlternatePricing(automationPricingId)
+      : null;
+    if (propertyAutomationOverride && accountIndex % 3 === 0) {
+      await prisma.subscription.create({
+        data: {
+          id: `sub-property-automation-${account.id}`,
+          accountId: account.id,
+          scope: 'PROPERTY',
+          propertyId: getPropertyId(account.id, 10),
+          startDate: new Date(Date.UTC(2026, 0, 20 + accountIndex)),
+          endDate: null,
+          status: 'ACTIVE',
+          paymentMethodId: `pm-${account.id}-card-default`,
+          subscriptionItems: {
+            create: [{ pricingId: propertyAutomationOverride, quantity: 1 }]
+          }
+        }
+      });
+    }
+  }
 }
 
 main()
