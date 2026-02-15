@@ -24,6 +24,7 @@ export const createSubscriptionBodySchema = z
     accountId: z.string().min(1),
     scope: billingScopeSchema,
     propertyId: z.string().min(1).nullable().optional(),
+    propertyIds: z.array(z.string().min(1)).optional(),
     startDate: z.coerce.date(),
     endDate: z.coerce.date().nullable().optional(),
     status: subscriptionStatusSchema.default('DRAFT'),
@@ -31,19 +32,24 @@ export const createSubscriptionBodySchema = z
     pricingIds: z.array(z.string().min(1)).min(1)
   })
   .superRefine((payload, ctx) => {
-    if (payload.scope === 'ACCOUNT' && payload.propertyId) {
+    const propertySelections = [
+      ...(payload.propertyId ? [payload.propertyId] : []),
+      ...(payload.propertyIds ?? [])
+    ];
+
+    if (payload.scope === 'ACCOUNT' && propertySelections.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'propertyId must be null for ACCOUNT scope',
-        path: ['propertyId']
+        message: 'propertyId/propertyIds must be empty for ACCOUNT scope',
+        path: ['propertyIds']
       });
     }
 
-    if (payload.scope === 'PROPERTY' && !payload.propertyId) {
+    if (payload.scope === 'PROPERTY' && propertySelections.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'propertyId is required for PROPERTY scope',
-        path: ['propertyId']
+        message: 'propertyId or propertyIds is required for PROPERTY scope',
+        path: ['propertyIds']
       });
     }
 
@@ -60,6 +66,7 @@ export const updateSubscriptionBodySchema = z
   .object({
     scope: billingScopeSchema.optional(),
     propertyId: z.string().min(1).nullable().optional(),
+    propertyIds: z.array(z.string().min(1)).optional(),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().nullable().optional(),
     status: subscriptionStatusSchema.optional(),

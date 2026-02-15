@@ -17,6 +17,20 @@ export const subscriptionInclude = {
       billableUnits: true
     }
   },
+  targetProperties: {
+    orderBy: {
+      propertyId: 'asc'
+    },
+    include: {
+      property: {
+        select: {
+          id: true,
+          address: true,
+          billableUnits: true
+        }
+      }
+    }
+  },
   paymentMethod: {
     select: {
       id: true,
@@ -56,6 +70,9 @@ export type SubscriptionWithRelations = Prisma.SubscriptionGetPayload<{
 }>;
 
 export function toSubscriptionResponse(subscription: SubscriptionWithRelations) {
+  const properties = subscription.targetProperties.map((target) => target.property);
+  const primaryProperty = subscription.property ?? properties[0] ?? null;
+
   return {
     id: subscription.id,
     scope: subscription.scope,
@@ -64,7 +81,8 @@ export function toSubscriptionResponse(subscription: SubscriptionWithRelations) 
     endDate: subscription.endDate,
     createdAt: subscription.createdAt,
     account: subscription.account,
-    property: subscription.property,
+    property: primaryProperty,
+    properties,
     paymentMethod: subscription.paymentMethod,
     pricings: subscription.subscriptionItems.map((item) => ({
       id: item.pricing.id,
@@ -99,13 +117,27 @@ export type SubscriptionListQuery = {
 
 export function buildSubscriptionsWhere(query: SubscriptionListQuery): Prisma.SubscriptionWhereInput {
   const where: Prisma.SubscriptionWhereInput = {};
+  const andFilters: Prisma.SubscriptionWhereInput[] = [];
 
   if (query.accountId) {
     where.accountId = query.accountId;
   }
 
   if (query.propertyId) {
-    where.propertyId = query.propertyId;
+    andFilters.push({
+      OR: [
+        {
+          propertyId: query.propertyId
+        },
+        {
+          targetProperties: {
+            some: {
+              propertyId: query.propertyId
+            }
+          }
+        }
+      ]
+    });
   }
 
   if (query.scope) {
@@ -124,11 +156,28 @@ export function buildSubscriptionsWhere(query: SubscriptionListQuery): Prisma.Su
   }
 
   if (query.search) {
-    where.OR = [
-      { account: { companyName: { contains: query.search } } },
-      { account: { email: { contains: query.search } } },
-      { property: { address: { contains: query.search } } }
-    ];
+    andFilters.push({
+      OR: [
+        { account: { companyName: { contains: query.search } } },
+        { account: { email: { contains: query.search } } },
+        { property: { address: { contains: query.search } } },
+        {
+          targetProperties: {
+            some: {
+              property: {
+                address: {
+                  contains: query.search
+                }
+              }
+            }
+          }
+        }
+      ]
+    });
+  }
+
+  if (andFilters.length > 0) {
+    where.AND = andFilters;
   }
 
   return where;
@@ -158,4 +207,29 @@ export async function validateExistingPricings(pricingIds: string[]): Promise<bo
   });
 
   return count === uniquePricingIds.length;
+}
+
+type PropertySelectionInput = {
+  propertyId?: string | null;
+  propertyIds?: string[];
+};
+
+export function normalizePropertySelection(input: PropertySelectionInput): string[] {
+  const candidateIds = [
+    ...(input.propertyId ? [input.propertyId] : []),
+    ...(input.propertyIds ?? [])
+  ];
+
+  return uniqueIds(candidateIds.filter((id) => id.trim() !== ''));
+}
+
+export function getLegacyPropertyIdForSubscription(
+  scope: 'ACCOUNT' | 'PROPERTY',
+  propertyIds: string[]
+): string | null {
+  if (scope !== 'PROPERTY') {
+    return null;
+  }
+
+  return propertyIds[0] ?? null;
 }

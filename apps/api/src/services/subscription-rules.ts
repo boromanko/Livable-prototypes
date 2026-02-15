@@ -3,7 +3,7 @@ import type { Prisma } from '@stripe-integration/db';
 export type SubscriptionCandidate = {
   accountId: string;
   scope: 'ACCOUNT' | 'PROPERTY';
-  propertyId: string | null;
+  propertyIds: string[];
   startDate: Date;
   endDate: Date | null;
   status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
@@ -153,6 +153,13 @@ export async function validateSubscriptionCandidate(
   db: SubscriptionRulesDb,
   candidate: SubscriptionCandidate
 ): Promise<string | null> {
+  const duplicatePropertyIds = findDuplicateIds(candidate.propertyIds);
+  if (duplicatePropertyIds.length > 0) {
+    return `Duplicate propertyIds are not allowed: ${duplicatePropertyIds.join(', ')}`;
+  }
+
+  const normalizedPropertyIds = uniqueIds(candidate.propertyIds);
+
   const account = await db.account.findUnique({
     where: { id: candidate.accountId },
     select: { id: true }
@@ -163,29 +170,36 @@ export async function validateSubscriptionCandidate(
   }
 
   if (candidate.scope === 'PROPERTY') {
-    if (!candidate.propertyId) {
-      return 'propertyId is required for PROPERTY scope';
+    if (normalizedPropertyIds.length === 0) {
+      return 'propertyIds are required for PROPERTY scope';
     }
 
-    const property = await db.property.findUnique({
-      where: { id: candidate.propertyId },
+    const properties = await db.property.findMany({
+      where: {
+        id: {
+          in: normalizedPropertyIds
+        }
+      },
       select: {
         id: true,
         accountId: true
       }
     });
 
-    if (!property) {
-      return 'Property not found';
+    if (properties.length !== normalizedPropertyIds.length) {
+      return 'One or more propertyIds are invalid';
     }
 
-    if (property.accountId !== candidate.accountId) {
-      return 'Property does not belong to the selected account';
+    const hasForeignProperty = properties.some(
+      (property) => property.accountId !== candidate.accountId
+    );
+    if (hasForeignProperty) {
+      return 'One or more properties do not belong to the selected account';
     }
   }
 
-  if (candidate.scope === 'ACCOUNT' && candidate.propertyId) {
-    return 'propertyId must be null for ACCOUNT scope';
+  if (candidate.scope === 'ACCOUNT' && normalizedPropertyIds.length > 0) {
+    return 'propertyIds must be empty for ACCOUNT scope';
   }
 
   if (candidate.paymentMethodId) {

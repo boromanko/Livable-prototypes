@@ -52,7 +52,9 @@ type MockDb = {
     findUnique: (args: { where: { id: string } }) => Promise<{ id: string } | null>;
   };
   property: {
-    findUnique: (args: { where: { id: string } }) => Promise<{ id: string; accountId: string } | null>;
+    findMany: (args: {
+      where: { id: { in: string[] } };
+    }) => Promise<Array<{ id: string; accountId: string }>>;
   };
   paymentMethod: {
     findUnique: (args: { where: { id: string } }) => Promise<{ id: string; accountId: string } | null>;
@@ -73,9 +75,9 @@ function createMockDb(data: MockDbData): MockDb {
       }
     },
     property: {
-      async findUnique(args) {
-        const property = data.properties.find((item) => item.id === args.where.id);
-        return property ?? null;
+      async findMany(args) {
+        const requestedIds = new Set(args.where.id.in);
+        return data.properties.filter((property) => requestedIds.has(property.id));
       }
     },
     paymentMethod: {
@@ -97,7 +99,7 @@ function buildCandidate(overrides: Partial<SubscriptionCandidate> = {}): Subscri
   return {
     accountId: 'acc-1',
     scope: 'ACCOUNT',
-    propertyId: null,
+    propertyIds: [],
     startDate: new Date('2026-02-01T00:00:00.000Z'),
     endDate: null,
     status: 'ACTIVE',
@@ -191,7 +193,7 @@ describe('validateSubscriptionCandidate', () => {
       asSubscriptionRulesDb(db),
       buildCandidate({
         scope: 'PROPERTY',
-        propertyId: 'prop-1',
+        propertyIds: ['prop-1'],
         paymentMethodId: 'pm-1'
       })
     );
@@ -227,11 +229,11 @@ describe('validateSubscriptionCandidate', () => {
       asSubscriptionRulesDb(db),
       buildCandidate({
         scope: 'PROPERTY',
-        propertyId: 'prop-1'
+        propertyIds: ['prop-1']
       })
     );
 
-    assert.equal(error, 'Property does not belong to the selected account');
+    assert.equal(error, 'One or more properties do not belong to the selected account');
   });
 
   it('rejects payment method owned by another account', async () => {
@@ -271,5 +273,103 @@ describe('validateSubscriptionCandidate', () => {
       error,
       'Subscription cannot contain multiple pricings for the same product: UNIT_SUBSCRIPTION_PRO'
     );
+  });
+
+  it('accepts multiple properties for PROPERTY scope', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [
+        { id: 'prop-1', accountId: 'acc-1' },
+        { id: 'prop-2', accountId: 'acc-1' }
+      ],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'PROPERTY',
+        propertyIds: ['prop-1', 'prop-2']
+      })
+    );
+
+    assert.equal(error, null);
+  });
+
+  it('rejects duplicate property ids in PROPERTY scope', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [{ id: 'prop-1', accountId: 'acc-1' }],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'PROPERTY',
+        propertyIds: ['prop-1', 'prop-1']
+      })
+    );
+
+    assert.equal(error, 'Duplicate propertyIds are not allowed: prop-1');
+  });
+
+  it('rejects PROPERTY scope without any property ids', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'PROPERTY',
+        propertyIds: []
+      })
+    );
+
+    assert.equal(error, 'propertyIds are required for PROPERTY scope');
+  });
+
+  it('rejects ACCOUNT scope with property ids', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [{ id: 'prop-1', accountId: 'acc-1' }],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'ACCOUNT',
+        propertyIds: ['prop-1']
+      })
+    );
+
+    assert.equal(error, 'propertyIds must be empty for ACCOUNT scope');
+  });
+
+  it('rejects unknown property ids', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [{ id: 'prop-1', accountId: 'acc-1' }],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'PROPERTY',
+        propertyIds: ['prop-1', 'prop-missing']
+      })
+    );
+
+    assert.equal(error, 'One or more propertyIds are invalid');
   });
 });
