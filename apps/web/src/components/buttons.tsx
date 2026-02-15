@@ -1,4 +1,4 @@
-import { Button, ButtonGroup, IconButton, type ButtonProps, type IconButtonProps } from '@mui/material';
+import { Box, Button, ButtonGroup, IconButton, type ButtonProps, type IconButtonProps } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
 import { prototypeTokens } from '../theme/tokens';
@@ -57,18 +57,43 @@ const BASE_TEXT_BUTTON_SX: SxProps<Theme> = {
 const BASE_BORDERED_BUTTON_SX: SxProps<Theme> = {
   ...BASE_TEXT_BUTTON_SX,
   borderColor: prototypeTokens.color.border.strong,
-  backgroundColor: prototypeTokens.color.bg.surface,
+  backgroundColor: prototypeTokens.color.bg.surfaceMuted,
   color: prototypeTokens.color.text.primary,
+  boxShadow: 'none',
   '&:hover': {
     borderColor: prototypeTokens.color.border.strong,
-    backgroundColor: prototypeTokens.color.bg.surfaceSubtle
+    backgroundColor: prototypeTokens.color.bg.search,
+    boxShadow: 'none'
+  }
+};
+
+const BASE_SPLIT_BUTTON_WRAPPER_SX: SxProps<Theme> = {
+  display: 'inline-flex',
+  border: `1px solid ${prototypeTokens.color.border.strong}`,
+  borderRadius: 1,
+  overflow: 'hidden',
+  backgroundColor: prototypeTokens.color.bg.surfaceMuted
+};
+
+const BASE_SPLIT_BUTTON_ITEM_SX: SxProps<Theme> = {
+  ...BASE_TEXT_BUTTON_SX,
+  border: 0,
+  borderRadius: 0,
+  backgroundColor: prototypeTokens.color.bg.surfaceMuted,
+  color: prototypeTokens.color.text.primary,
+  boxShadow: 'none',
+  '&:hover': {
+    border: 0,
+    backgroundColor: prototypeTokens.color.bg.search,
+    boxShadow: 'none'
   }
 };
 
 const BASE_SPLIT_BUTTON_GROUP_SX: SxProps<Theme> = {
-  borderRadius: prototypeTokens.radius.r2,
   '& .MuiButtonGroup-grouped': {
-    borderColor: prototypeTokens.color.border.strong
+    border: 0,
+    borderRadius: 0,
+    margin: 0
   }
 };
 
@@ -200,34 +225,45 @@ export function AppSplitButton(props: AppSplitButtonProps): JSX.Element {
   const { sx: auxButtonSx, ...auxButtonRest } = auxButtonProps ?? {};
 
   return (
-    <ButtonGroup variant="outlined" disableElevation sx={composeSx(BASE_SPLIT_BUTTON_GROUP_SX, sx)}>
-      <Button
-        {...mainButtonRest}
-        onClick={onMainClick}
-        startIcon={mainStartIcon}
-        endIcon={mainEndIcon}
-        sx={composeSx(BASE_BORDERED_BUTTON_SX, composeSx({ borderRadius: 0 }, mainButtonSx))}
-      >
-        {mainLabel}
-      </Button>
-      <Button
-        {...auxButtonRest}
-        onClick={onAuxClick}
-        sx={composeSx(
-          BASE_BORDERED_BUTTON_SX,
-          composeSx(
-            {
-              borderRadius: 0,
-              minWidth: 40,
-              px: 0
-            },
-            auxButtonSx
-          )
-        )}
-      >
-        {auxIcon}
-      </Button>
-    </ButtonGroup>
+    <Box sx={composeSx(BASE_SPLIT_BUTTON_WRAPPER_SX, sx)}>
+      <ButtonGroup variant="text" disableElevation sx={BASE_SPLIT_BUTTON_GROUP_SX}>
+        <Button
+          {...mainButtonRest}
+          onClick={onMainClick}
+          startIcon={mainStartIcon}
+          endIcon={mainEndIcon}
+          sx={composeSx(BASE_SPLIT_BUTTON_ITEM_SX, mainButtonSx)}
+        >
+          {mainLabel}
+        </Button>
+        <Button
+          {...auxButtonRest}
+          onClick={onAuxClick}
+          sx={composeSx(
+            BASE_SPLIT_BUTTON_ITEM_SX,
+            composeSx(
+              {
+                minWidth: 40,
+                px: 0,
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '1px',
+                  backgroundColor: prototypeTokens.color.border.strong
+                }
+              },
+              auxButtonSx
+            )
+          )}
+        >
+          {auxIcon}
+        </Button>
+      </ButtonGroup>
+    </Box>
   );
 }
 
