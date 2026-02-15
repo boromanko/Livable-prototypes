@@ -1,4 +1,10 @@
-import type { SubscriptionBulkAction, SubscriptionItem } from '../../api';
+import type {
+  BillingScope,
+  SubscriptionBulkAction,
+  SubscriptionItem,
+  SubscriptionStatus,
+  SubscriptionsQueryParams
+} from '../../api';
 import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
 
 export type SubscriptionsSortField =
@@ -62,4 +68,83 @@ export function compareSubscriptionRows(
   }
 
   return left.pricings.length - right.pricings.length;
+}
+
+type BuildSubscriptionsQueryParamsInput = {
+  page: number;
+  pageSize: number;
+  search: string;
+  scopeFilter: 'ALL' | BillingScope;
+  statusFilter: 'ALL' | SubscriptionStatus;
+  accountIdFilter: string;
+};
+
+export function buildSubscriptionsQueryParams(
+  input: BuildSubscriptionsQueryParamsInput
+): SubscriptionsQueryParams {
+  const { page, pageSize, search, scopeFilter, statusFilter, accountIdFilter } = input;
+
+  return {
+    page: page + 1,
+    pageSize,
+    search: search || undefined,
+    scope: scopeFilter === 'ALL' ? undefined : scopeFilter,
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
+    accountId: accountIdFilter || undefined
+  };
+}
+
+export function sortSubscriptionRows(
+  rows: SubscriptionItem[],
+  sortField: SubscriptionsSortField | null,
+  sortDirection: SubscriptionsSortDirection
+): SubscriptionItem[] {
+  if (!sortField) {
+    return rows;
+  }
+
+  const sorted = [...rows];
+  sorted.sort((left, right) => {
+    const result = compareSubscriptionRows(left, right, sortField);
+    return sortDirection === 'asc' ? result : -result;
+  });
+
+  return sorted;
+}
+
+export function filterSelectedIdsToVisible(selectedIds: string[], visibleIds: string[]): string[] {
+  if (visibleIds.length === 0) {
+    return [];
+  }
+
+  const visibleSet = new Set(visibleIds);
+  return selectedIds.filter((id) => visibleSet.has(id));
+}
+
+export function toggleSelectedId(selectedIds: string[], subscriptionId: string): string[] {
+  if (selectedIds.includes(subscriptionId)) {
+    return selectedIds.filter((id) => id !== subscriptionId);
+  }
+
+  return [...selectedIds, subscriptionId];
+}
+
+export function toggleVisibleSelectedIds(
+  selectedIds: string[],
+  visibleIds: string[],
+  allVisibleSelected: boolean
+): string[] {
+  if (allVisibleSelected) {
+    return selectedIds.filter((id) => !visibleIds.includes(id));
+  }
+
+  const next = new Set(selectedIds);
+  for (const id of visibleIds) {
+    next.add(id);
+  }
+  return Array.from(next);
+}
+
+export function requiresPricingSelection(action: SubscriptionBulkAction | null): boolean {
+  return action === 'ADD_PRICING' || action === 'REPLACE_PRICINGS' || action === 'DELETE_PRICING';
 }

@@ -11,18 +11,28 @@ import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
 import {
   buildDefaultPricingName,
   buildInitialState,
-  defaultTier,
-  formatUsdInputOnBlur,
   getFormValidationState,
-  getMinAllowedMaxUnits,
   getTierStartUnits,
-  parsePositiveInteger,
-  parseUsdToCents,
-  sanitizeIntegerInput,
-  sanitizeMoneyInput,
   validateTiers,
   type PricingFormState
 } from './pricingForm.utils';
+import {
+  addTierDraft,
+  normalizeFixedAmountDraft,
+  normalizeMinimumPriceDraft,
+  normalizeTierMaxUnitsDraft,
+  normalizeTierUnitPriceDraft,
+  removeTierDraft,
+  setFixedAmountDraft,
+  setInternalNameDraft,
+  setMinimumPriceDraft,
+  setPricingTypeDraft,
+  setProductIdDraft,
+  updateTierMaxUnitsDraft,
+  updateTierUnitPriceDraft
+} from './pricingForm.state-actions';
+import { buildPricingMutationPayload } from './pricingForm.submit';
+import { scrollToFirstPricingValidationError } from './pricingForm.scroll';
 
 type UsePricingFormControllerInput = {
   open: boolean;
@@ -56,6 +66,13 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
   const fixedAmountFieldRef = useRef<HTMLDivElement>(null);
   const tierSectionRef = useRef<HTMLDivElement>(null);
   const minimumPriceFieldRef = useRef<HTMLDivElement>(null);
+  const validationRefs = {
+    internalNameFieldRef,
+    productFieldRef,
+    fixedAmountFieldRef,
+    tierSectionRef,
+    minimumPriceFieldRef
+  };
 
   const tierValidation = useMemo(() => validateTiers(formState.tiers), [formState.tiers]);
   const tierStartUnits = useMemo(() => getTierStartUnits(formState.tiers), [formState.tiers]);
@@ -99,145 +116,35 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
   }, [defaultPricingName, isEdit, open]);
 
   function addTier(): void {
-    setFormState((prev) => ({
-      ...prev,
-      tiers: [...prev.tiers, defaultTier(crypto.randomUUID())]
-    }));
+    setFormState((prev) => addTierDraft(prev));
   }
 
   function removeTier(tierId: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      tiers: (() => {
-        const nextTiers = prev.tiers.filter((tier) => tier.id !== tierId);
-        if (nextTiers.length === 0) {
-          return [defaultTier(crypto.randomUUID())];
-        }
-
-        const lastTier = nextTiers[nextTiers.length - 1];
-        if (parsePositiveInteger(lastTier.maxUnits) !== null) {
-          return [...nextTiers, defaultTier(crypto.randomUUID())];
-        }
-
-        return nextTiers;
-      })()
-    }));
+    setFormState((prev) => removeTierDraft(prev, tierId));
   }
 
   function updateTierMaxUnits(tierId: string, value: string): void {
-    const sanitizedValue = sanitizeIntegerInput(value);
-
-    setFormState((prev) => {
-      const tierIndex = prev.tiers.findIndex((tier) => tier.id === tierId);
-      if (tierIndex === -1) {
-        return prev;
-      }
-
-      const isEditingLastTier = tierIndex === prev.tiers.length - 1;
-      const nextTiers = prev.tiers.map((tier) =>
-        tier.id === tierId ? { ...tier, maxUnits: sanitizedValue } : tier
-      );
-
-      if (isEditingLastTier && parsePositiveInteger(sanitizedValue) !== null) {
-        nextTiers.push(defaultTier(crypto.randomUUID()));
-      }
-
-      return {
-        ...prev,
-        tiers: nextTiers
-      };
-    });
+    setFormState((prev) => updateTierMaxUnitsDraft(prev, tierId, value));
   }
 
   function updateTierUnitPrice(tierId: string, value: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      tiers: prev.tiers.map((tier) =>
-        tier.id === tierId ? { ...tier, unitAmountUsd: sanitizeMoneyInput(value) } : tier
-      )
-    }));
+    setFormState((prev) => updateTierUnitPriceDraft(prev, tierId, value));
   }
 
   function normalizeTierUnitPriceOnBlur(tierId: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      tiers: prev.tiers.map((tier) =>
-        tier.id === tierId
-          ? { ...tier, unitAmountUsd: formatUsdInputOnBlur(tier.unitAmountUsd) }
-          : tier
-      )
-    }));
+    setFormState((prev) => normalizeTierUnitPriceDraft(prev, tierId));
   }
 
   function normalizeTierMaxUnitsOnBlur(tierId: string): void {
-    setFormState((prev) => {
-      const tierIndex = prev.tiers.findIndex((tier) => tier.id === tierId);
-      if (tierIndex === -1) {
-        return prev;
-      }
-
-      const currentValue = prev.tiers[tierIndex]?.maxUnits ?? '';
-      const parsedCurrent = parsePositiveInteger(currentValue);
-      if (parsedCurrent === null) {
-        return prev;
-      }
-
-      const minAllowed = getMinAllowedMaxUnits(prev.tiers, tierIndex);
-      if (parsedCurrent >= minAllowed) {
-        return prev;
-      }
-
-      const nextTiers = prev.tiers.map((tier, index) =>
-        index === tierIndex ? { ...tier, maxUnits: String(minAllowed) } : tier
-      );
-
-      return {
-        ...prev,
-        tiers: nextTiers
-      };
-    });
+    setFormState((prev) => normalizeTierMaxUnitsDraft(prev, tierId));
   }
 
   function normalizeFixedAmountOnBlur(): void {
-    setFormState((prev) => ({
-      ...prev,
-      fixedAmountUsd: formatUsdInputOnBlur(prev.fixedAmountUsd)
-    }));
+    setFormState((prev) => normalizeFixedAmountDraft(prev));
   }
 
   function normalizeMinimumPriceOnBlur(): void {
-    setFormState((prev) => ({
-      ...prev,
-      minimumPriceUsd: formatUsdInputOnBlur(prev.minimumPriceUsd)
-    }));
-  }
-
-  function scrollToFirstValidationError(): void {
-    const scrollOptions: ScrollIntoViewOptions = { behavior: 'smooth', block: 'center' };
-
-    if (formValidation.internalNameError) {
-      internalNameFieldRef.current?.scrollIntoView(scrollOptions);
-      return;
-    }
-
-    if (formValidation.productError) {
-      productFieldRef.current?.scrollIntoView(scrollOptions);
-      return;
-    }
-
-    if (formValidation.fixedAmountError) {
-      fixedAmountFieldRef.current?.scrollIntoView(scrollOptions);
-      return;
-    }
-
-    if (formValidation.tiersError) {
-      tierSectionRef.current?.scrollIntoView(scrollOptions);
-      return;
-    }
-
-    if (formValidation.minimumPriceError) {
-      minimumPriceFieldRef.current?.scrollIntoView(scrollOptions);
-    }
+    setFormState((prev) => normalizeMinimumPriceDraft(prev));
   }
 
   async function handleSubmit(): Promise<void> {
@@ -246,42 +153,22 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
 
     if (formValidation.hasErrors) {
       setFormError('Fix highlighted fields before saving.');
-      scrollToFirstValidationError();
+      scrollToFirstPricingValidationError(formValidation, validationRefs);
       return;
     }
 
-    const minimumPriceCents =
-      formState.type === 'TIERED' ? parseUsdToCents(formState.minimumPriceUsd) : null;
-    const fixedAmountCents = parseUsdToCents(formState.fixedAmountUsd);
+    const payload = buildPricingMutationPayload(formState, tierValidation);
 
     try {
       if (isEdit && initialPricing) {
         await updateMutation.mutateAsync({
           pricingId: initialPricing.id,
-          payload: {
-            internalName: formState.internalName.trim(),
-            type: formState.type,
-            fixedAmountCents:
-              formState.type === 'FIXED' ? (fixedAmountCents ?? undefined) : null,
-            minimumPriceCents:
-              formState.type === 'TIERED' && formState.minimumPriceUsd.trim() !== ''
-                ? minimumPriceCents
-                : null,
-            tiers: formState.type === 'TIERED' ? tierValidation.payload : []
-          }
+          payload
         });
       } else {
         await createMutation.mutateAsync({
           productId: formState.productId,
-          internalName: formState.internalName.trim(),
-          type: formState.type,
-          fixedAmountCents:
-            formState.type === 'FIXED' ? (fixedAmountCents ?? undefined) : null,
-          minimumPriceCents:
-            formState.type === 'TIERED' && formState.minimumPriceUsd.trim() !== ''
-              ? minimumPriceCents
-              : null,
-          tiers: formState.type === 'TIERED' ? tierValidation.payload : []
+          ...payload
         });
       }
 
@@ -292,35 +179,23 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
   }
 
   function setPricingType(type: PricingType): void {
-    setFormState((prev) => ({ ...prev, type }));
+    setFormState((prev) => setPricingTypeDraft(prev, type));
   }
 
   function setInternalName(value: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      internalName: value
-    }));
+    setFormState((prev) => setInternalNameDraft(prev, value));
   }
 
   function setProductId(value: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      productId: value
-    }));
+    setFormState((prev) => setProductIdDraft(prev, value));
   }
 
   function setFixedAmount(value: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      fixedAmountUsd: sanitizeMoneyInput(value)
-    }));
+    setFormState((prev) => setFixedAmountDraft(prev, value));
   }
 
   function setMinimumPrice(value: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      minimumPriceUsd: sanitizeMoneyInput(value)
-    }));
+    setFormState((prev) => setMinimumPriceDraft(prev, value));
   }
 
   const hasTierErrors = formValidation.tiersError;
@@ -338,13 +213,7 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
     showValidation,
     productItems: productsQuery.data?.items ?? [],
     productsLoading: productsQuery.isPending,
-    refs: {
-      internalNameFieldRef,
-      productFieldRef,
-      fixedAmountFieldRef,
-      tierSectionRef,
-      minimumPriceFieldRef
-    },
+    refs: validationRefs,
     validation: {
       pricingNameError,
       productError,
