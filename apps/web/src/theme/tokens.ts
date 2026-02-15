@@ -3,11 +3,14 @@ export const prototypeTokens = {
     bg: {
       app: '#F8F9FA',
       surface: '#FFFFFF',
+      surfaceMuted: '#F8F9FA',
+      surfaceSubtle: '#F3F7FA',
       search: '#EBF0F5',
       navActive: '#E1E7EC'
     },
     border: {
-      default: '#E1E7EC'
+      default: '#E1E7EC',
+      strong: '#D7DEE6'
     },
     text: {
       primary: '#212934',
@@ -60,4 +63,3 @@ export const prototypeTokens = {
     }
   }
 } as const;
-

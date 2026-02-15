@@ -4,7 +4,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { Box, Checkbox, FormControlLabel, Stack, TextField, Tooltip } from '@mui/material';
-import { PrimaryButton, SecondaryButton } from '../../../components/buttons';
+import { AppSplitButton, BorderedButton, PrimaryButton } from '../../../components/buttons';
 import { FiltersToolbar } from '../../../components/layout';
 import { SORT_FIELD_LABELS, type PricingSortField, type SortDirection } from '../pricingsTab.utils';
 
@@ -51,103 +51,62 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
               sx={{ minWidth: { md: 220 } }}
             />
 
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'stretch',
-                p: '1px',
-                backgroundColor: '#D7DEE6',
-                borderRadius: 1,
-                overflow: 'hidden'
-              }}
+            <BorderedButton
+              onClick={onOpenFilters}
+              startIcon={<FilterListIcon fontSize="small" />}
+              sx={{ px: 1.5 }}
             >
-              <SecondaryButton
-                onClick={onOpenFilters}
-                startIcon={<FilterListIcon fontSize="small" />}
-                sx={{
-                  border: 'none',
-                  borderRadius: 0,
-                  px: 1.5
-                }}
-              >
-                <Stack direction="row" alignItems="center" spacing={0.75}>
-                  <Box component="span">Filters</Box>
-                  {activeFiltersCount > 0 ? (
-                    <Box
-                      component="span"
-                      sx={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: '50%',
-                        backgroundColor: '#009299',
-                        color: '#FFFFFF',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        lineHeight: 1
-                      }}
-                    >
-                      {activeFiltersCount}
-                    </Box>
-                  ) : null}
-                </Stack>
-              </SecondaryButton>
-            </Box>
+              <Stack direction="row" alignItems="center" spacing={0.75}>
+                <Box component="span">Filters</Box>
+                {activeFiltersCount > 0 ? (
+                  <Box
+                    component="span"
+                    sx={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      backgroundColor: '#009299',
+                      color: '#FFFFFF',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      lineHeight: 1
+                    }}
+                  >
+                    {activeFiltersCount}
+                  </Box>
+                ) : null}
+              </Stack>
+            </BorderedButton>
 
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'stretch',
-                gap: '1px',
-                p: '1px',
-                backgroundColor: '#D7DEE6',
-                borderRadius: 1,
-                overflow: 'hidden'
-              }}
-            >
-              <SecondaryButton
-                onClick={onOpenSortMenu}
-                sx={{
-                  width: 'auto',
-                  minWidth: 'unset',
-                  flexShrink: 0,
-                  whiteSpace: 'nowrap',
-                  border: 'none',
-                  borderRadius: 0,
-                  borderTopRightRadius: 0,
-                  borderBottomRightRadius: 0,
-                  px: 1.5
+            <Tooltip title={sortDirection === 'ASC' ? 'Ascending' : 'Descending'}>
+              <AppSplitButton
+                mainLabel={
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <Box component="span">{SORT_FIELD_LABELS[sortBy]}</Box>
+                    <ArrowDropDownIcon sx={{ fontSize: 18 }} />
+                  </Stack>
+                }
+                onMainClick={onOpenSortMenu}
+                mainButtonProps={{
+                  'aria-haspopup': 'menu',
+                  sx: {
+                    width: 'auto',
+                    minWidth: 'unset',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
+                    px: 1.5
+                  }
                 }}
-              >
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <Box component="span">{SORT_FIELD_LABELS[sortBy]}</Box>
-                  <ArrowDropDownIcon sx={{ fontSize: 18 }} />
-                </Stack>
-              </SecondaryButton>
-              <Tooltip title={sortDirection === 'ASC' ? 'Ascending' : 'Descending'}>
-                <SecondaryButton
-                  onClick={onToggleSortDirection}
-                  sx={{
-                    width: 40,
-                    minWidth: 40,
-                    height: '100%',
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    border: 'none',
-                    borderRadius: 0,
-                    px: 0
-                  }}
-                >
-                  {sortDirection === 'ASC' ? (
-                    <ArrowUpwardIcon fontSize="small" />
-                  ) : (
-                    <ArrowDownwardIcon fontSize="small" />
-                  )}
-                </SecondaryButton>
-              </Tooltip>
-            </Box>
+                auxIcon={sortDirection === 'ASC' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />}
+                onAuxClick={onToggleSortDirection}
+                auxButtonProps={{
+                  'aria-label': sortDirection === 'ASC' ? 'Switch to descending sort' : 'Switch to ascending sort'
+                }}
+              />
+            </Tooltip>
 
             <FormControlLabel
               control={
