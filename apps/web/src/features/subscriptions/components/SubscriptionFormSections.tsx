@@ -1,24 +1,19 @@
 import {
+  Box,
   Checkbox,
-  FormControl,
   FormControlLabel,
-  InputLabel,
   MenuItem,
-  OutlinedInput,
-  Select,
   Stack,
-  TextField,
-  Typography
+  TextField
 } from '@mui/material';
 import type {
   AccountItem,
   BillingScope,
-  PaymentMethodItem,
-  PricingItem,
   PropertyItem,
   SubscriptionStatus
 } from '../../../api';
 import { subscriptionScopeOptions, subscriptionStatusOptions } from '../subscriptionForm.utils';
+import { getFormFieldSx, sectionTitle } from './SubscriptionFormSections.shared';
 
 type SubscriptionFormAccountSectionProps = {
   value: string;
@@ -34,20 +29,45 @@ export function SubscriptionFormAccountSection(
   const { value, isEdit, loading, accounts, onChange } = props;
 
   return (
-    <TextField
-      select
-      label="Account"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={isEdit || loading}
-      helperText={isEdit ? 'Account is fixed for existing subscriptions.' : undefined}
-    >
-      {accounts.map((account) => (
-        <MenuItem key={account.id} value={account.id}>
-          {account.companyName} ({account.email}) - {account.totalBillableUnits} units
+    <Stack spacing={2}>
+      {sectionTitle('Account')}
+      <TextField
+        select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={isEdit || loading}
+        helperText={isEdit ? 'Account is fixed for existing subscriptions.' : undefined}
+        SelectProps={{
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (typeof selected !== 'string' || selected === '') {
+              return (
+                <Box component="span" sx={{ color: '#4B617C' }}>
+                  Select account
+                </Box>
+              );
+            }
+
+            const selectedAccount = accounts.find((account) => account.id === selected);
+            if (!selectedAccount) {
+              return selected;
+            }
+
+            return `${selectedAccount.companyName} (${selectedAccount.email}) - ${selectedAccount.totalBillableUnits} units`;
+          }
+        }}
+        sx={getFormFieldSx()}
+      >
+        <MenuItem value="" disabled>
+          Select account
         </MenuItem>
-      ))}
-    </TextField>
+        {accounts.map((account) => (
+          <MenuItem key={account.id} value={account.id}>
+            {account.companyName} ({account.email}) - {account.totalBillableUnits} units
+          </MenuItem>
+        ))}
+      </TextField>
+    </Stack>
   );
 }
 
@@ -62,18 +82,21 @@ export function SubscriptionFormScopeSection(
   const { value, onChange } = props;
 
   return (
-    <TextField
-      select
-      label="Scope"
-      value={value}
-      onChange={(event) => onChange(event.target.value as BillingScope)}
-    >
-      {subscriptionScopeOptions.map((scope) => (
-        <MenuItem key={scope} value={scope}>
-          {scope}
-        </MenuItem>
-      ))}
-    </TextField>
+    <Stack spacing={2}>
+      {sectionTitle('Scope')}
+      <TextField
+        select
+        value={value}
+        onChange={(event) => onChange(event.target.value as BillingScope)}
+        sx={getFormFieldSx()}
+      >
+        {subscriptionScopeOptions.map((scope) => (
+          <MenuItem key={scope} value={scope}>
+            {scope}
+          </MenuItem>
+        ))}
+      </TextField>
+    </Stack>
   );
 }
 
@@ -91,28 +114,53 @@ export function SubscriptionFormPropertySection(
   props: SubscriptionFormPropertySectionProps
 ): JSX.Element {
   const { scope, accountId, value, properties, selectedProperty, loading, onChange } = props;
+  const helperText =
+    scope === 'PROPERTY'
+      ? selectedProperty
+        ? `Required for property-level subscriptions. Selected property has ${selectedProperty.billableUnits} units.`
+        : 'Required for property-level subscriptions.'
+      : 'Not used for account-level subscriptions.';
 
   return (
-    <TextField
-      select
-      label="Property"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={scope !== 'PROPERTY' || !accountId || loading}
-      helperText={
-        scope === 'PROPERTY'
-          ? selectedProperty
-            ? `Required for property-level subscriptions. Selected property has ${selectedProperty.billableUnits} units.`
-            : 'Required for property-level subscriptions.'
-          : 'Not used for account-level subscriptions.'
-      }
-    >
-      {properties.map((property) => (
-        <MenuItem key={property.id} value={property.id}>
-          {property.address} - {property.billableUnits} units
+    <Stack spacing={2}>
+      {sectionTitle('Property')}
+      <TextField
+        select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={scope !== 'PROPERTY' || !accountId || loading}
+        helperText={helperText}
+        SelectProps={{
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (typeof selected !== 'string' || selected === '') {
+              return (
+                <Box component="span" sx={{ color: '#4B617C' }}>
+                  Select property
+                </Box>
+              );
+            }
+
+            const selectedPropertyItem = properties.find((property) => property.id === selected);
+            if (!selectedPropertyItem) {
+              return selected;
+            }
+
+            return `${selectedPropertyItem.address} - ${selectedPropertyItem.billableUnits} units`;
+          }
+        }}
+        sx={getFormFieldSx()}
+      >
+        <MenuItem value="" disabled>
+          Select property
         </MenuItem>
-      ))}
-    </TextField>
+        {properties.map((property) => (
+          <MenuItem key={property.id} value={property.id}>
+            {property.address} - {property.billableUnits} units
+          </MenuItem>
+        ))}
+      </TextField>
+    </Stack>
   );
 }
 
@@ -142,22 +190,21 @@ export function SubscriptionFormDatesStatusSection(
   } = props;
 
   return (
-    <>
+    <Stack spacing={2}>
+      {sectionTitle('Dates & status')}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
         <TextField
-          label="Start Date"
           type="date"
           value={startDate}
           onChange={(event) => onStartDateChange(event.target.value)}
           InputLabelProps={{ shrink: true }}
-          sx={{ flex: 1 }}
+          sx={{ flex: 1, ...getFormFieldSx() }}
         />
         <TextField
           select
-          label="Status"
           value={status}
           onChange={(event) => onStatusChange(event.target.value as SubscriptionStatus)}
-          sx={{ flex: 1 }}
+          sx={{ flex: 1, ...getFormFieldSx() }}
         >
           {subscriptionStatusOptions.map((option) => (
             <MenuItem key={option} value={option}>
@@ -172,88 +219,22 @@ export function SubscriptionFormDatesStatusSection(
           <Checkbox checked={hasEndDate} onChange={(event) => onHasEndDateChange(event.target.checked)} />
         }
         label="Set end date (disable Forever mode)"
+        sx={{ m: 0 }}
       />
 
       <TextField
-        label="End Date"
         type="date"
         value={endDate}
         onChange={(event) => onEndDateChange(event.target.value)}
         disabled={!hasEndDate}
         InputLabelProps={{ shrink: true }}
+        sx={getFormFieldSx()}
       />
-    </>
+    </Stack>
   );
 }
 
-type SubscriptionFormPaymentMethodSectionProps = {
-  accountId: string;
-  value: string;
-  loading: boolean;
-  methods: PaymentMethodItem[];
-  onChange: (paymentMethodId: string) => void;
-};
-
-export function SubscriptionFormPaymentMethodSection(
-  props: SubscriptionFormPaymentMethodSectionProps
-): JSX.Element {
-  const { accountId, value, loading, methods, onChange } = props;
-
-  return (
-    <TextField
-      select
-      label="Payment Method (Optional)"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={!accountId || loading}
-    >
-      <MenuItem value="">Use fallback/default behavior</MenuItem>
-      {methods.map((method) => (
-        <MenuItem key={method.id} value={method.id}>
-          {method.label}
-          {method.isDefault ? ' (default)' : ''}
-        </MenuItem>
-      ))}
-    </TextField>
-  );
-}
-
-type SubscriptionFormPricingsSectionProps = {
-  value: string[];
-  pricings: PricingItem[];
-  onChange: (pricingIds: string[]) => void;
-};
-
-export function SubscriptionFormPricingsSection(
-  props: SubscriptionFormPricingsSectionProps
-): JSX.Element {
-  const { value, pricings, onChange } = props;
-
-  return (
-    <FormControl>
-      <InputLabel id="subscription-pricing-multi-label">Pricings</InputLabel>
-      <Select
-        labelId="subscription-pricing-multi-label"
-        multiple
-        value={value}
-        onChange={(event) => onChange(event.target.value as string[])}
-        input={<OutlinedInput label="Pricings" />}
-        renderValue={(selected) => {
-          const labels = (selected as string[])
-            .map((id) => pricings.find((pricing) => pricing.id === id)?.internalName ?? id)
-            .filter(Boolean);
-          return labels.join(', ');
-        }}
-      >
-        {pricings.map((pricing) => (
-          <MenuItem key={pricing.id} value={pricing.id}>
-            <Checkbox checked={value.includes(pricing.id)} />
-            <Typography variant="body2">
-              {pricing.internalName} ({pricing.type})
-            </Typography>
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  );
-}
+export {
+  SubscriptionFormPaymentMethodSection,
+  SubscriptionFormPricingsSection
+} from './SubscriptionFormSections.payment-pricings';

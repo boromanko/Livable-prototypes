@@ -1,5 +1,5 @@
 import CloseIcon from '@mui/icons-material/Close';
-import { Alert, Box, Divider, Drawer, Stack, Typography } from '@mui/material';
+import { Alert, Dialog, Stack, Typography } from '@mui/material';
 import type { BillingScope, SubscriptionItem } from '../../api';
 import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import {
@@ -26,13 +26,20 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
   const controller = useSubscriptionFormController(props);
 
   return (
-    <Drawer
-      anchor="right"
+    <Dialog
       open={props.open}
       onClose={controller.actions.onClose}
+      fullWidth
+      maxWidth={false}
       PaperProps={{
         sx: {
-          width: { xs: '100%', sm: 540 }
+          width: { xs: 'calc(100vw - 16px)', sm: 760 },
+          maxWidth: 760,
+          height: 'min(920px, calc(100vh - 16px))',
+          m: { xs: 1, sm: 2 },
+          overflow: 'hidden',
+          borderRadius: '2px',
+          boxShadow: '0px 18px 32px rgba(0, 0, 0, 0.15)'
         }
       }}
     >
@@ -41,25 +48,31 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
           direction="row"
           alignItems="center"
           justifyContent="space-between"
-          spacing={1}
-          sx={{ p: 2 }}
+          sx={{
+            px: { xs: 2.5, sm: 5 },
+            py: 3.5,
+            background: 'linear-gradient(180deg, #F8F9FA 0%, #FFFFFF 100%)',
+            borderBottom: '1px solid #E1E7EC',
+            flexShrink: 0
+          }}
         >
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {controller.title}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Configure account/property scope, dates, payment method and pricing set.
-            </Typography>
-          </Box>
-          <AppIconButton tone="plain" onClick={controller.actions.onClose} aria-label="Close drawer">
-            <CloseIcon />
+          <Typography sx={{ color: '#212934', fontSize: 20, fontWeight: 600 }}>
+            {controller.title}
+          </Typography>
+          <AppIconButton tone="plain" onClick={controller.actions.onClose} aria-label="Close dialog">
+            <CloseIcon sx={{ color: '#4B617C' }} />
           </AppIconButton>
         </Stack>
 
-        <Divider />
-
-        <Stack spacing={2} sx={{ p: 2, overflowY: 'auto' }}>
+        <Stack
+          spacing={4}
+          sx={{
+            px: { xs: 2.5, sm: 4 },
+            py: 4,
+            flex: 1,
+            overflowY: 'auto'
+          }}
+        >
           {controller.formError ? <Alert severity="error">{controller.formError}</Alert> : null}
 
           <SubscriptionFormAccountSection
@@ -111,17 +124,28 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
           />
         </Stack>
 
-        <Divider />
-
-        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ p: 2 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: '1px solid #E1E7EC',
+            backgroundColor: '#FFFFFF',
+            flexShrink: 0
+          }}
+        >
           <SecondaryButton onClick={controller.actions.onClose} disabled={controller.isSaving}>
             Cancel
           </SecondaryButton>
-          <PrimaryButton onClick={controller.actions.onSubmit} disabled={!controller.canSubmit || controller.isSaving}>
+          <PrimaryButton
+            onClick={controller.actions.onSubmit}
+            disabled={!controller.canSubmit || controller.isSaving}
+          >
             {controller.isEdit ? 'Save changes' : 'Create subscription'}
           </PrimaryButton>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 }
