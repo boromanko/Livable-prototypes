@@ -296,4 +296,74 @@ describe('resolvePricingTree', () => {
       ['prop-1', 'prop-2']
     );
   });
+
+  it('builds subscription summaries with scope-aware coverage labels', () => {
+    const pricing = buildTieredPricing('pricing-summary', 'units', [
+      buildSubscription({
+        id: 'sub-account-summary',
+        scope: 'ACCOUNT',
+        status: 'ACTIVE',
+        createdAt: '2026-02-12T00:00:00.000Z'
+      }),
+      buildSubscription({
+        id: 'sub-property-summary',
+        scope: 'PROPERTY',
+        status: 'CANCELED',
+        createdAt: '2026-02-13T00:00:00.000Z',
+        propertyIds: ['prop-1', 'prop-2']
+      })
+    ]);
+
+    const [item] = resolvePricingTree([pricing], baseProperties);
+    assert.ok(item);
+    assert.equal(item.subscriptionsCount, 2);
+    assert.equal(item.subscriptions.length, 2);
+
+    const accountSummary = item.subscriptions.find(
+      (subscription) => subscription.id === 'sub-account-summary'
+    );
+    const propertySummary = item.subscriptions.find(
+      (subscription) => subscription.id === 'sub-property-summary'
+    );
+
+    assert.ok(accountSummary);
+    assert.ok(propertySummary);
+
+    assert.equal(accountSummary.scope, 'ACCOUNT');
+    assert.equal(accountSummary.propertiesCount, 3);
+    assert.equal(accountSummary.totalProperties, 3);
+    assert.equal(accountSummary.coverageLabel, '3/3 properties');
+
+    assert.equal(propertySummary.scope, 'PROPERTY');
+    assert.equal(propertySummary.status, 'CANCELED');
+    assert.equal(propertySummary.propertiesCount, 2);
+    assert.equal(propertySummary.totalProperties, 3);
+    assert.equal(propertySummary.coverageLabel, '2 properties');
+  });
+
+  it('deduplicates subscription summaries by subscription id', () => {
+    const pricing = buildTieredPricing('pricing-summary-dedupe', 'units', [
+      buildSubscription({
+        id: 'sub-dup',
+        scope: 'PROPERTY',
+        status: 'ACTIVE',
+        createdAt: '2026-02-13T00:00:00.000Z',
+        propertyIds: ['prop-1']
+      }),
+      buildSubscription({
+        id: 'sub-dup',
+        scope: 'PROPERTY',
+        status: 'ACTIVE',
+        createdAt: '2026-02-13T00:00:00.000Z',
+        propertyIds: ['prop-2']
+      })
+    ]);
+
+    const [item] = resolvePricingTree([pricing], baseProperties);
+    assert.ok(item);
+    assert.equal(item.subscriptionsCount, 1);
+    assert.equal(item.subscriptions.length, 1);
+    assert.equal(item.subscriptions[0]?.propertiesCount, 2);
+    assert.equal(item.subscriptions[0]?.coverageLabel, '2 properties');
+  });
 });

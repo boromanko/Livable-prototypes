@@ -10,6 +10,7 @@ import type {
   PricingTreeAccountUsage,
   PricingTreePropertyUsage,
   PricingTreeResolvedItem,
+  PricingTreeSubscriptionSummary,
   ResolutionPropertyInput,
   TierSnapshot
 } from './pricing-resolution.types.js';
@@ -40,6 +41,61 @@ export function resolvePricingTree(
 
     const accountsForProduct = candidatesByProductAndAccount.get(pricing.product.id) ?? new Map();
     const accountRows: PricingTreeAccountUsage[] = [];
+    const subscriptionSummaryMetaById = new Map<
+      string,
+      {
+        summary: PricingTreeSubscriptionSummary;
+        selectedPropertyIds: Set<string>;
+      }
+    >();
+
+    for (const subscription of pricing.subscriptions) {
+      const accountProperties = propertiesByAccountId.get(subscription.accountId) ?? [];
+      const totalProperties = accountProperties.length;
+      const accountPropertyIds = new Set(accountProperties.map((property) => property.id));
+      const selectedPropertyIds = Array.from(
+        new Set(
+          subscription.propertyIds.filter((propertyId) =>
+            accountPropertyIds.has(propertyId)
+          )
+        )
+      );
+      const propertiesCount =
+        subscription.scope === 'ACCOUNT' ? totalProperties : selectedPropertyIds.length;
+      const coverageLabel =
+        subscription.scope === 'ACCOUNT'
+          ? `${totalProperties}/${totalProperties} properties`
+          : `${propertiesCount} properties`;
+
+      const existingMeta = subscriptionSummaryMetaById.get(subscription.id);
+      if (!existingMeta) {
+        subscriptionSummaryMetaById.set(subscription.id, {
+          summary: {
+            id: subscription.id,
+            scope: subscription.scope,
+            status: subscription.status,
+            createdAt: subscription.createdAt,
+            account: subscription.account,
+            propertiesCount,
+            totalProperties,
+            coverageLabel
+          },
+          selectedPropertyIds: new Set(selectedPropertyIds)
+        });
+        continue;
+      }
+
+      // Defensive merge for malformed payloads that might contain duplicate subscription ids.
+      if (subscription.scope === 'PROPERTY' && existingMeta.summary.scope === 'PROPERTY') {
+        for (const propertyId of selectedPropertyIds) {
+          existingMeta.selectedPropertyIds.add(propertyId);
+        }
+
+        const mergedPropertiesCount = existingMeta.selectedPropertyIds.size;
+        existingMeta.summary.propertiesCount = mergedPropertiesCount;
+        existingMeta.summary.coverageLabel = `${mergedPropertiesCount} properties`;
+      }
+    }
 
     for (const [accountId, groupedCandidates] of accountsForProduct.entries()) {
       const account = accountById.get(accountId);
@@ -173,6 +229,17 @@ export function resolvePricingTree(
       left.account.companyName.localeCompare(right.account.companyName)
     );
 
+    const subscriptionSummaries = Array.from(subscriptionSummaryMetaById.values())
+      .map((item) => item.summary)
+      .sort((left, right) => {
+        const byAccount = left.account.companyName.localeCompare(right.account.companyName);
+        if (byAccount !== 0) {
+          return byAccount;
+        }
+
+        return right.createdAt.getTime() - left.createdAt.getTime();
+      });
+
     return {
       id: pricing.id,
       product: pricing.product,
@@ -184,7 +251,8 @@ export function resolvePricingTree(
       billingInterval: pricing.billingInterval,
       isActive: pricing.isActive,
       createdAt: pricing.createdAt,
-      subscriptionsCount: pricing.subscriptionsCount,
+      subscriptionsCount: subscriptionSummaries.length,
+      subscriptions: subscriptionSummaries,
       tiers,
       accounts: accountRows
     };

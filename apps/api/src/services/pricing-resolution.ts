@@ -5,5 +5,6 @@ export type {
   PricingTreePropertyUsage,
   PricingTreeResolvedItem,
   PricingTreeResolvedTier,
+  PricingTreeSubscriptionSummary,
   ResolutionPropertyInput
 } from './pricing-resolution.types.js';

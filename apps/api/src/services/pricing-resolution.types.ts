@@ -71,6 +71,17 @@ export type ResolutionCandidate = {
 
 export type PricingTreeResolvedTier = TierSnapshot | null;
 
+export type PricingTreeSubscriptionSummary = {
+  id: string;
+  scope: ResolutionScope;
+  status: ResolutionStatus;
+  createdAt: Date;
+  account: AccountIdentity;
+  propertiesCount: number;
+  totalProperties: number;
+  coverageLabel: string;
+};
+
 export type PricingTreePropertyUsage = {
   property: {
     id: string;
@@ -113,6 +124,7 @@ export type PricingTreeResolvedItem = {
   isActive: boolean;
   createdAt: Date;
   subscriptionsCount: number;
+  subscriptions: PricingTreeSubscriptionSummary[];
   tiers: TierSnapshot[];
   accounts: PricingTreeAccountUsage[];
 };
