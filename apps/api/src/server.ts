@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { prisma } from '@stripe-integration/db';
 import { ZodError } from 'zod';
 import { registerAdminRoutes } from './routes/admin.js';
+import { ensureDbInvariants } from './services/db-invariants.js';
 
 const app = Fastify({ logger: true });
 const REQUIRED_TABLES = [
@@ -85,6 +86,7 @@ process.on('SIGTERM', shutdown);
 const port = Number(process.env.PORT ?? 4000);
 try {
   await assertDatabaseIsInitialized();
+  await ensureDbInvariants();
 } catch (error) {
   app.log.error({ err: error }, 'Startup database check failed');
   await prisma.$disconnect();

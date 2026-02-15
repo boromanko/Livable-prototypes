@@ -26,7 +26,7 @@ type PricingTreeViewProps = {
   setCollapsedProducts: React.Dispatch<React.SetStateAction<Set<string>>>;
   setCollapsedUsageSections: React.Dispatch<React.SetStateAction<Set<string>>>;
   togglePricingFromCaret: (pricingId: string) => void;
-  togglePricingSectionLink: (pricingId: string, section: 'accounts' | 'specific-properties') => void;
+  togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
   openEditPricing: OpenEditPricing;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
   setPricingActionsTarget: React.Dispatch<React.SetStateAction<PricingActionsMenuTarget | null>>;

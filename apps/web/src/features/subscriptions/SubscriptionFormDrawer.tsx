@@ -91,11 +91,11 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
           <SubscriptionFormPropertySection
             scope={controller.formState.scope}
             accountId={controller.formState.accountId}
-            value={controller.formState.propertyId}
+            value={controller.formState.propertyIds}
             properties={controller.properties}
-            selectedProperty={controller.selectedProperty}
+            selectedProperties={controller.selectedProperties}
             loading={controller.propertiesLoading}
-            onChange={controller.actions.setPropertyId}
+            onChange={controller.actions.setPropertyIds}
           />
 
           <SubscriptionFormDatesStatusSection

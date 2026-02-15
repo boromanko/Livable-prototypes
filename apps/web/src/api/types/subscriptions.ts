@@ -35,11 +35,11 @@ export type SubscriptionItem = {
     companyName: string;
     email: string;
   };
-  property: {
+  properties: Array<{
     id: string;
     address: string;
     billableUnits: number;
-  } | null;
+  }>;
   paymentMethod: {
     id: string;
     type: PaymentMethodItem['type'];
@@ -65,7 +65,7 @@ export type SubscriptionsResponse = PaginatedResponse<SubscriptionItem>;
 export type CreateSubscriptionPayload = {
   accountId: string;
   scope: BillingScope;
-  propertyId?: string | null;
+  propertyIds?: string[];
   startDate: string;
   endDate?: string | null;
   status?: SubscriptionStatus;

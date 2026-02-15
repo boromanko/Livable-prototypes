@@ -17,7 +17,7 @@ export function matchesPricingFilters(
 
   if (
     accountIdFilter.length > 0 &&
-    !pricing.accounts.some((accountUsage) => accountIdFilter.includes(accountUsage.account.id))
+    !pricing.subscriptions.some((subscription) => accountIdFilter.includes(subscription.account.id))
   ) {
     return false;
   }
@@ -36,18 +36,22 @@ export function matchesPricingFilters(
     return true;
   }
 
-  return pricing.accounts.some((accountUsage) => {
-    if (
-      accountUsage.account.companyName.toLowerCase().includes(normalizedSearch) ||
-      accountUsage.account.email.toLowerCase().includes(normalizedSearch)
-    ) {
-      return true;
-    }
-
-    return accountUsage.properties.some((propertyUsage) =>
-      propertyUsage.property.address.toLowerCase().includes(normalizedSearch)
+  const inSubscriptions = pricing.subscriptions.some((subscription) => {
+    return (
+      subscription.account.companyName.toLowerCase().includes(normalizedSearch) ||
+      subscription.account.email.toLowerCase().includes(normalizedSearch)
     );
   });
+
+  if (inSubscriptions) {
+    return true;
+  }
+
+  return pricing.accounts.some((accountUsage) =>
+    accountUsage.properties.some((propertyUsage) =>
+      propertyUsage.property.address.toLowerCase().includes(normalizedSearch)
+    )
+  );
 }
 
 export function hasStructuredPricingFilters(

@@ -52,7 +52,6 @@ type MockDbData = {
     status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
     startDate: Date;
     endDate: Date | null;
-    propertyId: string | null;
     propertyIds: string[];
     pricingIds: string[];
   }>;
@@ -80,7 +79,6 @@ type MockDb = {
         scope: 'ACCOUNT' | 'PROPERTY';
         startDate: Date;
         endDate: Date | null;
-        propertyId: string | null;
         targetProperties: Array<{ propertyId: string }>;
         subscriptionItems: Array<{ pricing: { productId: string } }>;
       }>
@@ -134,7 +132,6 @@ function createMockDb(data: MockDbData): MockDb {
             scope: subscription.scope,
             startDate: subscription.startDate,
             endDate: subscription.endDate,
-            propertyId: subscription.propertyId,
             targetProperties: subscription.propertyIds.map((propertyId) => ({ propertyId })),
             subscriptionItems: subscription.pricingIds
               .map((pricingId) => pricingById.get(pricingId))
@@ -464,7 +461,6 @@ describe('validateSubscriptionCandidate', () => {
           status: 'ACTIVE',
           startDate: new Date('2026-02-01T00:00:00.000Z'),
           endDate: null,
-          propertyId: null,
           propertyIds: [],
           pricingIds: [pricingUnitBase.id]
         }
@@ -499,7 +495,6 @@ describe('validateSubscriptionCandidate', () => {
           status: 'ACTIVE',
           startDate: new Date('2026-02-01T00:00:00.000Z'),
           endDate: null,
-          propertyId: null,
           propertyIds: [],
           pricingIds: [pricingUnitBase.id]
         }
@@ -535,7 +530,6 @@ describe('validateSubscriptionCandidate', () => {
           status: 'ACTIVE',
           startDate: new Date('2026-02-01T00:00:00.000Z'),
           endDate: null,
-          propertyId: 'prop-1',
           propertyIds: ['prop-1'],
           pricingIds: [pricingUnitBase.id]
         }
@@ -574,7 +568,6 @@ describe('validateSubscriptionCandidate', () => {
           status: 'ACTIVE',
           startDate: new Date('2026-02-01T00:00:00.000Z'),
           endDate: null,
-          propertyId: 'prop-1',
           propertyIds: ['prop-1'],
           pricingIds: [pricingUnitBase.id]
         }

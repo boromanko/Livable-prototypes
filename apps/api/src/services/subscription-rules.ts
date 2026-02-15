@@ -269,7 +269,6 @@ export async function validateSubscriptionCandidate(
       status: true,
       startDate: true,
       endDate: true,
-      propertyId: true,
       targetProperties: {
         select: {
           propertyId: true
@@ -313,10 +312,9 @@ export async function validateSubscriptionCandidate(
       return `Conflicting account-level subscription for product ${candidateProductLabelById.get(conflictingProductId) ?? conflictingProductId} already exists in overlapping date range`;
     }
 
-    const existingPropertyIds = uniqueIds([
-      ...(existing.propertyId ? [existing.propertyId] : []),
-      ...existing.targetProperties.map((target) => target.propertyId)
-    ]).filter((propertyId) => accountPropertyIds.has(propertyId));
+    const existingPropertyIds = uniqueIds(
+      existing.targetProperties.map((target) => target.propertyId)
+    ).filter((propertyId) => accountPropertyIds.has(propertyId));
 
     const hasPropertyIntersection = candidateScopePropertyIds.some((propertyId) =>
       existingPropertyIds.includes(propertyId)

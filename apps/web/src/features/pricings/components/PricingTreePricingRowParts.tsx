@@ -23,12 +23,10 @@ type PricingTreePricingLeftContentProps = {
   pricing: PricingTreeItem;
   groupByProduct: boolean;
   isPricingExpanded: boolean;
-  hasAccountRows: boolean;
-  hasSpecificPropertyRows: boolean;
-  accountRowsCount: number;
-  specificPropertiesCount: number;
+  hasSubscriptions: boolean;
+  subscriptionsCount: number;
   togglePricingFromCaret: (pricingId: string) => void;
-  togglePricingSectionLink: (pricingId: string, section: 'accounts' | 'specific-properties') => void;
+  togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
 };
 
 export function PricingTreePricingLeftContent(
@@ -38,10 +36,8 @@ export function PricingTreePricingLeftContent(
     pricing,
     groupByProduct,
     isPricingExpanded,
-    hasAccountRows,
-    hasSpecificPropertyRows,
-    accountRowsCount,
-    specificPropertiesCount,
+    hasSubscriptions,
+    subscriptionsCount,
     togglePricingFromCaret,
     togglePricingSectionLink
   } = props;
@@ -85,18 +81,18 @@ export function PricingTreePricingLeftContent(
           >
             {pricing.type === 'TIERED' ? 'Tiered' : 'Fixed'}
           </Typography>
-          {hasAccountRows || hasSpecificPropertyRows ? (
+          {hasSubscriptions ? (
             <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
               |
             </Typography>
           ) : null}
-          {hasAccountRows ? (
+          {hasSubscriptions ? (
             <Link
               href="#"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                togglePricingSectionLink(pricing.id, 'accounts');
+                togglePricingSectionLink(pricing.id, 'subscriptions');
               }}
               sx={{
                 fontWeight: 600,
@@ -107,32 +103,7 @@ export function PricingTreePricingLeftContent(
                 '&:hover': { textDecoration: 'underline' }
               }}
             >
-              {accountRowsCount} Accounts
-            </Link>
-          ) : null}
-          {hasAccountRows && hasSpecificPropertyRows ? (
-            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-              |
-            </Typography>
-          ) : null}
-          {hasSpecificPropertyRows ? (
-            <Link
-              href="#"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                togglePricingSectionLink(pricing.id, 'specific-properties');
-              }}
-              sx={{
-                fontWeight: 600,
-                fontSize: 15,
-                color: '#98A4B3',
-                textDecoration: 'none',
-                cursor: 'pointer',
-                '&:hover': { textDecoration: 'underline' }
-              }}
-            >
-              {specificPropertiesCount} Properties
+              {subscriptionsCount} Subscriptions
             </Link>
           ) : null}
         </Stack>

@@ -118,7 +118,6 @@ export function PricingTreeUsageAssignRow(props: PricingTreeUsageAssignRowProps)
 
 type PricingTreeUsageAssignSubscriptionRowProps = {
   pricingId: string;
-  scope: 'ACCOUNT' | 'PROPERTY';
   showSectionHeader: boolean;
   openCreateSubscription: OpenCreateSubscription;
 };
@@ -126,13 +125,13 @@ type PricingTreeUsageAssignSubscriptionRowProps = {
 export function PricingTreeUsageAssignSubscriptionRow(
   props: PricingTreeUsageAssignSubscriptionRowProps
 ): JSX.Element {
-  const { pricingId, scope, showSectionHeader, openCreateSubscription } = props;
+  const { pricingId, showSectionHeader, openCreateSubscription } = props;
 
   return (
     <PricingTreeUsageAssignRow
       showSectionHeader={showSectionHeader}
-      label={scope === 'ACCOUNT' ? 'Assign account' : 'Assign property'}
-      onClick={() => openCreateSubscription(pricingId, { scope })}
+      label="Assign subscription"
+      onClick={() => openCreateSubscription(pricingId)}
     />
   );
 }

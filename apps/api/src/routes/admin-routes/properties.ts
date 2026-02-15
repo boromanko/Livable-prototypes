@@ -43,7 +43,7 @@ export async function registerAdminPropertiesRoutes(app: FastifyInstance): Promi
           createdAt: true,
           _count: {
             select: {
-              subscriptions: true
+              subscriptionTargets: true
             }
           }
         },
@@ -61,7 +61,7 @@ export async function registerAdminPropertiesRoutes(app: FastifyInstance): Promi
         address: item.address,
         billableUnits: item.billableUnits,
         createdAt: item.createdAt,
-        subscriptionsCount: item._count.subscriptions
+        subscriptionsCount: item._count.subscriptionTargets
       })),
       page,
       pageSize,
@@ -96,7 +96,7 @@ export async function registerAdminPropertiesRoutes(app: FastifyInstance): Promi
         createdAt: true,
         _count: {
           select: {
-            subscriptions: true
+            subscriptionTargets: true
           }
         }
       }
@@ -109,7 +109,7 @@ export async function registerAdminPropertiesRoutes(app: FastifyInstance): Promi
         address: updated.address,
         billableUnits: updated.billableUnits,
         createdAt: updated.createdAt,
-        subscriptionsCount: updated._count.subscriptions
+        subscriptionsCount: updated._count.subscriptionTargets
       }
     };
   });

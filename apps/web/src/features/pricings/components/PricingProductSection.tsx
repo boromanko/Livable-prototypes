@@ -35,7 +35,7 @@ type PricingProductSectionProps = {
   setCollapsedProducts: React.Dispatch<React.SetStateAction<Set<string>>>;
   setCollapsedUsageSections: React.Dispatch<React.SetStateAction<Set<string>>>;
   togglePricingFromCaret: (pricingId: string) => void;
-  togglePricingSectionLink: (pricingId: string, section: 'accounts' | 'specific-properties') => void;
+  togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
   openEditPricing: OpenEditPricing;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
   setPricingActionsTarget: React.Dispatch<React.SetStateAction<PricingActionsMenuTarget | null>>;
@@ -136,28 +136,14 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
           {productPricings.map((pricing, pricingIndex) => {
             const pricingKey = `pricing:${pricing.id}`;
             const isPricingExpanded = expandedPricings.has(pricingKey);
-            const accountsSectionKey = `accounts:${pricing.id}`;
-            const specificPropertiesSectionKey = `specific-properties:${pricing.id}`;
-            const isAccountsCollapsed = collapsedUsageSections.has(accountsSectionKey);
-            const isSpecificPropertiesCollapsed = collapsedUsageSections.has(specificPropertiesSectionKey);
-            const accountRows = pricing.accounts.filter((accountUsage) => accountUsage.source === 'ACCOUNT');
-            const specificPropertyRows = pricing.accounts.flatMap((accountUsage) =>
-              accountUsage.properties
-                .filter((propertyUsage) => propertyUsage.source === 'OVERRIDE')
-                .map((propertyUsage) => ({
-                  accountUsage,
-                  propertyUsage
-                }))
-            );
-            const specificPropertiesCount = specificPropertyRows.length;
-            const hasAccountRows = accountRows.length > 0;
-            const hasSpecificPropertyRows = specificPropertiesCount > 0;
-            const hasMixedUsageSections = hasAccountRows && hasSpecificPropertyRows;
-            const showAccountsSectionHeader = hasMixedUsageSections;
-            const showPropertiesSectionHeader = hasMixedUsageSections;
-            const isAccountsVisible = hasAccountRows && (!showAccountsSectionHeader || !isAccountsCollapsed);
-            const isSpecificPropertiesVisible =
-              hasSpecificPropertyRows && (!showPropertiesSectionHeader || !isSpecificPropertiesCollapsed);
+            const subscriptionsSectionKey = `subscriptions:${pricing.id}`;
+            const isSubscriptionsCollapsed = collapsedUsageSections.has(subscriptionsSectionKey);
+            const subscriptions = pricing.subscriptions;
+            const subscriptionsCount = subscriptions.length;
+            const hasSubscriptions = subscriptionsCount > 0;
+            const showSubscriptionsSectionHeader = hasSubscriptions;
+            const isSubscriptionsVisible =
+              hasSubscriptions && (!showSubscriptionsSectionHeader || !isSubscriptionsCollapsed);
 
             return (
               <Box key={pricing.id}>
@@ -167,10 +153,8 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
                   groupByProduct={groupByProduct}
                   productTierColumnCount={productTierColumnCount}
                   isPricingExpanded={isPricingExpanded}
-                  hasAccountRows={hasAccountRows}
-                  hasSpecificPropertyRows={hasSpecificPropertyRows}
-                  accountRowsCount={accountRows.length}
-                  specificPropertiesCount={specificPropertiesCount}
+                  hasSubscriptions={hasSubscriptions}
+                  subscriptionsCount={subscriptionsCount}
                   togglePricingFromCaret={togglePricingFromCaret}
                   togglePricingSectionLink={togglePricingSectionLink}
                   openEditPricing={openEditPricing}
@@ -182,16 +166,11 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
                   <PricingTreeUsageRows
                     pricing={pricing}
                     productTierColumnCount={productTierColumnCount}
-                    accountRows={accountRows}
-                    specificPropertyRows={specificPropertyRows}
-                    showAccountsSectionHeader={showAccountsSectionHeader}
-                    showPropertiesSectionHeader={showPropertiesSectionHeader}
-                    isAccountsCollapsed={isAccountsCollapsed}
-                    isSpecificPropertiesCollapsed={isSpecificPropertiesCollapsed}
-                    isAccountsVisible={isAccountsVisible}
-                    isSpecificPropertiesVisible={isSpecificPropertiesVisible}
-                    accountsSectionKey={accountsSectionKey}
-                    specificPropertiesSectionKey={specificPropertiesSectionKey}
+                    subscriptions={subscriptions}
+                    showSubscriptionsSectionHeader={showSubscriptionsSectionHeader}
+                    isSubscriptionsCollapsed={isSubscriptionsCollapsed}
+                    isSubscriptionsVisible={isSubscriptionsVisible}
+                    subscriptionsSectionKey={subscriptionsSectionKey}
                     setCollapsedUsageSections={setCollapsedUsageSections}
                     toggleExpanded={toggleExpanded}
                     setDetachConfirmTarget={setDetachConfirmTarget}

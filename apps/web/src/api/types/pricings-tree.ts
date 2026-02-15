@@ -7,6 +7,23 @@ export type PricingTreeResolvedTier = {
 } | null;
 
 export type PricingTierScope = 'ACCOUNT_POOL' | 'PROPERTY';
+export type PricingTreeSubscriptionScope = 'ACCOUNT' | 'PROPERTY';
+export type PricingTreeSubscriptionStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
+
+export type PricingTreeSubscriptionSummary = {
+  id: string;
+  scope: PricingTreeSubscriptionScope;
+  status: PricingTreeSubscriptionStatus;
+  createdAt: string;
+  account: {
+    id: string;
+    companyName: string;
+    email: string;
+  };
+  propertiesCount: number;
+  totalProperties: number;
+  coverageLabel: string;
+};
 
 export type PricingTreePropertyUsage = {
   property: {
@@ -58,6 +75,7 @@ export type PricingTreeItem = {
   isActive: boolean;
   createdAt: string;
   subscriptionsCount: number;
+  subscriptions: PricingTreeSubscriptionSummary[];
   tiers: PricingTier[];
   accounts: PricingTreeAccountUsage[];
 };

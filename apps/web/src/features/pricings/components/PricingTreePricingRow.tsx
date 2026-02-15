@@ -20,12 +20,10 @@ type PricingTreePricingRowProps = {
   groupByProduct: boolean;
   productTierColumnCount: number;
   isPricingExpanded: boolean;
-  hasAccountRows: boolean;
-  hasSpecificPropertyRows: boolean;
-  accountRowsCount: number;
-  specificPropertiesCount: number;
+  hasSubscriptions: boolean;
+  subscriptionsCount: number;
   togglePricingFromCaret: (pricingId: string) => void;
-  togglePricingSectionLink: (pricingId: string, section: 'accounts' | 'specific-properties') => void;
+  togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
   openEditPricing: OpenEditPricing;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
   setPricingActionsTarget: React.Dispatch<React.SetStateAction<PricingActionsMenuTarget | null>>;
@@ -38,10 +36,8 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
     groupByProduct,
     productTierColumnCount,
     isPricingExpanded,
-    hasAccountRows,
-    hasSpecificPropertyRows,
-    accountRowsCount,
-    specificPropertiesCount,
+    hasSubscriptions,
+    subscriptionsCount,
     togglePricingFromCaret,
     togglePricingSectionLink,
     openEditPricing,
@@ -82,10 +78,8 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
         pricing={pricing}
         groupByProduct={groupByProduct}
         isPricingExpanded={isPricingExpanded}
-        hasAccountRows={hasAccountRows}
-        hasSpecificPropertyRows={hasSpecificPropertyRows}
-        accountRowsCount={accountRowsCount}
-        specificPropertiesCount={specificPropertiesCount}
+        hasSubscriptions={hasSubscriptions}
+        subscriptionsCount={subscriptionsCount}
         togglePricingFromCaret={togglePricingFromCaret}
         togglePricingSectionLink={togglePricingSectionLink}
       />

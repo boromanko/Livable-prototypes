@@ -18,7 +18,7 @@ export function usePricingTreeInteractions() {
     });
   }
 
-  function togglePricingSectionLink(pricingId: string, section: 'accounts' | 'specific-properties'): void {
+  function togglePricingSectionLink(pricingId: string, section: 'subscriptions'): void {
     const pricingKey = `pricing:${pricingId}`;
     const sectionKey = `${section}:${pricingId}`;
     const isPricingExpanded = expandedPricings.has(pricingKey);
@@ -55,8 +55,7 @@ export function usePricingTreeInteractions() {
 
   function togglePricingFromCaret(pricingId: string): void {
     const pricingKey = `pricing:${pricingId}`;
-    const accountsSectionKey = `accounts:${pricingId}`;
-    const specificPropertiesSectionKey = `specific-properties:${pricingId}`;
+    const subscriptionsSectionKey = `subscriptions:${pricingId}`;
 
     const isExpanded = expandedPricings.has(pricingKey);
 
@@ -74,8 +73,7 @@ export function usePricingTreeInteractions() {
       // Opening a pricing from its caret should keep child sections collapsed.
       setCollapsedUsageSections((prev) => {
         const next = new Set(prev);
-        next.add(accountsSectionKey);
-        next.add(specificPropertiesSectionKey);
+        next.add(subscriptionsSectionKey);
         return next;
       });
     }

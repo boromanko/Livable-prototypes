@@ -4,7 +4,7 @@ import { toDateInputValue } from '../../lib/format/date';
 export type SubscriptionFormState = {
   accountId: string;
   scope: BillingScope;
-  propertyId: string;
+  propertyIds: string[];
   startDate: string;
   endDate: string;
   hasEndDate: boolean;
@@ -29,7 +29,7 @@ export function buildInitialSubscriptionFormState(
   return {
     accountId: defaultAccountId ?? '',
     scope: defaultScope,
-    propertyId: '',
+    propertyIds: [],
     startDate: new Date().toISOString().slice(0, 10),
     endDate: '',
     hasEndDate: false,
@@ -42,10 +42,16 @@ export function buildInitialSubscriptionFormState(
 export function buildFormStateFromSubscription(
   subscription: SubscriptionItem
 ): SubscriptionFormState {
+  const properties = subscription.properties;
+  const propertyIds =
+    subscription.scope === 'PROPERTY'
+      ? properties.map((property) => property.id)
+      : [];
+
   return {
     accountId: subscription.account.id,
     scope: subscription.scope,
-    propertyId: subscription.property?.id ?? '',
+    propertyIds,
     startDate: toDateInputValue(subscription.startDate),
     endDate: toDateInputValue(subscription.endDate),
     hasEndDate: Boolean(subscription.endDate),
@@ -64,7 +70,7 @@ export function canSubmitSubscriptionForm(formState: SubscriptionFormState): boo
     return false;
   }
 
-  if (formState.scope === 'PROPERTY' && !formState.propertyId) {
+  if (formState.scope === 'PROPERTY' && formState.propertyIds.length === 0) {
     return false;
   }
 

@@ -72,12 +72,9 @@ function buildSubscription(input: {
   scope: 'ACCOUNT' | 'PROPERTY';
   status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
   createdAt: string;
-  propertyId?: string;
   propertyIds?: string[];
 }): PricingResolutionInput['subscriptions'][number] {
-  const normalizedPropertyIds = Array.from(
-    new Set([...(input.propertyId ? [input.propertyId] : []), ...(input.propertyIds ?? [])])
-  );
+  const normalizedPropertyIds = Array.from(new Set(input.propertyIds ?? []));
 
   return {
     id: input.id,
@@ -140,7 +137,7 @@ describe('resolvePricingTree', () => {
         scope: 'PROPERTY',
         status: 'ACTIVE',
         createdAt: '2026-02-13T00:00:00.000Z',
-        propertyId: 'prop-1'
+        propertyIds: ['prop-1']
       })
     ]);
 
@@ -236,7 +233,7 @@ describe('resolvePricingTree', () => {
         scope: 'PROPERTY',
         status: 'ACTIVE',
         createdAt: '2026-02-13T00:00:00.000Z',
-        propertyId: 'prop-1'
+        propertyIds: ['prop-1']
       })
     ]);
 

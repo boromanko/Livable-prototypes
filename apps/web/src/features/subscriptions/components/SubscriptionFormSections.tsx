@@ -1,10 +1,14 @@
 import {
   Box,
   Checkbox,
+  FormControl,
   FormControlLabel,
   MenuItem,
+  OutlinedInput,
+  Select,
   Stack,
-  TextField
+  TextField,
+  Typography
 } from '@mui/material';
 import type {
   AccountItem,
@@ -103,63 +107,70 @@ export function SubscriptionFormScopeSection(
 type SubscriptionFormPropertySectionProps = {
   scope: BillingScope;
   accountId: string;
-  value: string;
+  value: string[];
   properties: PropertyItem[];
-  selectedProperty: PropertyItem | null;
+  selectedProperties: PropertyItem[];
   loading: boolean;
-  onChange: (propertyId: string) => void;
+  onChange: (propertyIds: string[]) => void;
 };
 
 export function SubscriptionFormPropertySection(
   props: SubscriptionFormPropertySectionProps
 ): JSX.Element {
-  const { scope, accountId, value, properties, selectedProperty, loading, onChange } = props;
+  const { scope, accountId, value, properties, selectedProperties, loading, onChange } = props;
+  const selectedUnits = selectedProperties.reduce(
+    (total, property) => total + property.billableUnits,
+    0
+  );
+  const selectedSummary =
+    selectedProperties.length > 0
+      ? `${selectedProperties.length} selected (${selectedUnits} units total).`
+      : null;
   const helperText =
     scope === 'PROPERTY'
-      ? selectedProperty
-        ? `Required for property-level subscriptions. Selected property has ${selectedProperty.billableUnits} units.`
-        : 'Required for property-level subscriptions.'
+      ? selectedSummary
+        ? `Required for property-level subscriptions. ${selectedSummary}`
+        : 'Required for property-level subscriptions. Select one or more properties.'
       : 'Not used for account-level subscriptions.';
 
   return (
     <Stack spacing={2}>
-      {sectionTitle('Property')}
-      <TextField
-        select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={scope !== 'PROPERTY' || !accountId || loading}
-        helperText={helperText}
-        SelectProps={{
-          displayEmpty: true,
-          renderValue: (selected) => {
-            if (typeof selected !== 'string' || selected === '') {
+      {sectionTitle('Properties')}
+      <FormControl sx={getFormFieldSx()}>
+        <Select
+          multiple
+          displayEmpty
+          value={value}
+          onChange={(event) => onChange(event.target.value as string[])}
+          input={<OutlinedInput />}
+          disabled={scope !== 'PROPERTY' || !accountId || loading}
+          renderValue={(selected) => {
+            const ids = selected as string[];
+            if (ids.length === 0) {
               return (
                 <Box component="span" sx={{ color: '#4B617C' }}>
-                  Select property
+                  Select one or more properties
                 </Box>
               );
             }
 
-            const selectedPropertyItem = properties.find((property) => property.id === selected);
-            if (!selectedPropertyItem) {
-              return selected;
-            }
+            return ids
+              .map((id) => properties.find((property) => property.id === id)?.address ?? id)
+              .join(', ');
+          }}
+        >
+          {properties.map((property) => (
+            <MenuItem key={property.id} value={property.id}>
+              <Checkbox checked={value.includes(property.id)} />
+              {property.address} - {property.billableUnits} units
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
-            return `${selectedPropertyItem.address} - ${selectedPropertyItem.billableUnits} units`;
-          }
-        }}
-        sx={getFormFieldSx()}
-      >
-        <MenuItem value="" disabled>
-          Select property
-        </MenuItem>
-        {properties.map((property) => (
-          <MenuItem key={property.id} value={property.id}>
-            {property.address} - {property.billableUnits} units
-          </MenuItem>
-        ))}
-      </TextField>
+      <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
+        {helperText}
+      </Typography>
     </Stack>
   );
 }

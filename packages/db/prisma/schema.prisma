@@ -50,7 +50,6 @@ model Property {
   createdAt DateTime       @default(now()) @map("created_at")
 
   account             Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  subscriptions       Subscription[]
   subscriptionTargets SubscriptionProperty[]
 
   @@index([accountId])
@@ -106,7 +105,6 @@ model PricingTier {
 model Subscription {
   id                String               @id @default(cuid())
   accountId         String               @map("account_id")
-  propertyId        String?              @map("property_id")
   scope             BillingScope
   startDate         DateTime             @map("start_date")
   endDate           DateTime?            @map("end_date")
@@ -114,13 +112,11 @@ model Subscription {
   paymentMethodId   String?              @map("payment_method_id")
   createdAt         DateTime             @default(now()) @map("created_at")
   account           Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  property          Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   paymentMethod     PaymentMethod?       @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
   subscriptionItems SubscriptionPricing[]
   targetProperties  SubscriptionProperty[]
 
   @@index([accountId])
-  @@index([propertyId])
   @@index([paymentMethodId])
   @@index([scope])
   @@map("subscriptions")

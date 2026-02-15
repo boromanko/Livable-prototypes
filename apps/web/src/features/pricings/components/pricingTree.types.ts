@@ -1,8 +1,6 @@
 import type {
   BillingScope,
-  PricingTreeAccountUsage,
   PricingTreeItem,
-  PricingTreePropertyUsage,
   ProductItem
 } from '../../../api';
 
@@ -30,8 +28,3 @@ export type OpenCreateSubscription = (
 ) => void;
 
 export type OpenEditPricing = (pricing: PricingTreeItem) => void;
-
-export type SpecificPropertyRow = {
-  accountUsage: PricingTreeAccountUsage;
-  propertyUsage: PricingTreePropertyUsage;
-};

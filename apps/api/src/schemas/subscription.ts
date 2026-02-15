@@ -23,7 +23,6 @@ export const createSubscriptionBodySchema = z
   .object({
     accountId: z.string().min(1),
     scope: billingScopeSchema,
-    propertyId: z.string().min(1).nullable().optional(),
     propertyIds: z.array(z.string().min(1)).optional(),
     startDate: z.coerce.date(),
     endDate: z.coerce.date().nullable().optional(),
@@ -32,15 +31,12 @@ export const createSubscriptionBodySchema = z
     pricingIds: z.array(z.string().min(1)).min(1)
   })
   .superRefine((payload, ctx) => {
-    const propertySelections = [
-      ...(payload.propertyId ? [payload.propertyId] : []),
-      ...(payload.propertyIds ?? [])
-    ];
+    const propertySelections = payload.propertyIds ?? [];
 
     if (payload.scope === 'ACCOUNT' && propertySelections.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'propertyId/propertyIds must be empty for ACCOUNT scope',
+        message: 'propertyIds must be empty for ACCOUNT scope',
         path: ['propertyIds']
       });
     }
@@ -48,7 +44,7 @@ export const createSubscriptionBodySchema = z
     if (payload.scope === 'PROPERTY' && propertySelections.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'propertyId or propertyIds is required for PROPERTY scope',
+        message: 'propertyIds are required for PROPERTY scope',
         path: ['propertyIds']
       });
     }
@@ -65,7 +61,6 @@ export const createSubscriptionBodySchema = z
 export const updateSubscriptionBodySchema = z
   .object({
     scope: billingScopeSchema.optional(),
-    propertyId: z.string().min(1).nullable().optional(),
     propertyIds: z.array(z.string().min(1)).optional(),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().nullable().optional(),

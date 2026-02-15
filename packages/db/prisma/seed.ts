@@ -337,6 +337,12 @@ function getPropertyId(accountId: string, propertyNumber: number): string {
   return `prop-${accountId}-${String(propertyNumber).padStart(2, '0')}`;
 }
 
+function getPropertyIds(accountId: string, propertyNumbers: number[]): string[] {
+  return Array.from(
+    new Set(propertyNumbers.map((propertyNumber) => getPropertyId(accountId, propertyNumber)))
+  );
+}
+
 async function main(): Promise<void> {
   await prisma.pricingTier.deleteMany();
   await prisma.subscriptionPricing.deleteMany();
@@ -467,7 +473,13 @@ async function main(): Promise<void> {
   for (const [accountIndex, account] of COMPANIES.entries()) {
     const defaultBundle = ACCOUNT_BUNDLES[accountIndex % ACCOUNT_BUNDLES.length] ?? [];
     const accountStatus =
-      accountIndex % 7 === 0 ? 'PAUSED' : accountIndex % 5 === 0 ? 'DRAFT' : 'ACTIVE';
+      accountIndex % 9 === 0
+        ? 'CANCELED'
+        : accountIndex % 7 === 0
+          ? 'PAUSED'
+          : accountIndex % 5 === 0
+            ? 'DRAFT'
+            : 'ACTIVE';
     const accountStartDate = new Date(Date.UTC(2026, 0, 5 + accountIndex));
 
     await prisma.subscription.create({
@@ -475,7 +487,6 @@ async function main(): Promise<void> {
         id: `sub-account-${account.id}`,
         accountId: account.id,
         scope: 'ACCOUNT',
-        propertyId: null,
         startDate: accountStartDate,
         endDate: null,
         status: accountStatus,
@@ -501,19 +512,18 @@ async function main(): Promise<void> {
 
     const propertyUnitOverride = unitPricingId ? getAlternatePricing(unitPricingId) : null;
     if (propertyUnitOverride) {
-      const propertyId = getPropertyId(account.id, 3);
+      const propertyIds = getPropertyIds(account.id, accountIndex % 2 === 0 ? [3, 4] : [3, 4, 5]);
       await prisma.subscription.create({
         data: {
           id: `sub-property-unit-${account.id}`,
           accountId: account.id,
           scope: 'PROPERTY',
-          propertyId,
           startDate: new Date(Date.UTC(2026, 0, 10 + accountIndex)),
           endDate: null,
-          status: 'ACTIVE',
+          status: accountIndex % 6 === 0 ? 'PAUSED' : 'ACTIVE',
           paymentMethodId: `pm-${account.id}-card-default`,
           targetProperties: {
-            create: [{ propertyId }]
+            create: propertyIds.map((propertyId) => ({ propertyId }))
           },
           subscriptionItems: {
             create: [{ pricingId: propertyUnitOverride, quantity: 1 }]
@@ -524,19 +534,23 @@ async function main(): Promise<void> {
 
     const propertyLateFeeOverride = lateFeePricingId ? getAlternatePricing(lateFeePricingId) : null;
     if (propertyLateFeeOverride) {
-      const propertyId = getPropertyId(account.id, 8);
+      const propertyIds = getPropertyIds(account.id, accountIndex % 3 === 0 ? [8, 9] : [8]);
       await prisma.subscription.create({
         data: {
           id: `sub-property-latefee-${account.id}`,
           accountId: account.id,
           scope: 'PROPERTY',
-          propertyId,
           startDate: new Date(Date.UTC(2026, 0, 15 + accountIndex)),
           endDate: null,
-          status: accountIndex % 4 === 0 ? 'DRAFT' : 'ACTIVE',
+          status:
+            accountIndex % 5 === 0
+              ? 'CANCELED'
+              : accountIndex % 4 === 0
+                ? 'DRAFT'
+                : 'ACTIVE',
           paymentMethodId: `pm-${account.id}-card-default`,
           targetProperties: {
-            create: [{ propertyId }]
+            create: propertyIds.map((propertyId) => ({ propertyId }))
           },
           subscriptionItems: {
             create: [{ pricingId: propertyLateFeeOverride, quantity: 1 }]
@@ -549,19 +563,18 @@ async function main(): Promise<void> {
       ? getAlternatePricing(automationPricingId)
       : null;
     if (propertyAutomationOverride && accountIndex % 3 === 0) {
-      const propertyId = getPropertyId(account.id, 10);
+      const propertyIds = getPropertyIds(account.id, [1, 2, 10]);
       await prisma.subscription.create({
         data: {
           id: `sub-property-automation-${account.id}`,
           accountId: account.id,
           scope: 'PROPERTY',
-          propertyId,
           startDate: new Date(Date.UTC(2026, 0, 20 + accountIndex)),
           endDate: null,
-          status: 'ACTIVE',
+          status: accountIndex % 2 === 0 ? 'CANCELED' : 'ACTIVE',
           paymentMethodId: `pm-${account.id}-card-default`,
           targetProperties: {
-            create: [{ propertyId }]
+            create: propertyIds.map((propertyId) => ({ propertyId }))
           },
           subscriptionItems: {
             create: [{ pricingId: propertyAutomationOverride, quantity: 1 }]

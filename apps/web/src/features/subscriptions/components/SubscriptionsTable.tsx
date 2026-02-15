@@ -23,6 +23,7 @@ import type {
   SubscriptionsSortDirection,
   SubscriptionsSortField
 } from '../subscriptionsTab.utils';
+import { getSubscriptionProperties } from '../subscriptionsTab.utils';
 
 type SubscriptionsTableProps = {
   isPending: boolean;
@@ -147,13 +148,16 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                 </TableCell>
               </TableRow>
             ) : rows.length ? (
-              rows.map((subscription) => (
-                <TableRow
-                  key={subscription.id}
-                  hover
-                  onClick={() => onEditSubscription(subscription)}
-                  sx={{ cursor: 'pointer' }}
-                >
+              rows.map((subscription) => {
+                const subscriptionProperties = getSubscriptionProperties(subscription);
+
+                return (
+                  <TableRow
+                    key={subscription.id}
+                    hover
+                    onClick={() => onEditSubscription(subscription)}
+                    sx={{ cursor: 'pointer' }}
+                  >
                   <TableCell
                     padding="checkbox"
                     onClick={(event) => {
@@ -178,19 +182,36 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   </TableCell>
 
                   <TableCell>
-                    {subscription.property ? (
-                      <Stack spacing={0.25}>
-                        <Typography variant="caption" color="text.secondary">
-                          {subscription.property.address}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {subscription.property.billableUnits} units
-                        </Typography>
-                      </Stack>
-                    ) : (
+                    {subscription.scope === 'ACCOUNT' ? (
                       <Typography variant="body2" color="text.secondary">
                         Account-level
                       </Typography>
+                    ) : subscriptionProperties.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        No properties
+                      </Typography>
+                    ) : subscriptionProperties.length === 1 ? (
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" color="text.secondary">
+                          {subscriptionProperties[0].address}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {subscriptionProperties[0].billableUnits} units
+                        </Typography>
+                      </Stack>
+                    ) : (
+                      <Stack spacing={0.25}>
+                        <Typography variant="caption" color="text.secondary">
+                          {subscriptionProperties.length} properties
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {subscriptionProperties
+                            .slice(0, 2)
+                            .map((property) => property.address)
+                            .join(', ')}
+                          {subscriptionProperties.length > 2 ? '...' : ''}
+                        </Typography>
+                      </Stack>
                     )}
                   </TableCell>
 
@@ -229,8 +250,9 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                       </AppIconButton>
                     </Tooltip>
                   </TableCell>
-                </TableRow>
-              ))
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={8}>

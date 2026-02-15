@@ -16,6 +16,12 @@ export type SubscriptionsSortField =
   | 'pricings';
 export type SubscriptionsSortDirection = 'asc' | 'desc';
 
+export function getSubscriptionProperties(
+  subscription: SubscriptionItem
+): SubscriptionItem['properties'] {
+  return subscription.properties;
+}
+
 export function getBulkActionLabel(action: SubscriptionBulkAction | null): string {
   switch (action) {
     case 'DELETE_SUBSCRIPTIONS':
@@ -48,7 +54,11 @@ export function compareSubscriptionRows(
   }
 
   if (field === 'property') {
-    return (left.property?.address ?? '').localeCompare(right.property?.address ?? '');
+    const leftProperties = getSubscriptionProperties(left);
+    const rightProperties = getSubscriptionProperties(right);
+    const leftAddress = leftProperties[0]?.address ?? '';
+    const rightAddress = rightProperties[0]?.address ?? '';
+    return leftAddress.localeCompare(rightAddress);
   }
 
   if (field === 'startDate') {

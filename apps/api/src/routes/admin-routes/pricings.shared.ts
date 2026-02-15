@@ -47,7 +47,6 @@ export const pricingTreeInclude = {
           status: true,
           createdAt: true,
           accountId: true,
-          propertyId: true,
           targetProperties: {
             select: {
               propertyId: true
@@ -61,14 +60,6 @@ export const pricingTreeInclude = {
               id: true,
               companyName: true,
               email: true
-            }
-          },
-          property: {
-            select: {
-              id: true,
-              accountId: true,
-              address: true,
-              billableUnits: true
             }
           }
         }

@@ -14,7 +14,6 @@ import {
 import { applySubscriptionBulkAction } from './subscriptions.bulk.js';
 import {
   buildSubscriptionsWhere,
-  getLegacyPropertyIdForSubscription,
   normalizePropertySelection,
   subscriptionInclude,
   toSubscriptionResponse
@@ -53,7 +52,6 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
     const propertyIds =
       payload.scope === 'PROPERTY'
         ? normalizePropertySelection({
-            propertyId: payload.propertyId ?? null,
             propertyIds: payload.propertyIds
           })
         : [];
@@ -80,19 +78,21 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
         data: {
           accountId: candidate.accountId,
           scope: candidate.scope,
-          propertyId: getLegacyPropertyIdForSubscription(candidate.scope, candidate.propertyIds),
           startDate: candidate.startDate,
           endDate: candidate.endDate,
           status: candidate.status,
-          paymentMethodId: candidate.paymentMethodId,
-          targetProperties:
-            candidate.scope === 'PROPERTY' && candidate.propertyIds.length > 0
-              ? {
-                  create: candidate.propertyIds.map((propertyId) => ({ propertyId }))
-                }
-              : undefined
+          paymentMethodId: candidate.paymentMethodId
         }
       });
+
+      if (candidate.scope === 'PROPERTY' && candidate.propertyIds.length > 0) {
+        await tx.subscriptionProperty.createMany({
+          data: candidate.propertyIds.map((propertyId) => ({
+            subscriptionId: subscription.id,
+            propertyId
+          }))
+        });
+      }
 
       await tx.subscriptionPricing.createMany({
         data: candidate.pricingIds.map((pricingId) => ({
@@ -142,22 +142,13 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
     }
 
     const existingPropertyIds = existing.targetProperties.map((target) => target.propertyId);
-    if (
-      existingPropertyIds.length === 0 &&
-      existing.scope === 'PROPERTY' &&
-      existing.propertyId
-    ) {
-      existingPropertyIds.push(existing.propertyId);
-    }
 
     const nextScope = payload.scope ?? existing.scope;
-    const hasPropertySelectionUpdate =
-      payload.propertyId !== undefined || payload.propertyIds !== undefined;
+    const hasPropertySelectionUpdate = payload.propertyIds !== undefined;
     const nextPropertyIds =
       nextScope === 'PROPERTY'
         ? hasPropertySelectionUpdate
           ? normalizePropertySelection({
-              propertyId: payload.propertyId ?? null,
               propertyIds: payload.propertyIds
             })
           : existingPropertyIds
@@ -166,7 +157,6 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
     const candidate = createSubscriptionBodySchema.parse({
       accountId: existing.accountId,
       scope: nextScope,
-      propertyId: null,
       propertyIds: nextPropertyIds,
       startDate: payload.startDate ?? existing.startDate,
       endDate: payload.endDate !== undefined ? payload.endDate : existing.endDate,
@@ -182,7 +172,6 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
       propertyIds:
         candidate.scope === 'PROPERTY'
           ? normalizePropertySelection({
-              propertyId: candidate.propertyId ?? null,
               propertyIds: candidate.propertyIds
             })
           : [],
@@ -205,10 +194,6 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
         where: { id },
         data: {
           scope: normalizedCandidate.scope,
-          propertyId: getLegacyPropertyIdForSubscription(
-            normalizedCandidate.scope,
-            normalizedCandidate.propertyIds
-          ),
           startDate: normalizedCandidate.startDate,
           endDate: normalizedCandidate.endDate,
           status: normalizedCandidate.status,

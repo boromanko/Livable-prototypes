@@ -1,15 +1,11 @@
 import { Stack } from '@mui/material';
-import type { PricingTreeAccountUsage, PricingTreeItem } from '../../../api';
+import type { PricingTreeItem, PricingTreeSubscriptionSummary } from '../../../api';
 import type {
   DetachConfirmTarget,
   OpenCreateSubscription,
-  SpecificPropertyRow,
   ToggleExpanded
 } from './pricingTree.types';
-import {
-  PricingTreeAccountUsageRow,
-  PricingTreePropertyUsageRow
-} from './PricingTreeUsageEntityRows';
+import { PricingTreeSubscriptionUsageRow } from './PricingTreeUsageEntityRows';
 import {
   PricingTreeUsageAssignSubscriptionRow,
   PricingTreeUsageSectionHeader
@@ -18,16 +14,11 @@ import {
 type PricingTreeUsageRowsProps = {
   pricing: PricingTreeItem;
   productTierColumnCount: number;
-  accountRows: PricingTreeAccountUsage[];
-  specificPropertyRows: SpecificPropertyRow[];
-  showAccountsSectionHeader: boolean;
-  showPropertiesSectionHeader: boolean;
-  isAccountsCollapsed: boolean;
-  isSpecificPropertiesCollapsed: boolean;
-  isAccountsVisible: boolean;
-  isSpecificPropertiesVisible: boolean;
-  accountsSectionKey: string;
-  specificPropertiesSectionKey: string;
+  subscriptions: PricingTreeSubscriptionSummary[];
+  showSubscriptionsSectionHeader: boolean;
+  isSubscriptionsCollapsed: boolean;
+  isSubscriptionsVisible: boolean;
+  subscriptionsSectionKey: string;
   setCollapsedUsageSections: React.Dispatch<React.SetStateAction<Set<string>>>;
   toggleExpanded: ToggleExpanded;
   setDetachConfirmTarget: React.Dispatch<React.SetStateAction<DetachConfirmTarget | null>>;
@@ -38,85 +29,47 @@ export function PricingTreeUsageRows(props: PricingTreeUsageRowsProps): JSX.Elem
   const {
     pricing,
     productTierColumnCount,
-    accountRows,
-    specificPropertyRows,
-    showAccountsSectionHeader,
-    showPropertiesSectionHeader,
-    isAccountsCollapsed,
-    isSpecificPropertiesCollapsed,
-    isAccountsVisible,
-    isSpecificPropertiesVisible,
-    accountsSectionKey,
-    specificPropertiesSectionKey,
+    subscriptions,
+    showSubscriptionsSectionHeader,
+    isSubscriptionsCollapsed,
+    isSubscriptionsVisible,
+    subscriptionsSectionKey,
     setCollapsedUsageSections,
     toggleExpanded,
     setDetachConfirmTarget,
     openCreateSubscription
   } = props;
+  const showAssignRow = isSubscriptionsVisible || subscriptions.length === 0;
 
   return (
     <Stack spacing={0}>
-      {showAccountsSectionHeader ? (
+      {showSubscriptionsSectionHeader ? (
         <PricingTreeUsageSectionHeader
-          title={`${accountRows.length} accounts`}
-          collapsed={isAccountsCollapsed}
-          expandLabel="Expand accounts section"
-          collapseLabel="Collapse accounts section"
-          onToggle={() => toggleExpanded(setCollapsedUsageSections, accountsSectionKey)}
+          title={`${subscriptions.length} subscriptions`}
+          collapsed={isSubscriptionsCollapsed}
+          expandLabel="Expand subscriptions section"
+          collapseLabel="Collapse subscriptions section"
+          onToggle={() => toggleExpanded(setCollapsedUsageSections, subscriptionsSectionKey)}
         />
       ) : null}
 
-      {isAccountsVisible
-        ? accountRows.map((accountUsage) => (
-            <PricingTreeAccountUsageRow
-              key={`${pricing.id}:${accountUsage.account.id}`}
+      {isSubscriptionsVisible
+        ? subscriptions.map((subscription) => (
+            <PricingTreeSubscriptionUsageRow
+              key={`${pricing.id}:${subscription.id}`}
               pricing={pricing}
               productTierColumnCount={productTierColumnCount}
-              accountUsage={accountUsage}
-              showAccountsSectionHeader={showAccountsSectionHeader}
+              subscription={subscription}
+              showSubscriptionsSectionHeader={showSubscriptionsSectionHeader}
               setDetachConfirmTarget={setDetachConfirmTarget}
             />
           ))
         : null}
 
-      {isAccountsVisible ? (
+      {showAssignRow ? (
         <PricingTreeUsageAssignSubscriptionRow
           pricingId={pricing.id}
-          scope="ACCOUNT"
-          showSectionHeader={showAccountsSectionHeader}
-          openCreateSubscription={openCreateSubscription}
-        />
-      ) : null}
-
-      {showPropertiesSectionHeader ? (
-        <PricingTreeUsageSectionHeader
-          title={`${specificPropertyRows.length} specific properties`}
-          collapsed={isSpecificPropertiesCollapsed}
-          expandLabel="Expand specific properties section"
-          collapseLabel="Collapse specific properties section"
-          onToggle={() => toggleExpanded(setCollapsedUsageSections, specificPropertiesSectionKey)}
-        />
-      ) : null}
-
-      {isSpecificPropertiesVisible
-        ? specificPropertyRows.map(({ accountUsage, propertyUsage }) => (
-            <PricingTreePropertyUsageRow
-              key={`${pricing.id}:${accountUsage.account.id}:${propertyUsage.property.id}`}
-              pricing={pricing}
-              productTierColumnCount={productTierColumnCount}
-              accountUsage={accountUsage}
-              propertyUsage={propertyUsage}
-              showPropertiesSectionHeader={showPropertiesSectionHeader}
-              setDetachConfirmTarget={setDetachConfirmTarget}
-            />
-          ))
-        : null}
-
-      {isSpecificPropertiesVisible ? (
-        <PricingTreeUsageAssignSubscriptionRow
-          pricingId={pricing.id}
-          scope="PROPERTY"
-          showSectionHeader={showPropertiesSectionHeader}
+          showSectionHeader={showSubscriptionsSectionHeader}
           openCreateSubscription={openCreateSubscription}
         />
       ) : null}

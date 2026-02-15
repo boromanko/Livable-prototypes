@@ -57,10 +57,7 @@ export async function loadResolvedPricingTreeItems() {
       status: link.subscription.status,
       createdAt: link.subscription.createdAt,
       accountId: link.subscription.accountId,
-      propertyIds: uniqueIds([
-        ...(link.subscription.propertyId ? [link.subscription.propertyId] : []),
-        ...link.subscription.targetProperties.map((target) => target.propertyId)
-      ]),
+      propertyIds: uniqueIds(link.subscription.targetProperties.map((target) => target.propertyId)),
       account: link.subscription.account
     }))
   }));

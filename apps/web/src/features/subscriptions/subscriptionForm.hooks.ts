@@ -59,12 +59,14 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
   const updateMutation = useUpdateSubscriptionMutation();
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  const selectedProperty = useMemo(
-    () =>
-      (propertiesQuery.data?.items ?? []).find((property) => property.id === formState.propertyId) ??
-      null,
-    [formState.propertyId, propertiesQuery.data?.items]
-  );
+  const selectedProperties = useMemo(() => {
+    const selectedIds = new Set(formState.propertyIds);
+    if (selectedIds.size === 0) {
+      return [];
+    }
+
+    return (propertiesQuery.data?.items ?? []).filter((property) => selectedIds.has(property.id));
+  }, [formState.propertyIds, propertiesQuery.data?.items]);
   const canSubmit = useMemo(() => canSubmitSubscriptionForm(formState), [formState]);
 
   useEffect(() => {
@@ -87,12 +89,15 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     setFormError(null);
 
     try {
+      const normalizedPropertyIds =
+        formState.scope === 'PROPERTY' ? uniqueIds(formState.propertyIds) : [];
+
       if (isEdit && initialSubscription) {
         await updateMutation.mutateAsync({
           subscriptionId: initialSubscription.id,
           payload: {
             scope: formState.scope,
-            propertyId: formState.scope === 'PROPERTY' ? formState.propertyId : null,
+            propertyIds: normalizedPropertyIds,
             startDate: formState.startDate,
             endDate: formState.hasEndDate ? formState.endDate : null,
             status: formState.status,
@@ -104,7 +109,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
         await createMutation.mutateAsync({
           accountId: formState.accountId,
           scope: formState.scope,
-          propertyId: formState.scope === 'PROPERTY' ? formState.propertyId : null,
+          propertyIds: normalizedPropertyIds,
           startDate: formState.startDate,
           endDate: formState.hasEndDate ? formState.endDate : null,
           status: formState.status,
@@ -123,7 +128,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     setFormState((prev) => ({
       ...prev,
       accountId,
-      propertyId: '',
+      propertyIds: [],
       paymentMethodId: ''
     }));
   }
@@ -132,14 +137,14 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     setFormState((prev) => ({
       ...prev,
       scope,
-      propertyId: ''
+      propertyIds: []
     }));
   }
 
-  function setPropertyId(propertyId: string): void {
+  function setPropertyIds(propertyIds: string[]): void {
     setFormState((prev) => ({
       ...prev,
-      propertyId
+      propertyIds
     }));
   }
 
@@ -193,7 +198,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     canSubmit,
     formState,
     formError,
-    selectedProperty,
+    selectedProperties,
     accounts: accountsQuery.data?.items ?? [],
     accountsLoading: accountsQuery.isPending,
     properties: propertiesQuery.data?.items ?? [],
@@ -206,7 +211,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
       onSubmit: handleSubmit,
       setAccountId,
       setScope,
-      setPropertyId,
+      setPropertyIds,
       setStartDate,
       setStatus,
       setHasEndDate,
@@ -215,4 +220,8 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
       setPricingIds
     }
   };
+}
+
+function uniqueIds(ids: string[]): string[] {
+  return Array.from(new Set(ids.filter((id) => id.trim() !== '')));
 }

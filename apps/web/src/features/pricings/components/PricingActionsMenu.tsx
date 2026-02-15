@@ -22,7 +22,7 @@ export function PricingActionsMenu(props: PricingActionsMenuProps): JSX.Element 
           onAssignAccount(target.pricingId);
         }}
       >
-        Assign account
+        Assign subscription (account-level)
       </MenuItem>
       <MenuItem
         onClick={() => {
@@ -33,7 +33,7 @@ export function PricingActionsMenu(props: PricingActionsMenuProps): JSX.Element 
           onAssignProperty(target.pricingId);
         }}
       >
-        Assign property
+        Assign subscription (property-level)
       </MenuItem>
     </Menu>
   );

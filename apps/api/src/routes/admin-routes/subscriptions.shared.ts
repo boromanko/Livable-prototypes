@@ -10,13 +10,6 @@ export const subscriptionInclude = {
       email: true
     }
   },
-  property: {
-    select: {
-      id: true,
-      address: true,
-      billableUnits: true
-    }
-  },
   targetProperties: {
     orderBy: {
       propertyId: 'asc'
@@ -71,7 +64,6 @@ export type SubscriptionWithRelations = Prisma.SubscriptionGetPayload<{
 
 export function toSubscriptionResponse(subscription: SubscriptionWithRelations) {
   const properties = subscription.targetProperties.map((target) => target.property);
-  const primaryProperty = subscription.property ?? properties[0] ?? null;
 
   return {
     id: subscription.id,
@@ -81,7 +73,6 @@ export function toSubscriptionResponse(subscription: SubscriptionWithRelations) 
     endDate: subscription.endDate,
     createdAt: subscription.createdAt,
     account: subscription.account,
-    property: primaryProperty,
     properties,
     paymentMethod: subscription.paymentMethod,
     pricings: subscription.subscriptionItems.map((item) => ({
@@ -125,18 +116,11 @@ export function buildSubscriptionsWhere(query: SubscriptionListQuery): Prisma.Su
 
   if (query.propertyId) {
     andFilters.push({
-      OR: [
-        {
+      targetProperties: {
+        some: {
           propertyId: query.propertyId
-        },
-        {
-          targetProperties: {
-            some: {
-              propertyId: query.propertyId
-            }
-          }
         }
-      ]
+      }
     });
   }
 
@@ -160,7 +144,6 @@ export function buildSubscriptionsWhere(query: SubscriptionListQuery): Prisma.Su
       OR: [
         { account: { companyName: { contains: query.search } } },
         { account: { email: { contains: query.search } } },
-        { property: { address: { contains: query.search } } },
         {
           targetProperties: {
             some: {
@@ -210,26 +193,11 @@ export async function validateExistingPricings(pricingIds: string[]): Promise<bo
 }
 
 type PropertySelectionInput = {
-  propertyId?: string | null;
   propertyIds?: string[];
 };
 
 export function normalizePropertySelection(input: PropertySelectionInput): string[] {
-  const candidateIds = [
-    ...(input.propertyId ? [input.propertyId] : []),
-    ...(input.propertyIds ?? [])
-  ];
+  const candidateIds = input.propertyIds ?? [];
 
   return uniqueIds(candidateIds.filter((id) => id.trim() !== ''));
-}
-
-export function getLegacyPropertyIdForSubscription(
-  scope: 'ACCOUNT' | 'PROPERTY',
-  propertyIds: string[]
-): string | null {
-  if (scope !== 'PROPERTY') {
-    return null;
-  }
-
-  return propertyIds[0] ?? null;
 }
