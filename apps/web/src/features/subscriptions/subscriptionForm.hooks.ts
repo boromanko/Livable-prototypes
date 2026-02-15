@@ -59,14 +59,6 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
   const updateMutation = useUpdateSubscriptionMutation();
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  const selectedProperties = useMemo(() => {
-    const selectedIds = new Set(formState.propertyIds);
-    if (selectedIds.size === 0) {
-      return [];
-    }
-
-    return (propertiesQuery.data?.items ?? []).filter((property) => selectedIds.has(property.id));
-  }, [formState.propertyIds, propertiesQuery.data?.items]);
   const canSubmit = useMemo(() => canSubmitSubscriptionForm(formState), [formState]);
 
   useEffect(() => {
@@ -133,11 +125,10 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     }));
   }
 
-  function setScope(scope: BillingScope): void {
+  function setApplyAllProperties(enabled: boolean): void {
     setFormState((prev) => ({
       ...prev,
-      scope,
-      propertyIds: []
+      scope: enabled ? 'ACCOUNT' : 'PROPERTY'
     }));
   }
 
@@ -198,7 +189,6 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     canSubmit,
     formState,
     formError,
-    selectedProperties,
     accounts: accountsQuery.data?.items ?? [],
     accountsLoading: accountsQuery.isPending,
     properties: propertiesQuery.data?.items ?? [],
@@ -210,7 +200,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
       onClose,
       onSubmit: handleSubmit,
       setAccountId,
-      setScope,
+      setApplyAllProperties,
       setPropertyIds,
       setStartDate,
       setStatus,

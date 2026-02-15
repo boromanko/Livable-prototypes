@@ -4,7 +4,11 @@ import type { AccountItem, BillingScope, SubscriptionStatus } from '../../../api
 import { PrimaryButton } from '../../../components/buttons';
 import { FiltersToolbar } from '../../../components/layout';
 
-const scopeOptions: Array<'ALL' | BillingScope> = ['ALL', 'ACCOUNT', 'PROPERTY'];
+const scopeOptions: Array<{ value: 'ALL' | BillingScope; label: string }> = [
+  { value: 'ALL', label: 'All scopes' },
+  { value: 'ACCOUNT', label: 'Account level' },
+  { value: 'PROPERTY', label: 'Property level' }
+];
 const statusOptions: Array<'ALL' | SubscriptionStatus> = [
   'ALL',
   'DRAFT',
@@ -63,8 +67,8 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
               sx={{ minWidth: 120 }}
             >
               {scopeOptions.map((scope) => (
-                <MenuItem key={scope} value={scope}>
-                  {scope}
+                <MenuItem key={scope.value} value={scope.value}>
+                  {scope.label}
                 </MenuItem>
               ))}
             </TextField>

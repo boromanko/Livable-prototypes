@@ -34,6 +34,8 @@ type SubscriptionsTableProps = {
   allVisibleSelected: boolean;
   someVisibleSelected: boolean;
   total: number;
+  accountPropertiesCountById: Record<string, number>;
+  isAccountPropertiesCountPending: boolean;
   page: number;
   pageSize: number;
   onToggleVisibleSelection: () => void;
@@ -55,6 +57,8 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
     allVisibleSelected,
     someVisibleSelected,
     total,
+    accountPropertiesCountById,
+    isAccountPropertiesCountPending,
     page,
     pageSize,
     onToggleVisibleSelection,
@@ -87,6 +91,15 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   onClick={() => onSort('account')}
                 >
                   Account
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sortDirection={sortField === 'scope' ? sortDirection : false}>
+                <TableSortLabel
+                  active={sortField === 'scope'}
+                  direction={sortField === 'scope' ? sortDirection : 'asc'}
+                  onClick={() => onSort('scope')}
+                >
+                  Scope
                 </TableSortLabel>
               </TableCell>
               <TableCell sortDirection={sortField === 'property' ? sortDirection : false}>
@@ -141,7 +154,7 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
           <TableBody>
             {isPending ? (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <Typography variant="body2" color="text.secondary">
                     Loading subscriptions...
                   </Typography>
@@ -182,36 +195,28 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   </TableCell>
 
                   <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {getScopeLabel(subscription.scope)}
+                    </Typography>
+                  </TableCell>
+
+                  <TableCell>
                     {subscription.scope === 'ACCOUNT' ? (
                       <Typography variant="body2" color="text.secondary">
-                        Account-level
+                        {getAccountPropertiesCountLabel(
+                          subscription.account.id,
+                          accountPropertiesCountById,
+                          isAccountPropertiesCountPending
+                        )}
                       </Typography>
                     ) : subscriptionProperties.length === 0 ? (
                       <Typography variant="body2" color="text.secondary">
                         No properties
                       </Typography>
-                    ) : subscriptionProperties.length === 1 ? (
-                      <Stack spacing={0.25}>
-                        <Typography variant="caption" color="text.secondary">
-                          {subscriptionProperties[0].address}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {subscriptionProperties[0].billableUnits} units
-                        </Typography>
-                      </Stack>
                     ) : (
-                      <Stack spacing={0.25}>
-                        <Typography variant="caption" color="text.secondary">
-                          {subscriptionProperties.length} properties
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {subscriptionProperties
-                            .slice(0, 2)
-                            .map((property) => property.address)
-                            .join(', ')}
-                          {subscriptionProperties.length > 2 ? '...' : ''}
-                        </Typography>
-                      </Stack>
+                      <Typography variant="body2" color="text.secondary">
+                        {formatPropertiesCount(subscriptionProperties.length)}
+                      </Typography>
                     )}
                   </TableCell>
 
@@ -255,7 +260,7 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <EmptyState
                     title="No subscriptions found"
                     description="Adjust filters or create your first subscription."
@@ -280,4 +285,25 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
       />
     </Box>
   );
+}
+
+function getScopeLabel(scope: SubscriptionItem['scope']): string {
+  return scope === 'ACCOUNT' ? 'Account level' : 'Property level';
+}
+
+function getAccountPropertiesCountLabel(
+  accountId: string,
+  accountPropertiesCountById: Record<string, number>,
+  isPending: boolean
+): string {
+  const count = accountPropertiesCountById[accountId];
+  if (typeof count !== 'number') {
+    return isPending ? 'Loading...' : 'Unknown';
+  }
+
+  return formatPropertiesCount(count);
+}
+
+function formatPropertiesCount(count: number): string {
+  return count === 1 ? '1 property' : `${count} properties`;
 }

@@ -7,8 +7,7 @@ import {
   SubscriptionFormDatesStatusSection,
   SubscriptionFormPaymentMethodSection,
   SubscriptionFormPricingsSection,
-  SubscriptionFormPropertySection,
-  SubscriptionFormScopeSection
+  SubscriptionFormPropertySection
 } from './components/SubscriptionFormSections';
 import { useSubscriptionFormController } from './subscriptionForm.hooks';
 
@@ -83,18 +82,13 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             onChange={controller.actions.setAccountId}
           />
 
-          <SubscriptionFormScopeSection
-            value={controller.formState.scope}
-            onChange={controller.actions.setScope}
-          />
-
           <SubscriptionFormPropertySection
-            scope={controller.formState.scope}
+            isApplyAllPropertiesEnabled={controller.formState.scope === 'ACCOUNT'}
             accountId={controller.formState.accountId}
             value={controller.formState.propertyIds}
             properties={controller.properties}
-            selectedProperties={controller.selectedProperties}
             loading={controller.propertiesLoading}
+            onToggleApplyAllProperties={controller.actions.setApplyAllProperties}
             onChange={controller.actions.setPropertyIds}
           />
 

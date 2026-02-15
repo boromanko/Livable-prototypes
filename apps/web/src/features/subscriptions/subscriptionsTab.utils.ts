@@ -9,6 +9,7 @@ import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
 
 export type SubscriptionsSortField =
   | 'account'
+  | 'scope'
   | 'property'
   | 'startDate'
   | 'endDate'
@@ -53,12 +54,16 @@ export function compareSubscriptionRows(
     return left.account.companyName.localeCompare(right.account.companyName);
   }
 
+  if (field === 'scope') {
+    const leftPriority = left.scope === 'ACCOUNT' ? 0 : 1;
+    const rightPriority = right.scope === 'ACCOUNT' ? 0 : 1;
+    return leftPriority - rightPriority;
+  }
+
   if (field === 'property') {
-    const leftProperties = getSubscriptionProperties(left);
-    const rightProperties = getSubscriptionProperties(right);
-    const leftAddress = leftProperties[0]?.address ?? '';
-    const rightAddress = rightProperties[0]?.address ?? '';
-    return leftAddress.localeCompare(rightAddress);
+    const leftPropertiesCount = getSubscriptionProperties(left).length;
+    const rightPropertiesCount = getSubscriptionProperties(right).length;
+    return leftPropertiesCount - rightPropertiesCount;
   }
 
   if (field === 'startDate') {

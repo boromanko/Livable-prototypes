@@ -77,6 +77,13 @@ export function useSubscriptionsTabController() {
   const someVisibleSelected =
     visibleIds.some((id) => selectedIds.includes(id)) && !allVisibleSelected;
   const shouldSelectPricings = requiresPricingSelection(bulkDialogState.action);
+  const accountPropertiesCountById = useMemo(
+    () =>
+      Object.fromEntries(
+        (accountsQuery.data?.items ?? []).map((account) => [account.id, account.propertiesCount])
+      ),
+    [accountsQuery.data?.items]
+  );
 
   useEffect(() => {
     setSelectedIds((previous) => filterSelectedIdsToVisible(previous, visibleIds));
@@ -213,6 +220,8 @@ export function useSubscriptionsTabController() {
       allVisibleSelected,
       someVisibleSelected,
       total: subscriptionsQuery.data?.total ?? 0,
+      accountPropertiesCountById,
+      isAccountPropertiesCountPending: accountsQuery.isPending,
       page,
       pageSize,
       onToggleVisibleSelection: toggleVisibleSelection,

@@ -1,22 +1,21 @@
 import {
+  Autocomplete,
   Box,
   Checkbox,
-  FormControl,
   FormControlLabel,
+  IconButton,
   MenuItem,
-  OutlinedInput,
-  Select,
   Stack,
   TextField,
   Typography
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import type {
   AccountItem,
-  BillingScope,
   PropertyItem,
   SubscriptionStatus
 } from '../../../api';
-import { subscriptionScopeOptions, subscriptionStatusOptions } from '../subscriptionForm.utils';
+import { subscriptionStatusOptions } from '../subscriptionForm.utils';
 import { getFormFieldSx, sectionTitle } from './SubscriptionFormSections.shared';
 
 type SubscriptionFormAccountSectionProps = {
@@ -75,49 +74,33 @@ export function SubscriptionFormAccountSection(
   );
 }
 
-type SubscriptionFormScopeSectionProps = {
-  value: BillingScope;
-  onChange: (scope: BillingScope) => void;
-};
-
-export function SubscriptionFormScopeSection(
-  props: SubscriptionFormScopeSectionProps
-): JSX.Element {
-  const { value, onChange } = props;
-
-  return (
-    <Stack spacing={2}>
-      {sectionTitle('Scope')}
-      <TextField
-        select
-        value={value}
-        onChange={(event) => onChange(event.target.value as BillingScope)}
-        sx={getFormFieldSx()}
-      >
-        {subscriptionScopeOptions.map((scope) => (
-          <MenuItem key={scope} value={scope}>
-            {scope}
-          </MenuItem>
-        ))}
-      </TextField>
-    </Stack>
-  );
-}
-
 type SubscriptionFormPropertySectionProps = {
-  scope: BillingScope;
+  isApplyAllPropertiesEnabled: boolean;
   accountId: string;
   value: string[];
   properties: PropertyItem[];
-  selectedProperties: PropertyItem[];
   loading: boolean;
+  onToggleApplyAllProperties: (checked: boolean) => void;
   onChange: (propertyIds: string[]) => void;
 };
 
 export function SubscriptionFormPropertySection(
   props: SubscriptionFormPropertySectionProps
 ): JSX.Element {
-  const { scope, accountId, value, properties, selectedProperties, loading, onChange } = props;
+  const {
+    isApplyAllPropertiesEnabled,
+    accountId,
+    value,
+    properties,
+    loading,
+    onToggleApplyAllProperties,
+    onChange
+  } = props;
+  const propertyById = new Map(properties.map((property) => [property.id, property]));
+  const selectedProperties = value
+    .map((propertyId) => propertyById.get(propertyId))
+    .filter((property): property is PropertyItem => Boolean(property));
+  const availableProperties = properties.filter((property) => !value.includes(property.id));
   const selectedUnits = selectedProperties.reduce(
     (total, property) => total + property.billableUnits,
     0
@@ -126,51 +109,123 @@ export function SubscriptionFormPropertySection(
     selectedProperties.length > 0
       ? `${selectedProperties.length} selected (${selectedUnits} units total).`
       : null;
-  const helperText =
-    scope === 'PROPERTY'
-      ? selectedSummary
-        ? `Required for property-level subscriptions. ${selectedSummary}`
-        : 'Required for property-level subscriptions. Select one or more properties.'
-      : 'Not used for account-level subscriptions.';
+  const helperText = !isApplyAllPropertiesEnabled ? selectedSummary : null;
+  const isPickerDisabled = isApplyAllPropertiesEnabled || !accountId || loading;
 
   return (
     <Stack spacing={2}>
-      {sectionTitle('Properties')}
-      <FormControl sx={getFormFieldSx()}>
-        <Select
-          multiple
-          displayEmpty
-          value={value}
-          onChange={(event) => onChange(event.target.value as string[])}
-          input={<OutlinedInput />}
-          disabled={scope !== 'PROPERTY' || !accountId || loading}
-          renderValue={(selected) => {
-            const ids = selected as string[];
-            if (ids.length === 0) {
-              return (
-                <Box component="span" sx={{ color: '#4B617C' }}>
-                  Select one or more properties
-                </Box>
-              );
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={isApplyAllPropertiesEnabled}
+            onChange={(event) => onToggleApplyAllProperties(event.target.checked)}
+            disabled={!accountId}
+          />
+        }
+        label="Apply for all properties (Account level subscription)"
+        sx={{ m: 0 }}
+      />
+
+      {!isApplyAllPropertiesEnabled && helperText ? (
+        <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
+          {helperText}
+        </Typography>
+      ) : null}
+
+      {!isApplyAllPropertiesEnabled ? (
+        <Stack spacing={2}>
+          {value.length > 0 ? (
+            <Stack spacing={1}>
+              {value.map((propertyId) => {
+                const property = propertyById.get(propertyId);
+
+                return (
+                  <Stack
+                    key={propertyId}
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{
+                      px: 1.5,
+                      py: 1.25,
+                      border: '1px solid #E1E7EC',
+                      backgroundColor: '#F8F9FA',
+                      borderRadius: '2px'
+                    }}
+                  >
+                    <Stack spacing={0.25}>
+                      <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
+                        {property?.address ?? propertyId}
+                      </Typography>
+                      {property ? (
+                        <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                          {property.billableUnits} units
+                        </Typography>
+                      ) : null}
+                    </Stack>
+
+                    <IconButton
+                      size="small"
+                      onClick={() => onChange(value.filter((id) => id !== propertyId))}
+                      aria-label="Remove property"
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          ) : null}
+
+          <Autocomplete<PropertyItem, true, true, false>
+            multiple
+            disableClearable
+            options={availableProperties}
+            value={selectedProperties}
+            disabled={isPickerDisabled}
+            onChange={(_event, selected) => onChange(selected.map((property) => property.id))}
+            getOptionLabel={(option) => option.address}
+            isOptionEqualToValue={(option, selected) => option.id === selected.id}
+            noOptionsText={
+              loading
+                ? 'Loading properties...'
+                : availableProperties.length === 0
+                  ? 'No more properties to select'
+                  : 'No properties found'
             }
+            renderTags={() => null}
+            renderOption={(optionProps, option) => (
+              <li {...optionProps} key={option.id}>
+                <Stack spacing={0.25} sx={{ py: 0.25 }}>
+                  <Typography variant="body2">{option.address}</Typography>
+                  <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                    {option.billableUnits} units
+                  </Typography>
+                </Stack>
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Select properies"
+                sx={getFormFieldSx()}
+              />
+            )}
+          />
 
-            return ids
-              .map((id) => properties.find((property) => property.id === id)?.address ?? id)
-              .join(', ');
-          }}
-        >
-          {properties.map((property) => (
-            <MenuItem key={property.id} value={property.id}>
-              <Checkbox checked={value.includes(property.id)} />
-              {property.address} - {property.billableUnits} units
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+          {!loading && accountId && properties.length === 0 ? (
+            <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
+              No properties available for selected account.
+            </Typography>
+          ) : null}
 
-      <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
-        {helperText}
-      </Typography>
+          {helperText ? (
+            <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
+              {helperText}
+            </Typography>
+          ) : null}
+        </Stack>
+      ) : null}
     </Stack>
   );
 }

@@ -1,14 +1,13 @@
 import {
+  Autocomplete,
   Box,
-  Checkbox,
-  FormControl,
+  IconButton,
   MenuItem,
-  OutlinedInput,
-  Select,
   Stack,
   TextField,
   Typography
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import type { PaymentMethodItem, PricingItem } from '../../../api';
 import { getFormFieldSx, sectionTitle } from './SubscriptionFormSections.shared';
 
@@ -76,39 +75,91 @@ export function SubscriptionFormPricingsSection(
   props: SubscriptionFormPricingsSectionProps
 ): JSX.Element {
   const { value, pricings, onChange } = props;
+  const pricingById = new Map(pricings.map((pricing) => [pricing.id, pricing]));
+  const selectedPricings = value
+    .map((pricingId) => pricingById.get(pricingId))
+    .filter((pricing): pricing is PricingItem => Boolean(pricing));
+  const missingSelectedPricingIds = value.filter((pricingId) => !pricingById.has(pricingId));
+  const availablePricings = pricings.filter((pricing) => !value.includes(pricing.id));
 
   return (
     <Stack spacing={2}>
       {sectionTitle('Pricings')}
-      <FormControl sx={getFormFieldSx()}>
-        <Select
-          multiple
-          displayEmpty
-          value={value}
-          onChange={(event) => onChange(event.target.value as string[])}
-          input={<OutlinedInput />}
-          renderValue={(selected) => {
-            const ids = selected as string[];
-            if (ids.length === 0) {
-              return <Box sx={{ color: '#4B617C' }}>Select one or more pricings</Box>;
-            }
+      {value.length > 0 ? (
+        <Stack spacing={1}>
+          {value.map((pricingId) => {
+            const pricing = pricingById.get(pricingId);
 
-            const labels = ids
-              .map((id) => pricings.find((pricing) => pricing.id === id)?.internalName ?? id)
-              .filter(Boolean);
-            return labels.join(', ');
-          }}
-        >
-          {pricings.map((pricing) => (
-            <MenuItem key={pricing.id} value={pricing.id}>
-              <Checkbox checked={value.includes(pricing.id)} />
-              <Typography variant="body2">
-                {pricing.internalName} ({pricing.type})
+            return (
+              <Stack
+                key={pricingId}
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  px: 1.5,
+                  py: 1.25,
+                  border: '1px solid #E1E7EC',
+                  backgroundColor: '#F8F9FA',
+                  borderRadius: '2px'
+                }}
+              >
+                <Stack spacing={0.25}>
+                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
+                    {pricing?.internalName ?? pricingId}
+                  </Typography>
+                  {pricing ? (
+                    <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                      {pricing.product.code} - {pricing.type}
+                    </Typography>
+                  ) : null}
+                </Stack>
+
+                <IconButton
+                  size="small"
+                  onClick={() => onChange(value.filter((id) => id !== pricingId))}
+                  aria-label="Remove pricing"
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            );
+          })}
+        </Stack>
+      ) : null}
+
+      <Autocomplete<PricingItem, true, true, false>
+        multiple
+        disableClearable
+        options={availablePricings}
+        value={selectedPricings}
+        onChange={(_event, selected) =>
+          onChange([...missingSelectedPricingIds, ...selected.map((pricing) => pricing.id)])
+        }
+        getOptionLabel={(option) => option.internalName}
+        isOptionEqualToValue={(option, selected) => option.id === selected.id}
+        noOptionsText={
+          availablePricings.length === 0 ? 'No more pricings to select' : 'No pricings found'
+        }
+        renderTags={() => null}
+        renderOption={(optionProps, option) => (
+          <li {...optionProps} key={option.id}>
+            <Stack spacing={0.25} sx={{ py: 0.25 }}>
+              <Typography variant="body2">{option.internalName}</Typography>
+              <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                {option.product.code} - {option.type}
               </Typography>
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+            </Stack>
+          </li>
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            placeholder="Select pricings"
+            sx={getFormFieldSx()}
+          />
+        )}
+      />
     </Stack>
   );
 }

@@ -49,6 +49,8 @@ export function SubscriptionsTab(): JSX.Element {
             allVisibleSelected={controller.table.allVisibleSelected}
             someVisibleSelected={controller.table.someVisibleSelected}
             total={controller.table.total}
+            accountPropertiesCountById={controller.table.accountPropertiesCountById}
+            isAccountPropertiesCountPending={controller.table.isAccountPropertiesCountPending}
             page={controller.table.page}
             pageSize={controller.table.pageSize}
             onToggleVisibleSelection={controller.table.onToggleVisibleSelection}

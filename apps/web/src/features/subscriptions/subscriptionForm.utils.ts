@@ -19,7 +19,6 @@ export const subscriptionStatusOptions: SubscriptionStatus[] = [
   'PAUSED',
   'CANCELED'
 ];
-export const subscriptionScopeOptions: BillingScope[] = ['ACCOUNT', 'PROPERTY'];
 
 export function buildInitialSubscriptionFormState(
   defaultAccountId?: string,
