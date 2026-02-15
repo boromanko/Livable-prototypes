@@ -11,6 +11,11 @@ apps/web/.vite
 # Prisma SQLite
 packages/db/dev.db
 packages/db/dev.db-journal
+packages/db/dev *.db
 
 # Logs
 *.log
+
+# Local TS transpile artifacts in source tree
+apps/web/src/App.js
+apps/web/src/main.js

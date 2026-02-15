@@ -81,6 +81,7 @@ pnpm --filter @stripe-integration/api test
 ### Full cleanup and recovery
 
 `git clean -fdX` removes ignored files (including `node_modules`, local DB, caches).
+Local transpile artifacts (`apps/web/src/App.js`, `apps/web/src/main.js`) and ad-hoc SQLite snapshots (for example `packages/db/dev 2.db`) are ignored and removed by this command.
 
 ```bash
 git clean -fdX
