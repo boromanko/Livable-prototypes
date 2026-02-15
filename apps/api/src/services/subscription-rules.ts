@@ -9,6 +9,7 @@ export type SubscriptionCandidate = {
   status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
   paymentMethodId: string | null;
   pricingIds: string[];
+  excludeSubscriptionId?: string;
 };
 
 export type PricingLookupItem = {
@@ -22,7 +23,7 @@ export type PricingLookupItem = {
 
 type SubscriptionRulesDb = Pick<
   Prisma.TransactionClient,
-  'account' | 'property' | 'paymentMethod' | 'pricing'
+  'account' | 'property' | 'paymentMethod' | 'pricing' | 'subscription'
 >;
 
 type PricingLookupDb = Pick<Prisma.TransactionClient, 'pricing'>;
@@ -226,5 +227,106 @@ export async function validateSubscriptionCandidate(
     pricingLookup
   });
 
-  return pricingValidation.error;
+  if (pricingValidation.error) {
+    return pricingValidation.error;
+  }
+
+  const candidatePricings = pricingValidation.normalizedPricingIds
+    .map((pricingId) => pricingLookup.get(pricingId))
+    .filter((pricing): pricing is PricingLookupItem => Boolean(pricing));
+  const candidateProductIds = new Set(candidatePricings.map((pricing) => pricing.productId));
+  const candidateProductLabelById = new Map(
+    candidatePricings.map((pricing) => [pricing.productId, getPricingProductLabel(pricing)])
+  );
+
+  const accountProperties = await db.property.findMany({
+    where: { accountId: candidate.accountId },
+    select: { id: true }
+  });
+  const accountPropertyIds = new Set(accountProperties.map((property) => property.id));
+  const candidateScopePropertyIds =
+    candidate.scope === 'ACCOUNT'
+      ? accountProperties.map((property) => property.id)
+      : normalizedPropertyIds;
+
+  const existingSubscriptions = await db.subscription.findMany({
+    where: {
+      accountId: candidate.accountId,
+      status: {
+        in: ['DRAFT', 'ACTIVE', 'PAUSED']
+      },
+      ...(candidate.excludeSubscriptionId
+        ? {
+            id: {
+              not: candidate.excludeSubscriptionId
+            }
+          }
+        : {})
+    },
+    select: {
+      id: true,
+      scope: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      propertyId: true,
+      targetProperties: {
+        select: {
+          propertyId: true
+        }
+      },
+      subscriptionItems: {
+        select: {
+          pricing: {
+            select: {
+              productId: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  for (const existing of existingSubscriptions) {
+    if (existing.scope !== candidate.scope) {
+      continue;
+    }
+
+    if (
+      candidate.startDate > (existing.endDate ?? new Date('9999-12-31T23:59:59.999Z')) ||
+      existing.startDate > (candidate.endDate ?? new Date('9999-12-31T23:59:59.999Z'))
+    ) {
+      continue;
+    }
+
+    const existingProductIds = new Set(
+      existing.subscriptionItems.map((item) => item.pricing.productId)
+    );
+    const conflictingProductId = Array.from(candidateProductIds).find((productId) =>
+      existingProductIds.has(productId)
+    );
+    if (!conflictingProductId) {
+      continue;
+    }
+
+    if (candidate.scope === 'ACCOUNT') {
+      return `Conflicting account-level subscription for product ${candidateProductLabelById.get(conflictingProductId) ?? conflictingProductId} already exists in overlapping date range`;
+    }
+
+    const existingPropertyIds = uniqueIds([
+      ...(existing.propertyId ? [existing.propertyId] : []),
+      ...existing.targetProperties.map((target) => target.propertyId)
+    ]).filter((propertyId) => accountPropertyIds.has(propertyId));
+
+    const hasPropertyIntersection = candidateScopePropertyIds.some((propertyId) =>
+      existingPropertyIds.includes(propertyId)
+    );
+    if (!hasPropertyIntersection) {
+      continue;
+    }
+
+    return `Conflicting property-level subscription for product ${candidateProductLabelById.get(conflictingProductId) ?? conflictingProductId} already exists for one or more selected properties in overlapping date range`;
+  }
+
+  return null;
 }

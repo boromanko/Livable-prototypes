@@ -190,7 +190,8 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
       endDate: candidate.endDate ?? null,
       status: candidate.status,
       paymentMethodId: candidate.paymentMethodId ?? null,
-      pricingIds: candidate.pricingIds
+      pricingIds: candidate.pricingIds,
+      excludeSubscriptionId: id
     };
 
     const validationError = await validateSubscriptionCandidate(prisma, normalizedCandidate);

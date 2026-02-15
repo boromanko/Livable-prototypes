@@ -45,6 +45,17 @@ type MockDbData = {
   properties: Array<{ id: string; accountId: string }>;
   paymentMethods: Array<{ id: string; accountId: string }>;
   pricings: PricingLookupItem[];
+  subscriptions?: Array<{
+    id: string;
+    accountId: string;
+    scope: 'ACCOUNT' | 'PROPERTY';
+    status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
+    startDate: Date;
+    endDate: Date | null;
+    propertyId: string | null;
+    propertyIds: string[];
+    pricingIds: string[];
+  }>;
 };
 
 type MockDb = {
@@ -53,8 +64,27 @@ type MockDb = {
   };
   property: {
     findMany: (args: {
-      where: { id: { in: string[] } };
+      where: { id?: { in: string[] }; accountId?: string };
     }) => Promise<Array<{ id: string; accountId: string }>>;
+  };
+  subscription: {
+    findMany: (args: {
+      where: {
+        accountId: string;
+        status: { in: string[] };
+        id?: { not?: string };
+      };
+    }) => Promise<
+      Array<{
+        id: string;
+        scope: 'ACCOUNT' | 'PROPERTY';
+        startDate: Date;
+        endDate: Date | null;
+        propertyId: string | null;
+        targetProperties: Array<{ propertyId: string }>;
+        subscriptionItems: Array<{ pricing: { productId: string } }>;
+      }>
+    >;
   };
   paymentMethod: {
     findUnique: (args: { where: { id: string } }) => Promise<{ id: string; accountId: string } | null>;
@@ -67,6 +97,9 @@ type MockDb = {
 };
 
 function createMockDb(data: MockDbData): MockDb {
+  const subscriptions = data.subscriptions ?? [];
+  const pricingById = new Map(data.pricings.map((pricing) => [pricing.id, pricing]));
+
   return {
     account: {
       async findUnique(args) {
@@ -76,8 +109,42 @@ function createMockDb(data: MockDbData): MockDb {
     },
     property: {
       async findMany(args) {
-        const requestedIds = new Set(args.where.id.in);
-        return data.properties.filter((property) => requestedIds.has(property.id));
+        if (args.where.id) {
+          const requestedIds = new Set(args.where.id.in);
+          return data.properties.filter((property) => requestedIds.has(property.id));
+        }
+
+        if (args.where.accountId) {
+          return data.properties.filter((property) => property.accountId === args.where.accountId);
+        }
+
+        return data.properties;
+      }
+    },
+    subscription: {
+      async findMany(args) {
+        const excludedId = args.where.id?.not;
+
+        return subscriptions
+          .filter((subscription) => subscription.accountId === args.where.accountId)
+          .filter((subscription) => args.where.status.in.includes(subscription.status))
+          .filter((subscription) => !excludedId || subscription.id !== excludedId)
+          .map((subscription) => ({
+            id: subscription.id,
+            scope: subscription.scope,
+            startDate: subscription.startDate,
+            endDate: subscription.endDate,
+            propertyId: subscription.propertyId,
+            targetProperties: subscription.propertyIds.map((propertyId) => ({ propertyId })),
+            subscriptionItems: subscription.pricingIds
+              .map((pricingId) => pricingById.get(pricingId))
+              .filter((pricing): pricing is PricingLookupItem => Boolean(pricing))
+              .map((pricing) => ({
+                pricing: {
+                  productId: pricing.productId
+                }
+              }))
+          }));
       }
     },
     paymentMethod: {
@@ -186,7 +253,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [{ id: 'prop-1', accountId: 'acc-1' }],
       paymentMethods: [{ id: 'pm-1', accountId: 'acc-1' }],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -206,7 +274,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [],
       properties: [],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -222,7 +291,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [{ id: 'prop-1', accountId: 'acc-2' }],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -241,7 +311,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [],
       paymentMethods: [{ id: 'pm-1', accountId: 'acc-2' }],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -259,7 +330,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingUnitAlt, pricingLateFee]
+      pricings: [pricingUnitBase, pricingUnitAlt, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -283,7 +355,8 @@ describe('validateSubscriptionCandidate', () => {
         { id: 'prop-2', accountId: 'acc-1' }
       ],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -302,7 +375,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [{ id: 'prop-1', accountId: 'acc-1' }],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -321,7 +395,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -340,7 +415,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [{ id: 'prop-1', accountId: 'acc-1' }],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -359,7 +435,8 @@ describe('validateSubscriptionCandidate', () => {
       accounts: [{ id: 'acc-1' }],
       properties: [{ id: 'prop-1', accountId: 'acc-1' }],
       paymentMethods: [],
-      pricings: [pricingUnitBase, pricingLateFee]
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
     });
 
     const error = await validateSubscriptionCandidate(
@@ -371,5 +448,148 @@ describe('validateSubscriptionCandidate', () => {
     );
 
     assert.equal(error, 'One or more propertyIds are invalid');
+  });
+
+  it('rejects overlapping account-level subscriptions with same product', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [{ id: 'prop-1', accountId: 'acc-1' }],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: [
+        {
+          id: 'sub-existing-account',
+          accountId: 'acc-1',
+          scope: 'ACCOUNT',
+          status: 'ACTIVE',
+          startDate: new Date('2026-02-01T00:00:00.000Z'),
+          endDate: null,
+          propertyId: null,
+          propertyIds: [],
+          pricingIds: [pricingUnitBase.id]
+        }
+      ]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'ACCOUNT',
+        pricingIds: [pricingUnitBase.id]
+      })
+    );
+
+    assert.equal(
+      error,
+      'Conflicting account-level subscription for product UNIT_SUBSCRIPTION_PRO already exists in overlapping date range'
+    );
+  });
+
+  it('allows property-level override over account-level subscription', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [{ id: 'prop-1', accountId: 'acc-1' }],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: [
+        {
+          id: 'sub-existing-account',
+          accountId: 'acc-1',
+          scope: 'ACCOUNT',
+          status: 'ACTIVE',
+          startDate: new Date('2026-02-01T00:00:00.000Z'),
+          endDate: null,
+          propertyId: null,
+          propertyIds: [],
+          pricingIds: [pricingUnitBase.id]
+        }
+      ]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'PROPERTY',
+        propertyIds: ['prop-1'],
+        pricingIds: [pricingUnitBase.id]
+      })
+    );
+
+    assert.equal(error, null);
+  });
+
+  it('rejects overlapping property-level subscriptions on same property and product', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [
+        { id: 'prop-1', accountId: 'acc-1' },
+        { id: 'prop-2', accountId: 'acc-1' }
+      ],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: [
+        {
+          id: 'sub-existing-property',
+          accountId: 'acc-1',
+          scope: 'PROPERTY',
+          status: 'ACTIVE',
+          startDate: new Date('2026-02-01T00:00:00.000Z'),
+          endDate: null,
+          propertyId: 'prop-1',
+          propertyIds: ['prop-1'],
+          pricingIds: [pricingUnitBase.id]
+        }
+      ]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'PROPERTY',
+        propertyIds: ['prop-1', 'prop-2'],
+        pricingIds: [pricingUnitBase.id]
+      })
+    );
+
+    assert.equal(
+      error,
+      'Conflicting property-level subscription for product UNIT_SUBSCRIPTION_PRO already exists for one or more selected properties in overlapping date range'
+    );
+  });
+
+  it('allows overlapping property-level subscriptions for different properties', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [
+        { id: 'prop-1', accountId: 'acc-1' },
+        { id: 'prop-2', accountId: 'acc-1' }
+      ],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: [
+        {
+          id: 'sub-existing-property',
+          accountId: 'acc-1',
+          scope: 'PROPERTY',
+          status: 'ACTIVE',
+          startDate: new Date('2026-02-01T00:00:00.000Z'),
+          endDate: null,
+          propertyId: 'prop-1',
+          propertyIds: ['prop-1'],
+          pricingIds: [pricingUnitBase.id]
+        }
+      ]
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        scope: 'PROPERTY',
+        propertyIds: ['prop-2'],
+        pricingIds: [pricingUnitBase.id]
+      })
+    );
+
+    assert.equal(error, null);
   });
 });
