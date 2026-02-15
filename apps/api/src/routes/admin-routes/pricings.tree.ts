@@ -1,6 +1,7 @@
 import { prisma } from '@stripe-integration/db';
 import { resolvePricingTree } from '../../services/pricing-resolution.js';
 import { pricingTreeInclude } from './pricings.shared.js';
+import { uniqueIds } from '../../services/subscription-rules.js';
 
 export async function loadResolvedPricingTreeItems() {
   const pricingItems = await prisma.pricing.findMany({
@@ -56,7 +57,10 @@ export async function loadResolvedPricingTreeItems() {
       status: link.subscription.status,
       createdAt: link.subscription.createdAt,
       accountId: link.subscription.accountId,
-      propertyId: link.subscription.propertyId,
+      propertyIds: uniqueIds([
+        ...(link.subscription.propertyId ? [link.subscription.propertyId] : []),
+        ...link.subscription.targetProperties.map((target) => target.propertyId)
+      ]),
       account: link.subscription.account
     }))
   }));

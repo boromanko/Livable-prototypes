@@ -73,14 +73,19 @@ function buildSubscription(input: {
   status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
   createdAt: string;
   propertyId?: string;
+  propertyIds?: string[];
 }): PricingResolutionInput['subscriptions'][number] {
+  const normalizedPropertyIds = Array.from(
+    new Set([...(input.propertyId ? [input.propertyId] : []), ...(input.propertyIds ?? [])])
+  );
+
   return {
     id: input.id,
     scope: input.scope,
     status: input.status,
     createdAt: new Date(input.createdAt),
     accountId: account.id,
-    propertyId: input.propertyId ?? null,
+    propertyIds: normalizedPropertyIds,
     account
   };
 }
@@ -249,5 +254,46 @@ describe('resolvePricingTree', () => {
 
     assert.equal(overrideRow.accounts[0]?.source, 'PROPERTY_ONLY');
     assert.equal(overrideRow.accounts[0]?.properties[0]?.currentUnitAmountCents, 250);
+  });
+
+  it('applies one property-level subscription to multiple properties', () => {
+    const parentPricing = buildTieredPricing('pricing-parent-multi', 'units', [
+      buildSubscription({
+        id: 'sub-account-multi',
+        scope: 'ACCOUNT',
+        status: 'ACTIVE',
+        createdAt: '2026-02-12T00:00:00.000Z'
+      })
+    ]);
+    const overridePricing = buildTieredPricing('pricing-override-multi', 'units', [
+      buildSubscription({
+        id: 'sub-override-multi',
+        scope: 'PROPERTY',
+        status: 'ACTIVE',
+        createdAt: '2026-02-13T00:00:00.000Z',
+        propertyIds: ['prop-1', 'prop-2']
+      })
+    ]);
+
+    const items = resolvePricingTree([parentPricing, overridePricing], baseProperties);
+    const parentRow = items.find((item) => item.id === 'pricing-parent-multi');
+    const overrideRow = items.find((item) => item.id === 'pricing-override-multi');
+    assert.ok(parentRow);
+    assert.ok(overrideRow);
+
+    const parentAccount = parentRow.accounts[0];
+    assert.ok(parentAccount);
+    assert.equal(parentAccount.totalBillableUnits, 10);
+    assert.equal(parentAccount.inheritedPropertiesCount, 1);
+    assert.equal(parentAccount.properties.length, 1);
+    assert.equal(parentAccount.properties[0]?.property.id, 'prop-3');
+
+    const overrideAccount = overrideRow.accounts[0];
+    assert.ok(overrideAccount);
+    assert.equal(overrideAccount.properties.length, 2);
+    assert.deepEqual(
+      overrideAccount.properties.map((property) => property.property.id).sort(),
+      ['prop-1', 'prop-2']
+    );
   });
 });

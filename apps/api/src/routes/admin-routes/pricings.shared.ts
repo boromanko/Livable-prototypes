@@ -48,6 +48,14 @@ export const pricingTreeInclude = {
           createdAt: true,
           accountId: true,
           propertyId: true,
+          targetProperties: {
+            select: {
+              propertyId: true
+            },
+            orderBy: {
+              propertyId: 'asc'
+            }
+          },
           account: {
             select: {
               id: true,

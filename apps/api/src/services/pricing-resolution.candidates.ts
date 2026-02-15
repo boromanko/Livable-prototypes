@@ -79,7 +79,7 @@ export function groupCandidates(pricings: PricingResolutionInput[]): {
         status: subscription.status,
         createdAt: subscription.createdAt,
         accountId: subscription.accountId,
-        propertyId: subscription.propertyId,
+        propertyId: null,
         account: subscription.account
       };
 
@@ -88,13 +88,21 @@ export function groupCandidates(pricings: PricingResolutionInput[]): {
         continue;
       }
 
-      if (!candidate.propertyId) {
+      if (subscription.propertyIds.length === 0) {
         continue;
       }
 
-      const propertyCandidates = grouped.propertyCandidatesByPropertyId.get(candidate.propertyId) ?? [];
-      propertyCandidates.push(candidate);
-      grouped.propertyCandidatesByPropertyId.set(candidate.propertyId, propertyCandidates);
+      for (const propertyId of subscription.propertyIds) {
+        const propertyCandidate: ResolutionCandidate = {
+          ...candidate,
+          propertyId
+        };
+
+        const propertyCandidates =
+          grouped.propertyCandidatesByPropertyId.get(propertyId) ?? [];
+        propertyCandidates.push(propertyCandidate);
+        grouped.propertyCandidatesByPropertyId.set(propertyId, propertyCandidates);
+      }
     }
   }
 

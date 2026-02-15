@@ -30,7 +30,7 @@ export type PricingSubscription = {
   status: ResolutionStatus;
   createdAt: Date;
   accountId: string;
-  propertyId: string | null;
+  propertyIds: string[];
   account: AccountIdentity;
 };
 
