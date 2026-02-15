@@ -9,6 +9,9 @@ dist
 apps/web/.vite
 
 # Prisma SQLite
+packages/db/app.db
+packages/db/app.db-journal
+packages/db/app *.db
 packages/db/dev.db
 packages/db/dev.db-journal
 packages/db/dev *.db

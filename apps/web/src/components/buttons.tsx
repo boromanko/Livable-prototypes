@@ -1,6 +1,6 @@
 import { Box, Button, ButtonGroup, IconButton, type ButtonProps, type IconButtonProps } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
-import type { ReactNode } from 'react';
+import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import { prototypeTokens } from '../theme/tokens';
 
 type AppButtonProps = Omit<ButtonProps, 'variant'> & {
@@ -13,7 +13,7 @@ type AppIconButtonProps = IconButtonProps & {
   tone?: AppIconButtonTone;
 };
 
-type AppSplitButtonProps = {
+type AppSplitButtonProps = HTMLAttributes<HTMLDivElement> & {
   mainLabel: ReactNode;
   onMainClick: NonNullable<ButtonProps['onClick']>;
   onAuxClick: NonNullable<ButtonProps['onClick']>;
@@ -208,7 +208,10 @@ export function BorderedButton({ sx, variant, ...props }: AppButtonProps): JSX.E
   );
 }
 
-export function AppSplitButton(props: AppSplitButtonProps): JSX.Element {
+export const AppSplitButton = forwardRef<HTMLDivElement, AppSplitButtonProps>(function AppSplitButton(
+  props,
+  ref
+): JSX.Element {
   const {
     mainLabel,
     onMainClick,
@@ -218,14 +221,19 @@ export function AppSplitButton(props: AppSplitButtonProps): JSX.Element {
     auxIcon,
     mainButtonProps,
     auxButtonProps,
-    sx
+    sx: wrapperSx,
+    ...wrapperProps
   } = props;
 
   const { sx: mainButtonSx, ...mainButtonRest } = mainButtonProps ?? {};
   const { sx: auxButtonSx, ...auxButtonRest } = auxButtonProps ?? {};
 
   return (
-    <Box sx={composeSx(BASE_SPLIT_BUTTON_WRAPPER_SX, sx)}>
+    <Box
+      ref={ref}
+      {...wrapperProps}
+      sx={composeSx(BASE_SPLIT_BUTTON_WRAPPER_SX, wrapperSx)}
+    >
       <ButtonGroup variant="text" disableElevation sx={BASE_SPLIT_BUTTON_GROUP_SX}>
         <Button
           {...mainButtonRest}
@@ -265,19 +273,18 @@ export function AppSplitButton(props: AppSplitButtonProps): JSX.Element {
       </ButtonGroup>
     </Box>
   );
-}
+});
 
-export function AppIconButton({
-  sx,
-  tone = 'ghost',
-  size,
-  ...props
-}: AppIconButtonProps): JSX.Element {
+export const AppIconButton = forwardRef<HTMLButtonElement, AppIconButtonProps>(function AppIconButton(
+  { sx, tone = 'ghost', size, ...props },
+  ref
+): JSX.Element {
   return (
     <IconButton
       {...props}
+      ref={ref}
       size={size ?? 'small'}
       sx={composeSx(getIconButtonToneSx(tone), sx)}
     />
   );
-}
+});

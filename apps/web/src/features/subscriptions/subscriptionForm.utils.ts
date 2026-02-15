@@ -7,10 +7,17 @@ export type SubscriptionFormState = {
   propertyIds: string[];
   startDate: string;
   endDate: string;
-  hasEndDate: boolean;
   status: SubscriptionStatus;
   paymentMethodId: string;
   pricingIds: string[];
+};
+
+export type SubscriptionFormValidationState = {
+  accountError: boolean;
+  propertyError: boolean;
+  startDateError: boolean;
+  pricingsError: boolean;
+  hasErrors: boolean;
 };
 
 export const subscriptionStatusOptions: SubscriptionStatus[] = [
@@ -31,7 +38,6 @@ export function buildInitialSubscriptionFormState(
     propertyIds: [],
     startDate: new Date().toISOString().slice(0, 10),
     endDate: '',
-    hasEndDate: false,
     status: 'DRAFT',
     paymentMethodId: '',
     pricingIds: defaultPricingIds ?? []
@@ -53,7 +59,6 @@ export function buildFormStateFromSubscription(
     propertyIds,
     startDate: toDateInputValue(subscription.startDate),
     endDate: toDateInputValue(subscription.endDate),
-    hasEndDate: Boolean(subscription.endDate),
     status: subscription.status,
     paymentMethodId: subscription.paymentMethod?.id ?? '',
     pricingIds: subscription.pricings.map((pricing) => pricing.id)
@@ -61,25 +66,23 @@ export function buildFormStateFromSubscription(
 }
 
 export function canSubmitSubscriptionForm(formState: SubscriptionFormState): boolean {
-  if (!formState.accountId) {
-    return false;
-  }
+  return !getSubscriptionFormValidationState(formState).hasErrors;
+}
 
-  if (!formState.startDate) {
-    return false;
-  }
+export function getSubscriptionFormValidationState(
+  formState: SubscriptionFormState
+): SubscriptionFormValidationState {
+  const accountError = formState.accountId.trim() === '';
+  const startDateError = formState.startDate.trim() === '';
+  const propertyError = formState.scope === 'PROPERTY' && formState.propertyIds.length === 0;
+  const pricingsError = formState.pricingIds.length === 0;
+  const hasErrors = accountError || startDateError || propertyError || pricingsError;
 
-  if (formState.scope === 'PROPERTY' && formState.propertyIds.length === 0) {
-    return false;
-  }
-
-  if (formState.pricingIds.length === 0) {
-    return false;
-  }
-
-  if (formState.hasEndDate && !formState.endDate) {
-    return false;
-  }
-
-  return true;
+  return {
+    accountError,
+    propertyError,
+    startDateError,
+    pricingsError,
+    hasErrors
+  };
 }

@@ -200,59 +200,6 @@ export function PricingFormSubscriptionsSection(
   return (
     <Stack spacing={2}>
       {sectionTitle('Subscriptions')}
-      {value.length > 0 ? (
-        <Stack spacing={1}>
-          {value.map((subscriptionId) => {
-            const subscription = subscriptionById.get(subscriptionId);
-
-            return (
-              <Stack
-                key={subscriptionId}
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{
-                  px: 1.5,
-                  py: 1.25,
-                  border: selectedConflictIdSet.has(subscriptionId)
-                    ? '1px solid #D14343'
-                    : '1px solid #E1E7EC',
-                  backgroundColor: selectedConflictIdSet.has(subscriptionId)
-                    ? '#FFF7F7'
-                    : '#F8F9FA',
-                  borderRadius: '2px'
-                }}
-              >
-                <Stack spacing={0.25}>
-                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
-                    {subscription?.accountName ?? subscriptionId}
-                  </Typography>
-                  {subscription ? (
-                    <Typography variant="caption" sx={{ color: '#6F8298' }}>
-                      {getPricingSubscriptionScopeLabel(subscription.scope)} -{' '}
-                      {subscription.propertiesLabel} - {subscription.status}
-                    </Typography>
-                  ) : null}
-                  {selectedConflictIdSet.has(subscriptionId) ? (
-                    <Typography variant="caption" sx={{ color: '#B42318' }}>
-                      Already has pricing for selected product.
-                    </Typography>
-                  ) : null}
-                </Stack>
-
-                <IconButton
-                  size="small"
-                  onClick={() => onChange(value.filter((id) => id !== subscriptionId))}
-                  aria-label="Remove subscription"
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </Stack>
-            );
-          })}
-        </Stack>
-      ) : null}
-
       <Autocomplete<PricingFormSubscriptionOption, true, true, false>
         multiple
         disableClearable
@@ -275,7 +222,7 @@ export function PricingFormSubscriptionsSection(
             : loading
             ? 'Loading subscriptions...'
             : availableSubscriptions.length === 0
-              ? 'No more subscriptions to select'
+              ? 'No more subscriptions to add'
               : 'No subscriptions found'
         }
         PaperComponent={(paperProps: PaperProps) => (
@@ -359,11 +306,64 @@ export function PricingFormSubscriptionsSection(
         renderInput={(params) => (
           <TextField
             {...params}
-            placeholder="Select subscriptions"
+            placeholder="Add subscriptions"
             sx={pickerFieldSx}
           />
         )}
       />
+
+      {value.length > 0 ? (
+        <Stack spacing={1}>
+          {value.map((subscriptionId) => {
+            const subscription = subscriptionById.get(subscriptionId);
+
+            return (
+              <Stack
+                key={subscriptionId}
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  px: 1.5,
+                  py: 1.25,
+                  border: selectedConflictIdSet.has(subscriptionId)
+                    ? '1px solid #D14343'
+                    : '1px solid #E1E7EC',
+                  backgroundColor: selectedConflictIdSet.has(subscriptionId)
+                    ? '#FFF7F7'
+                    : '#F8F9FA',
+                  borderRadius: '2px'
+                }}
+              >
+                <Stack spacing={0.25}>
+                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
+                    {subscription?.accountName ?? subscriptionId}
+                  </Typography>
+                  {subscription ? (
+                    <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                      {getPricingSubscriptionScopeLabel(subscription.scope)} -{' '}
+                      {subscription.propertiesLabel} - {subscription.status}
+                    </Typography>
+                  ) : null}
+                  {selectedConflictIdSet.has(subscriptionId) ? (
+                    <Typography variant="caption" sx={{ color: '#B42318' }}>
+                      Already has pricing for selected product.
+                    </Typography>
+                  ) : null}
+                </Stack>
+
+                <IconButton
+                  size="small"
+                  onClick={() => onChange(value.filter((id) => id !== subscriptionId))}
+                  aria-label="Remove subscription"
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            );
+          })}
+        </Stack>
+      ) : null}
     </Stack>
   );
 }

@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import type { PaymentMethodItem, PricingItem } from '../../../api';
+import { formatMoneyCents } from '../../../lib/format/money';
 import { getFormFieldSx, sectionTitle } from './SubscriptionFormSections.shared';
 
 type SubscriptionFormPaymentMethodSectionProps = {
@@ -29,7 +30,7 @@ export function SubscriptionFormPaymentMethodSection(
 
   return (
     <Stack spacing={2}>
-      {sectionTitle('Payment method', 'Optional')}
+      {sectionTitle('Payment method')}
       <TextField
         select
         value={value}
@@ -71,6 +72,7 @@ export function SubscriptionFormPaymentMethodSection(
 type SubscriptionFormPricingsSectionProps = {
   value: string[];
   pricings: PricingItem[];
+  error: boolean;
   onCreatePricing: () => void;
   onChange: (pricingIds: string[]) => void;
 };
@@ -78,7 +80,7 @@ type SubscriptionFormPricingsSectionProps = {
 export function SubscriptionFormPricingsSection(
   props: SubscriptionFormPricingsSectionProps
 ): JSX.Element {
-  const { value, pricings, onCreatePricing, onChange } = props;
+  const { value, pricings, error, onCreatePricing, onChange } = props;
   const pricingById = new Map(pricings.map((pricing) => [pricing.id, pricing]));
   const selectedPricings = value
     .map((pricingId) => pricingById.get(pricingId))
@@ -86,7 +88,7 @@ export function SubscriptionFormPricingsSection(
   const missingSelectedPricingIds = value.filter((pricingId) => !pricingById.has(pricingId));
   const availablePricings = pricings.filter((pricing) => !value.includes(pricing.id));
   const pickerFieldSx = {
-    ...getFormFieldSx(),
+    ...getFormFieldSx(error),
     '& .MuiAutocomplete-inputRoot': {
       p: '0 40px 0 14px !important'
     },
@@ -111,49 +113,6 @@ export function SubscriptionFormPricingsSection(
   return (
     <Stack spacing={2}>
       {sectionTitle('Pricings')}
-      {value.length > 0 ? (
-        <Stack spacing={1}>
-          {value.map((pricingId) => {
-            const pricing = pricingById.get(pricingId);
-
-            return (
-              <Stack
-                key={pricingId}
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{
-                  px: 1.5,
-                  py: 1.25,
-                  border: '1px solid #E1E7EC',
-                  backgroundColor: '#F8F9FA',
-                  borderRadius: '2px'
-                }}
-              >
-                <Stack spacing={0.25}>
-                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
-                    {pricing?.internalName ?? pricingId}
-                  </Typography>
-                  {pricing ? (
-                    <Typography variant="caption" sx={{ color: '#6F8298' }}>
-                      {pricing.product.code} - {pricing.type}
-                    </Typography>
-                  ) : null}
-                </Stack>
-
-                <IconButton
-                  size="small"
-                  onClick={() => onChange(value.filter((id) => id !== pricingId))}
-                  aria-label="Remove pricing"
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </Stack>
-            );
-          })}
-        </Stack>
-      ) : null}
-
       <Autocomplete<PricingItem, true, true, false>
         multiple
         disableClearable
@@ -166,7 +125,7 @@ export function SubscriptionFormPricingsSection(
         getOptionLabel={(option) => option.internalName}
         isOptionEqualToValue={(option, selected) => option.id === selected.id}
         noOptionsText={
-          availablePricings.length === 0 ? 'No more pricings to select' : 'No pricings found'
+          availablePricings.length === 0 ? 'No more pricings to add' : 'No pricings found'
         }
         PaperComponent={(paperProps: PaperProps) => (
           <Paper
@@ -238,11 +197,95 @@ export function SubscriptionFormPricingsSection(
         renderInput={(params) => (
           <TextField
             {...params}
-            placeholder="Select pricings"
+            placeholder="Add pricings"
+            error={error}
             sx={pickerFieldSx}
           />
         )}
       />
+      {error ? (
+        <Typography variant="caption" sx={{ color: '#D32F2F', lineHeight: 1.4 }}>
+          Add at least one pricing.
+        </Typography>
+      ) : null}
+
+      {value.length > 0 ? (
+        <Stack spacing={1}>
+          {value.map((pricingId) => {
+            const pricing = pricingById.get(pricingId);
+
+            return (
+              <Stack
+                key={pricingId}
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  px: 1.5,
+                  py: 1.25,
+                  border: '1px solid #E1E7EC',
+                  backgroundColor: '#F8F9FA',
+                  borderRadius: '2px'
+                }}
+              >
+                <Stack spacing={0.25}>
+                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
+                    {pricing?.internalName ?? pricingId}
+                  </Typography>
+                  {pricing ? (
+                    <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                      {pricing.product.code} - {pricing.type}
+                    </Typography>
+                  ) : null}
+                </Stack>
+
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Typography
+                    sx={{
+                      color: '#212934',
+                      fontWeight: 700,
+                      fontSize: 18,
+                      lineHeight: 1.1,
+                      fontVariantNumeric: 'tabular-nums'
+                    }}
+                  >
+                    {pricing ? getPricingAmountLabel(pricing) : '—'}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => onChange(value.filter((id) => id !== pricingId))}
+                    aria-label="Remove pricing"
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              </Stack>
+            );
+          })}
+        </Stack>
+      ) : null}
     </Stack>
   );
+}
+
+function getPricingAmountLabel(pricing: PricingItem): string {
+  if (pricing.type === 'FIXED') {
+    return formatMoneyCents(pricing.fixedAmountCents, pricing.currency);
+  }
+
+  const amounts = pricing.tiers.map((tier) => tier.unitAmountCents).filter((amount) => amount >= 0);
+  if (amounts.length === 0) {
+    return formatMoneyCents(pricing.minimumPriceCents, pricing.currency);
+  }
+
+  const minAmount = Math.min(...amounts);
+  const maxAmount = Math.max(...amounts);
+  if (minAmount === maxAmount) {
+    return formatMoneyCents(minAmount, pricing.currency);
+  }
+
+  return `${formatMoneyCents(minAmount, pricing.currency)} - ${formatMoneyCents(
+    maxAmount,
+    pricing.currency
+  )}`;
 }

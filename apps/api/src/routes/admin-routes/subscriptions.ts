@@ -5,10 +5,12 @@ import {
   subscriptionBulkBodySchema,
   subscriptionListQuerySchema,
   subscriptionParamsSchema,
+  subscriptionTransferEligibilityBodySchema,
   updateSubscriptionBodySchema
 } from '../../schemas/subscription.js';
 import {
   type SubscriptionCandidate,
+  uniqueIds,
   validateSubscriptionCandidate
 } from '../../services/subscription-rules.js';
 import { applySubscriptionBulkAction } from './subscriptions.bulk.js';
@@ -143,6 +145,9 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
 
     const existingPropertyIds = existing.targetProperties.map((target) => target.propertyId);
 
+    const nextAccountId = payload.accountId ?? existing.accountId;
+    const hasAccountUpdate = payload.accountId !== undefined;
+    const hasAccountChanged = hasAccountUpdate && payload.accountId !== existing.accountId;
     const nextScope = payload.scope ?? existing.scope;
     const hasPropertySelectionUpdate = payload.propertyIds !== undefined;
     const nextPropertyIds =
@@ -151,18 +156,25 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
           ? normalizePropertySelection({
               propertyIds: payload.propertyIds
             })
-          : existingPropertyIds
+          : hasAccountChanged
+            ? []
+            : existingPropertyIds
         : [];
+    const nextPaymentMethodId =
+      payload.paymentMethodId !== undefined
+        ? payload.paymentMethodId
+        : hasAccountChanged
+          ? null
+          : existing.paymentMethodId;
 
     const candidate = createSubscriptionBodySchema.parse({
-      accountId: existing.accountId,
+      accountId: nextAccountId,
       scope: nextScope,
       propertyIds: nextPropertyIds,
       startDate: payload.startDate ?? existing.startDate,
       endDate: payload.endDate !== undefined ? payload.endDate : existing.endDate,
       status: payload.status ?? existing.status,
-      paymentMethodId:
-        payload.paymentMethodId !== undefined ? payload.paymentMethodId : existing.paymentMethodId,
+      paymentMethodId: nextPaymentMethodId,
       pricingIds: payload.pricingIds ?? existing.subscriptionItems.map((item) => item.pricingId)
     });
 
@@ -193,6 +205,7 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
       await tx.subscription.update({
         where: { id },
         data: {
+          accountId: normalizedCandidate.accountId,
           scope: normalizedCandidate.scope,
           startDate: normalizedCandidate.startDate,
           endDate: normalizedCandidate.endDate,
@@ -237,6 +250,97 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
 
     return {
       item: toSubscriptionResponse(updated)
+    };
+  });
+
+  app.post('/api/admin/subscriptions/:id/transfer-eligibility', async (request, reply) => {
+    const { id } = subscriptionParamsSchema.parse(request.params);
+    const payload = subscriptionTransferEligibilityBodySchema.parse(request.body);
+
+    const existing = await prisma.subscription.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      reply.status(404).send({ message: 'Subscription not found' });
+      return;
+    }
+
+    const accountIds = uniqueIds(payload.accountIds.filter((accountId) => accountId.trim() !== ''));
+    const accounts = await prisma.account.findMany({
+      where: {
+        id: {
+          in: accountIds
+        }
+      },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            properties: true
+          }
+        }
+      }
+    });
+    const accountById = new Map(accounts.map((account) => [account.id, account]));
+    const normalizedPropertyIds =
+      payload.scope === 'PROPERTY'
+        ? normalizePropertySelection({
+            propertyIds: payload.propertyIds
+          })
+        : [];
+
+    const items = await Promise.all(
+      accountIds.map(async (accountId) => {
+        const account = accountById.get(accountId);
+        if (!account) {
+          return {
+            accountId,
+            eligible: false,
+            reason: 'Account not found'
+          };
+        }
+
+        if (payload.scope === 'PROPERTY' && normalizedPropertyIds.length === 0) {
+          if (account._count.properties === 0) {
+            return {
+              accountId,
+              eligible: false,
+              reason: 'Account has no properties for PROPERTY scope'
+            };
+          }
+
+          return {
+            accountId,
+            eligible: true,
+            reason: null
+          };
+        }
+
+        const candidate: SubscriptionCandidate = {
+          accountId,
+          scope: payload.scope,
+          propertyIds: normalizedPropertyIds,
+          startDate: payload.startDate,
+          endDate: payload.endDate ?? null,
+          status: payload.status,
+          paymentMethodId: null,
+          pricingIds: payload.pricingIds,
+          excludeSubscriptionId: id
+        };
+        const validationError = await validateSubscriptionCandidate(prisma, candidate);
+
+        return {
+          accountId,
+          eligible: !validationError,
+          reason: validationError
+        };
+      })
+    );
+
+    return {
+      items
     };
   });
 

@@ -16,6 +16,8 @@ import type {
   PropertiesResponse,
   SubscriptionBulkPayload,
   SubscriptionBulkResponse,
+  SubscriptionTransferEligibilityPayload,
+  SubscriptionTransferEligibilityResponse,
   SubscriptionsQueryParams,
   SubscriptionsResponse,
   UpdatePropertyUnitsPayload,
@@ -91,6 +93,15 @@ export const api = {
   ): Promise<UpsertSubscriptionResponse> =>
     apiRequest(`/api/admin/subscriptions/${subscriptionId}`, {
       method: 'PATCH',
+      body: payload
+    }),
+
+  getSubscriptionTransferEligibility: (
+    subscriptionId: string,
+    payload: SubscriptionTransferEligibilityPayload
+  ): Promise<SubscriptionTransferEligibilityResponse> =>
+    apiRequest(`/api/admin/subscriptions/${subscriptionId}/transfer-eligibility`, {
+      method: 'POST',
       body: payload
     }),
 

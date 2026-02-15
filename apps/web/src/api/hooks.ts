@@ -24,6 +24,8 @@ import type {
   PropertiesResponse,
   SubscriptionBulkPayload,
   SubscriptionBulkResponse,
+  SubscriptionTransferEligibilityPayload,
+  SubscriptionTransferEligibilityResponse,
   SubscriptionsQueryParams,
   SubscriptionsResponse,
   UpdatePropertyUnitsPayload,
@@ -101,6 +103,18 @@ export function useSubscriptionsQuery(
   return useQuery({
     queryKey: queryKeys.admin.subscriptions(params),
     queryFn: () => api.getSubscriptions(params)
+  });
+}
+
+export function useSubscriptionTransferEligibilityQuery(
+  subscriptionId: string,
+  payload: SubscriptionTransferEligibilityPayload,
+  options?: { enabled?: boolean }
+): UseQueryResult<SubscriptionTransferEligibilityResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.admin.subscriptionTransferEligibility(subscriptionId, payload),
+    queryFn: () => api.getSubscriptionTransferEligibility(subscriptionId, payload),
+    enabled: options?.enabled ?? true
   });
 }
 

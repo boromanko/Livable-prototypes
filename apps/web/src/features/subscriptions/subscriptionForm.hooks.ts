@@ -5,6 +5,7 @@ import {
   usePaymentMethodsQuery,
   usePricingsQuery,
   usePropertiesQuery,
+  useSubscriptionTransferEligibilityQuery,
   useUpdateSubscriptionMutation,
   type BillingScope,
   type SubscriptionItem,
@@ -14,7 +15,7 @@ import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
 import {
   buildFormStateFromSubscription,
   buildInitialSubscriptionFormState,
-  canSubmitSubscriptionForm,
+  getSubscriptionFormValidationState,
   type SubscriptionFormState
 } from './subscriptionForm.utils';
 
@@ -45,9 +46,11 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     buildInitialSubscriptionFormState(defaultAccountId, defaultPricingIds, defaultScope)
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
 
   const isEdit = mode === 'edit';
   const accountsQuery = useAccountsQuery({ page: 1, pageSize: 100 });
+  const accounts = useMemo(() => accountsQuery.data?.items ?? [], [accountsQuery.data?.items]);
   const propertiesQuery = usePropertiesQuery(
     { accountId: formState.accountId, page: 1, pageSize: 200 },
     { enabled: Boolean(formState.accountId) }
@@ -60,8 +63,56 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
   const createMutation = useCreateSubscriptionMutation();
   const updateMutation = useUpdateSubscriptionMutation();
   const isSaving = createMutation.isPending || updateMutation.isPending;
+  const transferEligibilityPayload = useMemo(
+    () => ({
+      accountIds: accounts.map((account) => account.id),
+      scope: formState.scope,
+      // Property selection is reset after transfer, so eligibility is evaluated on account-level constraints.
+      propertyIds: formState.scope === 'PROPERTY' ? [] : undefined,
+      startDate: formState.startDate,
+      endDate: formState.endDate !== '' ? formState.endDate : null,
+      status: formState.status,
+      pricingIds: formState.pricingIds
+    }),
+    [
+      accounts,
+      formState.scope,
+      formState.startDate,
+      formState.endDate,
+      formState.status,
+      formState.pricingIds
+    ]
+  );
+  const transferEligibilityQuery = useSubscriptionTransferEligibilityQuery(
+    initialSubscription?.id ?? '',
+    transferEligibilityPayload,
+    {
+      enabled:
+        open &&
+        isEdit &&
+        Boolean(initialSubscription) &&
+        accounts.length > 0 &&
+        formState.startDate !== '' &&
+        formState.pricingIds.length > 0
+    }
+  );
 
-  const canSubmit = useMemo(() => canSubmitSubscriptionForm(formState), [formState]);
+  const validation = useMemo(() => getSubscriptionFormValidationState(formState), [formState]);
+  const selectableAccounts = useMemo(() => {
+    if (!isEdit) {
+      return accounts;
+    }
+
+    const items = transferEligibilityQuery.data?.items;
+    if (!items) {
+      return accounts;
+    }
+
+    const eligibleAccountIds = new Set(
+      items.filter((item) => item.eligible).map((item) => item.accountId)
+    );
+    return accounts.filter((account) => eligibleAccountIds.has(account.id));
+  }, [accounts, isEdit, transferEligibilityQuery.data?.items]);
 
   useEffect(() => {
     if (!open) {
@@ -77,10 +128,43 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     }
 
     setFormError(null);
+    setShowValidation(false);
   }, [defaultAccountId, defaultPricingIds, defaultScope, initialSubscription, open]);
 
+  useEffect(() => {
+    if (!open || !isEdit || !transferEligibilityQuery.data) {
+      return;
+    }
+
+    setFormState((prev) => {
+      if (prev.accountId === '') {
+        return prev;
+      }
+
+      const isSelectedAccountAvailable = selectableAccounts.some(
+        (account) => account.id === prev.accountId
+      );
+      if (isSelectedAccountAvailable) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        accountId: '',
+        propertyIds: [],
+        paymentMethodId: ''
+      };
+    });
+  }, [isEdit, open, selectableAccounts, transferEligibilityQuery.data]);
+
   async function handleSubmit(): Promise<void> {
+    setShowValidation(true);
     setFormError(null);
+
+    if (validation.hasErrors) {
+      setFormError('Fix highlighted fields before saving.');
+      return;
+    }
 
     try {
       const normalizedPropertyIds =
@@ -91,10 +175,11 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
         const response = await updateMutation.mutateAsync({
           subscriptionId: initialSubscription.id,
           payload: {
+            accountId: formState.accountId,
             scope: formState.scope,
             propertyIds: normalizedPropertyIds,
             startDate: formState.startDate,
-            endDate: formState.hasEndDate ? formState.endDate : null,
+            endDate: formState.endDate !== '' ? formState.endDate : null,
             status: formState.status,
             paymentMethodId: formState.paymentMethodId || null,
             pricingIds: formState.pricingIds
@@ -107,7 +192,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
           scope: formState.scope,
           propertyIds: normalizedPropertyIds,
           startDate: formState.startDate,
-          endDate: formState.hasEndDate ? formState.endDate : null,
+          endDate: formState.endDate !== '' ? formState.endDate : null,
           status: formState.status,
           paymentMethodId: formState.paymentMethodId || null,
           pricingIds: formState.pricingIds
@@ -161,18 +246,17 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     }));
   }
 
-  function setHasEndDate(hasEndDate: boolean): void {
-    setFormState((prev) => ({
-      ...prev,
-      hasEndDate,
-      endDate: hasEndDate ? prev.endDate : ''
-    }));
-  }
-
   function setEndDate(endDate: string): void {
     setFormState((prev) => ({
       ...prev,
       endDate
+    }));
+  }
+
+  function setCreateActive(enabled: boolean): void {
+    setFormState((prev) => ({
+      ...prev,
+      status: enabled ? 'ACTIVE' : 'DRAFT'
     }));
   }
 
@@ -201,11 +285,13 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     title: isEdit ? 'Edit Subscription' : 'Create Subscription',
     isEdit,
     isSaving,
-    canSubmit,
+    showValidation,
+    isCreateActive: formState.status === 'ACTIVE',
+    validation,
     formState,
     formError,
-    accounts: accountsQuery.data?.items ?? [],
-    accountsLoading: accountsQuery.isPending,
+    accounts: selectableAccounts,
+    accountsLoading: accountsQuery.isPending || transferEligibilityQuery.isPending,
     properties: propertiesQuery.data?.items ?? [],
     propertiesLoading: propertiesQuery.isPending,
     paymentMethods: paymentMethodsQuery.data?.items ?? [],
@@ -219,8 +305,8 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
       setPropertyIds,
       setStartDate,
       setStatus,
-      setHasEndDate,
       setEndDate,
+      setCreateActive,
       setPaymentMethodId,
       setPricingIds,
       appendPricingId

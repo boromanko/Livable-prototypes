@@ -6,9 +6,11 @@ import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/
 import { PricingFormDrawer as NestedPricingFormDrawer } from '../pricings/PricingFormDrawer';
 import {
   SubscriptionFormAccountSection,
-  SubscriptionFormDatesStatusSection,
+  SubscriptionFormCreateStatusSection,
+  SubscriptionFormDatesSection,
   SubscriptionFormPaymentMethodSection,
   SubscriptionFormPricingsSection,
+  SubscriptionFormStatusSection,
   SubscriptionFormPropertySection
 } from './components/SubscriptionFormSections';
 import { useSubscriptionFormController } from './subscriptionForm.hooks';
@@ -89,8 +91,8 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
 
             <SubscriptionFormAccountSection
               value={controller.formState.accountId}
-              isEdit={controller.isEdit}
               loading={controller.accountsLoading}
+              error={controller.showValidation && controller.validation.accountError}
               accounts={controller.accounts}
               onChange={controller.actions.setAccountId}
             />
@@ -101,20 +103,25 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
               value={controller.formState.propertyIds}
               properties={controller.properties}
               loading={controller.propertiesLoading}
+              error={controller.showValidation && controller.validation.propertyError}
               onToggleApplyAllProperties={controller.actions.setApplyAllProperties}
               onChange={controller.actions.setPropertyIds}
             />
 
-            <SubscriptionFormDatesStatusSection
+            <SubscriptionFormDatesSection
               startDate={controller.formState.startDate}
-              status={controller.formState.status}
-              hasEndDate={controller.formState.hasEndDate}
               endDate={controller.formState.endDate}
+              startDateError={controller.showValidation && controller.validation.startDateError}
               onStartDateChange={controller.actions.setStartDate}
-              onStatusChange={controller.actions.setStatus}
-              onHasEndDateChange={controller.actions.setHasEndDate}
               onEndDateChange={controller.actions.setEndDate}
             />
+
+            {controller.isEdit ? (
+              <SubscriptionFormStatusSection
+                status={controller.formState.status}
+                onStatusChange={controller.actions.setStatus}
+              />
+            ) : null}
 
             <SubscriptionFormPaymentMethodSection
               accountId={controller.formState.accountId}
@@ -127,9 +134,17 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             <SubscriptionFormPricingsSection
               value={controller.formState.pricingIds}
               pricings={controller.pricings}
+              error={controller.showValidation && controller.validation.pricingsError}
               onCreatePricing={openCreatePricing}
               onChange={controller.actions.setPricingIds}
             />
+
+            {!controller.isEdit ? (
+              <SubscriptionFormCreateStatusSection
+                checked={controller.isCreateActive}
+                onChange={controller.actions.setCreateActive}
+              />
+            ) : null}
           </Stack>
 
           <Stack
@@ -148,7 +163,7 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             </SecondaryButton>
             <PrimaryButton
               onClick={controller.actions.onSubmit}
-              disabled={!controller.canSubmit || controller.isSaving}
+              disabled={controller.isSaving}
             >
               {controller.isEdit ? 'Save changes' : 'Create subscription'}
             </PrimaryButton>

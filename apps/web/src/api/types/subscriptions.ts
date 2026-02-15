@@ -74,11 +74,31 @@ export type CreateSubscriptionPayload = {
 };
 
 export type UpdateSubscriptionPayload = Partial<
-  Omit<CreateSubscriptionPayload, 'accountId'>
+  CreateSubscriptionPayload
 >;
 
 export type UpsertSubscriptionResponse = {
   item: SubscriptionItem;
+};
+
+export type SubscriptionTransferEligibilityPayload = {
+  accountIds: string[];
+  scope: BillingScope;
+  propertyIds?: string[];
+  startDate: string;
+  endDate?: string | null;
+  status?: SubscriptionStatus;
+  pricingIds: string[];
+};
+
+export type SubscriptionTransferEligibilityItem = {
+  accountId: string;
+  eligible: boolean;
+  reason: string | null;
+};
+
+export type SubscriptionTransferEligibilityResponse = {
+  items: SubscriptionTransferEligibilityItem[];
 };
 
 export type SubscriptionBulkAction =

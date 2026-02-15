@@ -22,8 +22,8 @@ import { getFormFieldSx, sectionTitle } from './SubscriptionFormSections.shared'
 
 type SubscriptionFormAccountSectionProps = {
   value: string;
-  isEdit: boolean;
   loading: boolean;
+  error: boolean;
   accounts: AccountItem[];
   onChange: (accountId: string) => void;
 };
@@ -31,7 +31,7 @@ type SubscriptionFormAccountSectionProps = {
 export function SubscriptionFormAccountSection(
   props: SubscriptionFormAccountSectionProps
 ): JSX.Element {
-  const { value, isEdit, loading, accounts, onChange } = props;
+  const { value, loading, error, accounts, onChange } = props;
 
   return (
     <Stack spacing={2}>
@@ -40,8 +40,9 @@ export function SubscriptionFormAccountSection(
         select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        disabled={isEdit || loading}
-        helperText={isEdit ? 'Account is fixed for existing subscriptions.' : undefined}
+        disabled={loading}
+        error={error}
+        helperText={error ? 'Account is required.' : undefined}
         SelectProps={{
           displayEmpty: true,
           renderValue: (selected) => {
@@ -55,17 +56,26 @@ export function SubscriptionFormAccountSection(
 
             const selectedAccount = accounts.find((account) => account.id === selected);
             if (!selectedAccount) {
-              return selected;
+              return (
+                <Box component="span" sx={{ color: '#4B617C' }}>
+                  Select account
+                </Box>
+              );
             }
 
             return `${selectedAccount.companyName} (${selectedAccount.email}) - ${selectedAccount.totalBillableUnits} units`;
           }
         }}
-        sx={getFormFieldSx()}
+        sx={getFormFieldSx(error)}
       >
         <MenuItem value="" disabled>
           Select account
         </MenuItem>
+        {accounts.length === 0 ? (
+          <MenuItem value="__empty__" disabled>
+            No available accounts
+          </MenuItem>
+        ) : null}
         {accounts.map((account) => (
           <MenuItem key={account.id} value={account.id}>
             {account.companyName} ({account.email}) - {account.totalBillableUnits} units
@@ -82,6 +92,7 @@ type SubscriptionFormPropertySectionProps = {
   value: string[];
   properties: PropertyItem[];
   loading: boolean;
+  error: boolean;
   onToggleApplyAllProperties: (checked: boolean) => void;
   onChange: (propertyIds: string[]) => void;
 };
@@ -95,6 +106,7 @@ export function SubscriptionFormPropertySection(
     value,
     properties,
     loading,
+    error,
     onToggleApplyAllProperties,
     onChange
   } = props;
@@ -103,18 +115,10 @@ export function SubscriptionFormPropertySection(
     .map((propertyId) => propertyById.get(propertyId))
     .filter((property): property is PropertyItem => Boolean(property));
   const availableProperties = properties.filter((property) => !value.includes(property.id));
-  const selectedUnits = selectedProperties.reduce(
-    (total, property) => total + property.billableUnits,
-    0
-  );
-  const selectedSummary =
-    selectedProperties.length > 0
-      ? `${selectedProperties.length} selected (${selectedUnits} units total).`
-      : null;
-  const helperText = !isApplyAllPropertiesEnabled ? selectedSummary : null;
   const isPickerDisabled = isApplyAllPropertiesEnabled || !accountId || loading;
+  const propertyRequiredError = !isApplyAllPropertiesEnabled && error;
   const pickerFieldSx = {
-    ...getFormFieldSx(),
+    ...getFormFieldSx(propertyRequiredError),
     '& .MuiAutocomplete-inputRoot': {
       p: '0 40px 0 14px !important'
     },
@@ -150,57 +154,8 @@ export function SubscriptionFormPropertySection(
         sx={{ m: 0 }}
       />
 
-      {!isApplyAllPropertiesEnabled && helperText ? (
-        <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
-          {helperText}
-        </Typography>
-      ) : null}
-
       {!isApplyAllPropertiesEnabled ? (
         <Stack spacing={2}>
-          {value.length > 0 ? (
-            <Stack spacing={1}>
-              {value.map((propertyId) => {
-                const property = propertyById.get(propertyId);
-
-                return (
-                  <Stack
-                    key={propertyId}
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                    sx={{
-                      px: 1.5,
-                      py: 1.25,
-                      border: '1px solid #E1E7EC',
-                      backgroundColor: '#F8F9FA',
-                      borderRadius: '2px'
-                    }}
-                  >
-                    <Stack spacing={0.25}>
-                      <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
-                        {property?.address ?? propertyId}
-                      </Typography>
-                      {property ? (
-                        <Typography variant="caption" sx={{ color: '#6F8298' }}>
-                          {property.billableUnits} units
-                        </Typography>
-                      ) : null}
-                    </Stack>
-
-                    <IconButton
-                      size="small"
-                      onClick={() => onChange(value.filter((id) => id !== propertyId))}
-                      aria-label="Remove property"
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </Stack>
-                );
-              })}
-            </Stack>
-          ) : null}
-
           <Autocomplete<PropertyItem, true, true, false>
             multiple
             disableClearable
@@ -214,7 +169,7 @@ export function SubscriptionFormPropertySection(
               loading
                 ? 'Loading properties...'
                 : availableProperties.length === 0
-                  ? 'No more properties to select'
+                  ? 'No more properties to add'
                   : 'No properties found'
             }
             PaperComponent={(paperProps: PaperProps) => (
@@ -275,11 +230,18 @@ export function SubscriptionFormPropertySection(
             renderInput={(params) => (
               <TextField
                 {...params}
-                placeholder="Select properies"
+                placeholder="Add properties"
+                error={propertyRequiredError}
                 sx={pickerFieldSx}
               />
             )}
           />
+
+          {propertyRequiredError ? (
+            <Typography variant="caption" sx={{ color: '#D32F2F', lineHeight: 1.4 }}>
+              Add at least one property for PROPERTY scope.
+            </Typography>
+          ) : null}
 
           {!loading && accountId && properties.length === 0 ? (
             <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
@@ -287,82 +249,174 @@ export function SubscriptionFormPropertySection(
             </Typography>
           ) : null}
 
-          {helperText ? (
-            <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
-              {helperText}
-            </Typography>
+          {value.length > 0 ? (
+            <Stack spacing={1}>
+              {value.map((propertyId) => {
+                const property = propertyById.get(propertyId);
+
+                return (
+                  <Stack
+                    key={propertyId}
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{
+                      px: 1.5,
+                      py: 1.25,
+                      border: '1px solid #E1E7EC',
+                      backgroundColor: '#F8F9FA',
+                      borderRadius: '2px'
+                    }}
+                  >
+                    <Stack spacing={0.25}>
+                      <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
+                        {property?.address ?? propertyId}
+                      </Typography>
+                      {property ? (
+                        <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                          {property.billableUnits} units
+                        </Typography>
+                      ) : null}
+                    </Stack>
+
+                    <IconButton
+                      size="small"
+                      onClick={() => onChange(value.filter((id) => id !== propertyId))}
+                      aria-label="Remove property"
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                );
+              })}
+            </Stack>
           ) : null}
+
         </Stack>
       ) : null}
     </Stack>
   );
 }
 
-type SubscriptionFormDatesStatusSectionProps = {
+type SubscriptionFormDatesSectionProps = {
   startDate: string;
-  status: SubscriptionStatus;
-  hasEndDate: boolean;
   endDate: string;
+  startDateError: boolean;
   onStartDateChange: (value: string) => void;
-  onStatusChange: (status: SubscriptionStatus) => void;
-  onHasEndDateChange: (checked: boolean) => void;
   onEndDateChange: (value: string) => void;
 };
 
-export function SubscriptionFormDatesStatusSection(
-  props: SubscriptionFormDatesStatusSectionProps
+export function SubscriptionFormDatesSection(
+  props: SubscriptionFormDatesSectionProps
 ): JSX.Element {
   const {
     startDate,
-    status,
-    hasEndDate,
     endDate,
+    startDateError,
     onStartDateChange,
-    onStatusChange,
-    onHasEndDateChange,
     onEndDateChange
   } = props;
 
   return (
     <Stack spacing={2}>
-      {sectionTitle('Dates & status')}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-        <TextField
-          type="date"
-          value={startDate}
-          onChange={(event) => onStartDateChange(event.target.value)}
-          InputLabelProps={{ shrink: true }}
-          sx={{ flex: 1, ...getFormFieldSx() }}
-        />
-        <TextField
-          select
-          value={status}
-          onChange={(event) => onStatusChange(event.target.value as SubscriptionStatus)}
-          sx={{ flex: 1, ...getFormFieldSx() }}
-        >
-          {subscriptionStatusOptions.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
+      {sectionTitle('Dates')}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 1.5, sm: 2 }}
+        alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+      >
+        <Stack spacing={0.75} sx={{ flex: 1 }}>
+          <Typography variant="caption" sx={{ color: '#4B617C', fontWeight: 600 }}>
+            Start date
+          </Typography>
+          <TextField
+            type="date"
+            value={startDate}
+            onChange={(event) => onStartDateChange(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            error={startDateError}
+            helperText={startDateError ? 'Start date is required.' : undefined}
+            sx={{ ...getFormFieldSx(startDateError) }}
+          />
+        </Stack>
 
+        <Typography
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            color: '#6F8298',
+            fontSize: 20,
+            lineHeight: 1,
+            pb: 1.5
+          }}
+        >
+          -
+        </Typography>
+
+        <Stack spacing={0.75} sx={{ flex: 1 }}>
+          <Typography variant="caption" sx={{ color: '#4B617C', fontWeight: 600 }}>
+            End date
+          </Typography>
+          <TextField
+            type="date"
+            value={endDate}
+            onChange={(event) => onEndDateChange(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ ...getFormFieldSx() }}
+          />
+        </Stack>
+      </Stack>
+    </Stack>
+  );
+}
+
+type SubscriptionFormStatusSectionProps = {
+  status: SubscriptionStatus;
+  onStatusChange: (status: SubscriptionStatus) => void;
+};
+
+export function SubscriptionFormStatusSection(
+  props: SubscriptionFormStatusSectionProps
+): JSX.Element {
+  const { status, onStatusChange } = props;
+
+  return (
+    <Stack spacing={2}>
+      {sectionTitle('Status')}
+      <TextField
+        select
+        value={status}
+        onChange={(event) => onStatusChange(event.target.value as SubscriptionStatus)}
+        sx={getFormFieldSx()}
+      >
+        {subscriptionStatusOptions.map((option) => (
+          <MenuItem key={option} value={option}>
+            {option}
+          </MenuItem>
+        ))}
+      </TextField>
+    </Stack>
+  );
+}
+
+type SubscriptionFormCreateStatusSectionProps = {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+};
+
+export function SubscriptionFormCreateStatusSection(
+  props: SubscriptionFormCreateStatusSectionProps
+): JSX.Element {
+  const { checked, onChange } = props;
+
+  return (
+    <Stack spacing={2}>
+      {sectionTitle('Status')}
       <FormControlLabel
         control={
-          <Checkbox checked={hasEndDate} onChange={(event) => onHasEndDateChange(event.target.checked)} />
+          <Checkbox checked={checked} onChange={(event) => onChange(event.target.checked)} />
         }
-        label="Set end date (disable Forever mode)"
+        label="Activate subscription immediately"
         sx={{ m: 0 }}
-      />
-
-      <TextField
-        type="date"
-        value={endDate}
-        onChange={(event) => onEndDateChange(event.target.value)}
-        disabled={!hasEndDate}
-        InputLabelProps={{ shrink: true }}
-        sx={getFormFieldSx()}
       />
     </Stack>
   );

@@ -113,18 +113,6 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
               onChange={controller.actions.setProductId}
             />
 
-            <PricingFormSubscriptionsSection
-              value={controller.subscriptionIds}
-              subscriptions={controller.subscriptions}
-              loading={controller.subscriptionsLoading}
-              hasLoadingError={controller.subscriptionsError}
-              blockedSubscriptionIds={controller.blockedSubscriptionIds}
-              selectedSubscriptionConflictIds={controller.selectedSubscriptionConflictIds}
-              canCreateSubscription={controller.isEdit && Boolean(controller.pricingId)}
-              onCreateSubscription={openCreateSubscription}
-              onChange={controller.actions.setSubscriptionIds}
-            />
-
             <PricingFormTypeSection
               value={controller.formState.type}
               onChange={controller.actions.setPricingType}
@@ -164,6 +152,18 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                 onBlur={controller.actions.onNormalizeMinimumPriceOnBlur}
               />
             ) : null}
+
+            <PricingFormSubscriptionsSection
+              value={controller.subscriptionIds}
+              subscriptions={controller.subscriptions}
+              loading={controller.subscriptionsLoading}
+              hasLoadingError={controller.subscriptionsError}
+              blockedSubscriptionIds={controller.blockedSubscriptionIds}
+              selectedSubscriptionConflictIds={controller.selectedSubscriptionConflictIds}
+              canCreateSubscription={controller.isEdit && Boolean(controller.pricingId)}
+              onCreateSubscription={openCreateSubscription}
+              onChange={controller.actions.setSubscriptionIds}
+            />
           </Stack>
 
           <Stack

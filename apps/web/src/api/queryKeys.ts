@@ -3,6 +3,7 @@ import type {
   PaymentMethodsQueryParams,
   PricingsQueryParams,
   PropertiesQueryParams,
+  SubscriptionTransferEligibilityPayload,
   SubscriptionsQueryParams
 } from './types';
 
@@ -26,6 +27,10 @@ export const queryKeys = {
     pricingsTreeAll: [...adminBaseKey, 'pricingsTree'] as const,
     subscriptionsAll: [...adminBaseKey, 'subscriptions'] as const,
     subscriptions: (params: SubscriptionsQueryParams) =>
-      [...adminBaseKey, 'subscriptions', params] as const
+      [...adminBaseKey, 'subscriptions', params] as const,
+    subscriptionTransferEligibility: (
+      subscriptionId: string,
+      payload: SubscriptionTransferEligibilityPayload
+    ) => [...adminBaseKey, 'subscriptions', subscriptionId, 'transferEligibility', payload] as const
   }
 };

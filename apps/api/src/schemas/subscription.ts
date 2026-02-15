@@ -60,6 +60,7 @@ export const createSubscriptionBodySchema = z
 
 export const updateSubscriptionBodySchema = z
   .object({
+    accountId: z.string().min(1).optional(),
     scope: billingScopeSchema.optional(),
     propertyIds: z.array(z.string().min(1)).optional(),
     startDate: z.coerce.date().optional(),
@@ -70,6 +71,36 @@ export const updateSubscriptionBodySchema = z
   })
   .refine((payload) => Object.keys(payload).length > 0, {
     message: 'At least one field must be provided'
+  });
+
+export const subscriptionTransferEligibilityBodySchema = z
+  .object({
+    accountIds: z.array(z.string().min(1)).min(1),
+    scope: billingScopeSchema,
+    propertyIds: z.array(z.string().min(1)).optional(),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date().nullable().optional(),
+    status: subscriptionStatusSchema.default('DRAFT'),
+    pricingIds: z.array(z.string().min(1)).min(1)
+  })
+  .superRefine((payload, ctx) => {
+    const propertySelections = payload.propertyIds ?? [];
+
+    if (payload.scope === 'ACCOUNT' && propertySelections.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'propertyIds must be empty for ACCOUNT scope',
+        path: ['propertyIds']
+      });
+    }
+
+    if (payload.endDate && payload.endDate < payload.startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'endDate must be greater than or equal to startDate',
+        path: ['endDate']
+      });
+    }
   });
 
 export const subscriptionBulkActionSchema = z.enum([
