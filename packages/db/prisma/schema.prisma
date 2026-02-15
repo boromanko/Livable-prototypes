@@ -49,8 +49,9 @@ model Property {
   billableUnits Int        @default(0) @map("billable_units")
   createdAt DateTime       @default(now()) @map("created_at")
 
-  account       Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  subscriptions Subscription[]
+  account             Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  subscriptions       Subscription[]
+  subscriptionTargets SubscriptionProperty[]
 
   @@index([accountId])
   @@map("properties")
@@ -116,12 +117,25 @@ model Subscription {
   property          Property?            @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   paymentMethod     PaymentMethod?       @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
   subscriptionItems SubscriptionPricing[]
+  targetProperties  SubscriptionProperty[]
 
   @@index([accountId])
   @@index([propertyId])
   @@index([paymentMethodId])
   @@index([scope])
   @@map("subscriptions")
+}
+
+model SubscriptionProperty {
+  subscriptionId String       @map("subscription_id")
+  propertyId     String       @map("property_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  property       Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@id([subscriptionId, propertyId])
+  @@index([propertyId])
+  @@map("subscription_properties")
 }
 
 model SubscriptionPricing {

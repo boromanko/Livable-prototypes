@@ -501,16 +501,20 @@ async function main(): Promise<void> {
 
     const propertyUnitOverride = unitPricingId ? getAlternatePricing(unitPricingId) : null;
     if (propertyUnitOverride) {
+      const propertyId = getPropertyId(account.id, 3);
       await prisma.subscription.create({
         data: {
           id: `sub-property-unit-${account.id}`,
           accountId: account.id,
           scope: 'PROPERTY',
-          propertyId: getPropertyId(account.id, 3),
+          propertyId,
           startDate: new Date(Date.UTC(2026, 0, 10 + accountIndex)),
           endDate: null,
           status: 'ACTIVE',
           paymentMethodId: `pm-${account.id}-card-default`,
+          targetProperties: {
+            create: [{ propertyId }]
+          },
           subscriptionItems: {
             create: [{ pricingId: propertyUnitOverride, quantity: 1 }]
           }
@@ -520,16 +524,20 @@ async function main(): Promise<void> {
 
     const propertyLateFeeOverride = lateFeePricingId ? getAlternatePricing(lateFeePricingId) : null;
     if (propertyLateFeeOverride) {
+      const propertyId = getPropertyId(account.id, 8);
       await prisma.subscription.create({
         data: {
           id: `sub-property-latefee-${account.id}`,
           accountId: account.id,
           scope: 'PROPERTY',
-          propertyId: getPropertyId(account.id, 8),
+          propertyId,
           startDate: new Date(Date.UTC(2026, 0, 15 + accountIndex)),
           endDate: null,
           status: accountIndex % 4 === 0 ? 'DRAFT' : 'ACTIVE',
           paymentMethodId: `pm-${account.id}-card-default`,
+          targetProperties: {
+            create: [{ propertyId }]
+          },
           subscriptionItems: {
             create: [{ pricingId: propertyLateFeeOverride, quantity: 1 }]
           }
@@ -541,16 +549,20 @@ async function main(): Promise<void> {
       ? getAlternatePricing(automationPricingId)
       : null;
     if (propertyAutomationOverride && accountIndex % 3 === 0) {
+      const propertyId = getPropertyId(account.id, 10);
       await prisma.subscription.create({
         data: {
           id: `sub-property-automation-${account.id}`,
           accountId: account.id,
           scope: 'PROPERTY',
-          propertyId: getPropertyId(account.id, 10),
+          propertyId,
           startDate: new Date(Date.UTC(2026, 0, 20 + accountIndex)),
           endDate: null,
           status: 'ACTIVE',
           paymentMethodId: `pm-${account.id}-card-default`,
+          targetProperties: {
+            create: [{ propertyId }]
+          },
           subscriptionItems: {
             create: [{ pricingId: propertyAutomationOverride, quantity: 1 }]
           }

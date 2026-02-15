@@ -12,6 +12,7 @@ const REQUIRED_TABLES = [
   'pricings',
   'pricing_tiers',
   'subscriptions',
+  'subscription_properties',
   'subscription_pricings',
   'payment_methods'
 ] as const;
