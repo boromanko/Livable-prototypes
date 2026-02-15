@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 import { PricingType, prisma } from '@stripe-integration/db';
-import type { Prisma } from '@stripe-integration/db';
 import {
   createPricingBodySchema,
   normalizeTiers,
@@ -9,256 +8,36 @@ import {
   updatePricingBodySchema
 } from '../../schemas/pricing.js';
 import { validateTierStructure } from '../../services/pricing-calculator.js';
-import { resolvePricingTree } from '../../services/pricing-resolution.js';
+import {
+  buildPricingsWhere,
+  cleanupUnknownPricingReferences,
+  listPricingsWithPagination,
+  pricingInclude,
+  toPricingResponse
+} from './pricings.shared.js';
+import { loadResolvedPricingTreeItems } from './pricings.tree.js';
 
-const pricingInclude = {
-  product: {
-    select: {
-      id: true,
-      name: true,
-      code: true
-    }
-  },
-  tiers: {
-    orderBy: {
-      fromUnit: 'asc'
-    }
-  },
-  _count: {
-    select: {
-      subscriptionLink: true
-    }
-  }
-} as const;
-
-type PricingWithRelations = Prisma.PricingGetPayload<{
-  include: typeof pricingInclude;
-}>;
-
-const pricingTreeInclude = {
-  product: {
-    select: {
-      id: true,
-      name: true,
-      code: true
-    }
-  },
-  tiers: {
-    orderBy: {
-      fromUnit: 'asc'
-    }
-  },
-  subscriptionLink: {
-    include: {
-      subscription: {
-        select: {
-          id: true,
-          scope: true,
-          status: true,
-          createdAt: true,
-          accountId: true,
-          propertyId: true,
-          account: {
-            select: {
-              id: true,
-              companyName: true,
-              email: true
-            }
-          },
-          property: {
-            select: {
-              id: true,
-              accountId: true,
-              address: true,
-              billableUnits: true
-            }
-          }
-        }
-      }
-    }
-  }
-} as const;
-
-type SqliteTableRow = {
-  name: string;
-};
-
-type SqliteForeignKeyRow = {
-  table: string;
-  from: string;
-};
-
-function quoteSqlIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll('"', '""')}"`;
-}
-
-async function cleanupUnknownPricingReferences(
-  tx: Prisma.TransactionClient,
-  pricingId: string
-): Promise<void> {
-  const tables = await tx.$queryRawUnsafe<SqliteTableRow[]>(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
-  );
-
-  for (const table of tables) {
-    if (table.name === 'pricings') {
-      continue;
-    }
-
-    const foreignKeys = await tx.$queryRawUnsafe<SqliteForeignKeyRow[]>(
-      `PRAGMA foreign_key_list(${quoteSqlIdentifier(table.name)});`
-    );
-
-    const pricingReferences = foreignKeys.filter((key) => key.table === 'pricings');
-    for (const reference of pricingReferences) {
-      const deleteSql = `DELETE FROM ${quoteSqlIdentifier(table.name)} WHERE ${quoteSqlIdentifier(reference.from)} = ?`;
-      await tx.$executeRawUnsafe(deleteSql, pricingId);
-    }
-  }
-}
-
-function toPricingResponse(pricing: PricingWithRelations) {
-  return {
-    id: pricing.id,
-    product: pricing.product,
-    internalName: pricing.internalName,
-    type: pricing.type,
-    fixedAmountCents: pricing.fixedAmountCents,
-    minimumPriceCents: pricing.minimumPriceCents,
-    currency: pricing.currency,
-    billingInterval: pricing.billingInterval,
-    isActive: pricing.isActive,
-    createdAt: pricing.createdAt,
-    subscriptionsCount: pricing._count.subscriptionLink,
-    tiers: pricing.tiers.map((tier) => ({
-      id: tier.id,
-      fromUnit: tier.fromUnit,
-      toUnit: tier.toUnit,
-      unitAmountCents: tier.unitAmountCents
-    }))
-  };
+function getTierValidationMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Invalid tiered pricing structure';
 }
 
 export async function registerAdminPricingsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/admin/pricings-tree', async () => {
-    const pricingItems = await prisma.pricing.findMany({
-      include: pricingTreeInclude,
-      orderBy: [{ createdAt: 'desc' }]
-    });
-
-    const accountIds = Array.from(new Set(
-      pricingItems
-        .flatMap((pricing) => pricing.subscriptionLink.map((link) => link.subscription.accountId))
-    ));
-
-    const properties = accountIds.length
-      ? await prisma.property.findMany({
-          where: {
-            accountId: {
-              in: accountIds
-            }
-          },
-          select: {
-            id: true,
-            accountId: true,
-            address: true,
-            billableUnits: true
-          },
-          orderBy: [{ address: 'asc' }]
-        })
-      : [];
-
-    const normalizedPricings = pricingItems.map((pricing) => ({
-      id: pricing.id,
-      product: pricing.product,
-      internalName: pricing.internalName,
-      type: pricing.type,
-      fixedAmountCents: pricing.fixedAmountCents,
-      minimumPriceCents: pricing.minimumPriceCents,
-      currency: pricing.currency,
-      billingInterval: pricing.billingInterval,
-      isActive: pricing.isActive,
-      createdAt: pricing.createdAt,
-      subscriptionsCount: pricing.subscriptionLink.length,
-      tiers: pricing.tiers.map((tier) => ({
-        fromUnit: tier.fromUnit,
-        toUnit: tier.toUnit,
-        unitAmountCents: tier.unitAmountCents
-      })),
-      subscriptions: pricing.subscriptionLink.map((link) => ({
-        id: link.subscription.id,
-        scope: link.subscription.scope,
-        status: link.subscription.status,
-        createdAt: link.subscription.createdAt,
-        accountId: link.subscription.accountId,
-        propertyId: link.subscription.propertyId,
-        account: link.subscription.account
-      }))
-    }));
-
-    const tiersByPricingId = new Map(
-      pricingItems.map((pricing) => [
-        pricing.id,
-        pricing.tiers.map((tier) => ({
-          id: tier.id,
-          fromUnit: tier.fromUnit,
-          toUnit: tier.toUnit,
-          unitAmountCents: tier.unitAmountCents
-        }))
-      ])
-    );
-
-    const items = resolvePricingTree(normalizedPricings, properties).map((item) => ({
-      ...item,
-      tiers: tiersByPricingId.get(item.id) ?? []
-    }));
-
-    return {
-      items
-    };
+    const items = await loadResolvedPricingTreeItems();
+    return { items };
   });
 
   app.get('/api/admin/pricings', async (request) => {
     const query = pricingListQuerySchema.parse(request.query);
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
-    const skip = (page - 1) * pageSize;
+    const where = buildPricingsWhere(query);
 
-    const where: Prisma.PricingWhereInput = {};
-
-    if (query.productId) {
-      where.productId = query.productId;
-    }
-
-    if (query.type) {
-      where.type = query.type;
-    }
-
-    if (query.search) {
-      where.OR = [
-        { internalName: { contains: query.search } },
-        { product: { name: { contains: query.search } } },
-        { product: { code: { contains: query.search } } }
-      ];
-    }
-
-    const [items, total] = await prisma.$transaction([
-      prisma.pricing.findMany({
-        where,
-        include: pricingInclude,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: pageSize
-      }),
-      prisma.pricing.count({ where })
-    ]);
-
-    return {
-      items: items.map(toPricingResponse),
+    return listPricingsWithPagination({
       page,
       pageSize,
-      total
-    };
+      where
+    });
   });
 
   app.post('/api/admin/pricings', async (request, reply) => {
@@ -269,9 +48,7 @@ export async function registerAdminPricingsRoutes(app: FastifyInstance): Promise
       try {
         validateTierStructure(normalizedTiers);
       } catch (error) {
-        reply.status(400).send({
-          message: error instanceof Error ? error.message : 'Invalid tiered pricing structure'
-        });
+        reply.status(400).send({ message: getTierValidationMessage(error) });
         return;
       }
     }
@@ -342,9 +119,7 @@ export async function registerAdminPricingsRoutes(app: FastifyInstance): Promise
       internalName: payload.internalName ?? existing.internalName,
       type: targetType,
       fixedAmountCents:
-        payload.fixedAmountCents !== undefined
-          ? payload.fixedAmountCents
-          : existing.fixedAmountCents,
+        payload.fixedAmountCents !== undefined ? payload.fixedAmountCents : existing.fixedAmountCents,
       minimumPriceCents:
         payload.minimumPriceCents !== undefined
           ? payload.minimumPriceCents
@@ -352,23 +127,17 @@ export async function registerAdminPricingsRoutes(app: FastifyInstance): Promise
       currency: (payload.currency ?? existing.currency).toLowerCase(),
       billingInterval: payload.billingInterval ?? existing.billingInterval,
       isActive: payload.isActive ?? existing.isActive,
-      tiers:
-        targetType === PricingType.FIXED
-          ? []
-          : payload.tiers ?? existingTiers
+      tiers: targetType === PricingType.FIXED ? [] : payload.tiers ?? existingTiers
     };
 
     const validated = createPricingBodySchema.parse(candidatePayload);
-    const normalizedTiers =
-      validated.type === 'TIERED' ? normalizeTiers(validated.tiers ?? []) : [];
+    const normalizedTiers = validated.type === 'TIERED' ? normalizeTiers(validated.tiers ?? []) : [];
 
     if (validated.type === 'TIERED') {
       try {
         validateTierStructure(normalizedTiers);
       } catch (error) {
-        reply.status(400).send({
-          message: error instanceof Error ? error.message : 'Invalid tiered pricing structure'
-        });
+        reply.status(400).send({ message: getTierValidationMessage(error) });
         return;
       }
     }
