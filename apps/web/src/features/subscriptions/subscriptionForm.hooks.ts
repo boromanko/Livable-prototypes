@@ -182,6 +182,13 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     }));
   }
 
+  function appendPricingId(pricingId: string): void {
+    setFormState((prev) => ({
+      ...prev,
+      pricingIds: uniqueIds([...prev.pricingIds, pricingId])
+    }));
+  }
+
   return {
     title: isEdit ? 'Edit Subscription' : 'Create Subscription',
     isEdit,
@@ -207,7 +214,8 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
       setHasEndDate,
       setEndDate,
       setPaymentMethodId,
-      setPricingIds
+      setPricingIds,
+      appendPricingId
     }
   };
 }

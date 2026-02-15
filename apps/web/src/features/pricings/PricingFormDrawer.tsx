@@ -17,6 +17,7 @@ type PricingFormDrawerProps = {
   mode: 'create' | 'edit';
   initialPricing: PricingItem | null;
   defaultProductId?: string;
+  onSaved?: (pricing: PricingItem) => void;
   onClose: () => void;
 };
 

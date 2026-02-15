@@ -5,6 +5,8 @@ import {
   FormControlLabel,
   IconButton,
   MenuItem,
+  Paper,
+  type PaperProps,
   Stack,
   TextField,
   Typography
@@ -111,6 +113,28 @@ export function SubscriptionFormPropertySection(
       : null;
   const helperText = !isApplyAllPropertiesEnabled ? selectedSummary : null;
   const isPickerDisabled = isApplyAllPropertiesEnabled || !accountId || loading;
+  const pickerFieldSx = {
+    ...getFormFieldSx(),
+    '& .MuiAutocomplete-inputRoot': {
+      p: '0 40px 0 14px !important'
+    },
+    '& .MuiOutlinedInput-root': {
+      height: 48,
+      minHeight: 48,
+      alignItems: 'center',
+      pr: 5
+    },
+    '& .MuiAutocomplete-input': {
+      p: '0 !important'
+    },
+    '& .MuiInputBase-input::placeholder': {
+      color: '#4B617C',
+      opacity: 1
+    },
+    '& .MuiAutocomplete-popupIndicator': {
+      color: '#4B617C'
+    }
+  };
 
   return (
     <Stack spacing={2}>
@@ -193,22 +217,66 @@ export function SubscriptionFormPropertySection(
                   ? 'No more properties to select'
                   : 'No properties found'
             }
+            PaperComponent={(paperProps: PaperProps) => (
+              <Paper
+                {...paperProps}
+                sx={{
+                  mt: 0.5,
+                  border: '1px solid #E1E7EC',
+                  borderRadius: '2px',
+                  boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.12)',
+                  transformOrigin: 'top center',
+                  animation: 'subscriptionAutocompleteOpen 150ms ease-out',
+                  '@keyframes subscriptionAutocompleteOpen': {
+                    from: {
+                      opacity: 0,
+                      transform: 'translateY(-4px) scale(0.99)'
+                    },
+                    to: {
+                      opacity: 1,
+                      transform: 'translateY(0) scale(1)'
+                    }
+                  }
+                }}
+              />
+            )}
+            slotProps={{
+              listbox: {
+                sx: {
+                  py: 0,
+                  '& .MuiAutocomplete-option': {
+                    minHeight: 52,
+                    alignItems: 'center'
+                  }
+                }
+              }
+            }}
             renderTags={() => null}
             renderOption={(optionProps, option) => (
-              <li {...optionProps} key={option.id}>
+              <Box
+                component="li"
+                {...optionProps}
+                key={option.id}
+                sx={{
+                  minHeight: 48,
+                  px: 1.5,
+                  py: 0.75,
+                  alignItems: 'center'
+                }}
+              >
                 <Stack spacing={0.25} sx={{ py: 0.25 }}>
                   <Typography variant="body2">{option.address}</Typography>
                   <Typography variant="caption" sx={{ color: '#6F8298' }}>
                     {option.billableUnits} units
                   </Typography>
                 </Stack>
-              </li>
+              </Box>
             )}
             renderInput={(params) => (
               <TextField
                 {...params}
                 placeholder="Select properies"
-                sx={getFormFieldSx()}
+                sx={pickerFieldSx}
               />
             )}
           />

@@ -39,11 +39,12 @@ type UsePricingFormControllerInput = {
   mode: 'create' | 'edit';
   initialPricing: PricingItem | null;
   defaultProductId?: string;
+  onSaved?: (pricing: PricingItem) => void;
   onClose: () => void;
 };
 
 export function usePricingFormController(input: UsePricingFormControllerInput) {
-  const { open, mode, initialPricing, defaultProductId, onClose } = input;
+  const { open, mode, initialPricing, defaultProductId, onSaved, onClose } = input;
 
   const [formState, setFormState] = useState<PricingFormState>(() =>
     buildInitialState(null, 'Price 1')
@@ -160,18 +161,24 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
     const payload = buildPricingMutationPayload(formState, tierValidation);
 
     try {
+      let savedPricing: PricingItem | null = null;
       if (isEdit && initialPricing) {
-        await updateMutation.mutateAsync({
+        const response = await updateMutation.mutateAsync({
           pricingId: initialPricing.id,
           payload
         });
+        savedPricing = response.item;
       } else {
-        await createMutation.mutateAsync({
+        const response = await createMutation.mutateAsync({
           productId: formState.productId,
           ...payload
         });
+        savedPricing = response.item;
       }
 
+      if (savedPricing) {
+        onSaved?.(savedPricing);
+      }
       onClose();
     } catch (error) {
       setFormError(getApiErrorMessage(error));
