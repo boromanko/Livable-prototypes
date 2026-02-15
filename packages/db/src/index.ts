@@ -5,7 +5,7 @@ const prismaClient = require('@prisma/client') as typeof import('@prisma/client'
 const { PrismaClient, PricingType, BillingScope, SubscriptionStatus, PaymentMethodType } = prismaClient;
 
 const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
+  prisma?: InstanceType<typeof PrismaClient>;
 };
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient();

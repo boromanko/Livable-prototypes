@@ -1,0 +1,205 @@
+import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { Box, InputBase, Stack, Typography } from '@mui/material';
+import { AppIconButton, SecondaryButton } from '../../../components/buttons';
+import type { TierDraft, TierDraftErrors } from '../pricingForm.utils';
+
+type PricingTierEditorProps = {
+  tiers: TierDraft[];
+  tierStartUnits: number[];
+  tierValidationErrors: TierDraftErrors[];
+  showValidation: boolean;
+  hasTierErrors: boolean;
+  onAddTier: () => void;
+  onRemoveTier: (tierId: string) => void;
+  onUpdateTierMaxUnits: (tierId: string, value: string) => void;
+  onNormalizeTierMaxUnitsOnBlur: (tierId: string) => void;
+  onUpdateTierUnitPrice: (tierId: string, value: string) => void;
+  onNormalizeTierUnitPriceOnBlur: (tierId: string) => void;
+};
+
+const tableColumnTemplate = '64px minmax(240px, 1fr) minmax(240px, 1fr) 48px';
+const errorTint = '#FFF1F1';
+const focusTint = '#EEF8F8';
+
+export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
+  const {
+    tiers,
+    tierStartUnits,
+    tierValidationErrors,
+    showValidation,
+    hasTierErrors,
+    onAddTier,
+    onRemoveTier,
+    onUpdateTierMaxUnits,
+    onNormalizeTierMaxUnitsOnBlur,
+    onUpdateTierUnitPrice,
+    onNormalizeTierUnitPriceOnBlur
+  } = props;
+
+  return (
+    <>
+      <Box sx={{ overflowX: 'auto' }}>
+        <Box
+          sx={{
+            minWidth: 620,
+            border: '1px solid #E1E7EC',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}
+        >
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: tableColumnTemplate,
+              backgroundColor: '#F8F9FA',
+              borderBottom: '1px solid #E1E7EC'
+            }}
+          >
+            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+              Tier
+            </Box>
+            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+              Units quantity
+            </Box>
+            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+              Price per unit
+            </Box>
+            <Box sx={{ px: 1, py: 1.5 }} />
+          </Box>
+
+          {tiers.map((tier, index) => {
+            const isLastTier = index === tiers.length - 1;
+            const start = tierStartUnits[index] ?? 1;
+            const unitsError = showValidation ? tierValidationErrors[index]?.maxUnits : undefined;
+            const priceError = showValidation
+              ? tierValidationErrors[index]?.unitAmountUsd
+              : undefined;
+
+            return (
+              <Box
+                key={tier.id}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: tableColumnTemplate,
+                  minHeight: 48,
+                  borderTop: index === 0 ? 'none' : '1px solid #E1E7EC'
+                }}
+              >
+                <Stack
+                  justifyContent="center"
+                  sx={{ px: 1, py: 1.25, backgroundColor: '#F8F9FA', color: '#212934' }}
+                >
+                  <Typography sx={{ fontSize: 15 }}>{index + 1}</Typography>
+                </Stack>
+
+                <Stack
+                  justifyContent="center"
+                  sx={{
+                    px: 1,
+                    py: 0.5,
+                    backgroundColor: unitsError ? errorTint : '#FFFFFF',
+                    boxShadow: unitsError ? 'inset 0 0 0 1px #D32F2F' : 'none',
+                    transition: 'background-color 120ms ease, box-shadow 120ms ease',
+                    '&:focus-within': {
+                      backgroundColor: unitsError ? errorTint : focusTint,
+                      boxShadow: unitsError
+                        ? 'inset 0 0 0 1.5px #D32F2F'
+                        : 'inset 0 0 0 2px #009299'
+                    }
+                  }}
+                >
+                  <InputBase
+                    value={tier.maxUnits}
+                    onChange={(event) => onUpdateTierMaxUnits(tier.id, event.target.value)}
+                    onBlur={() => onNormalizeTierMaxUnitsOnBlur(tier.id)}
+                    placeholder={isLastTier ? `> ${Math.max(0, start - 1)}` : `${start}`}
+                    inputProps={{
+                      inputMode: 'numeric',
+                      pattern: '[0-9]*',
+                      'aria-label': `Tier ${index + 1} units quantity`,
+                      'aria-invalid': Boolean(unitsError)
+                    }}
+                    sx={{
+                      fontSize: 15,
+                      px: 0.5,
+                      '& input::placeholder': {
+                        color: isLastTier ? '#B8C4CE' : '#8895A7',
+                        opacity: 1
+                      }
+                    }}
+                  />
+                </Stack>
+
+                <Stack
+                  justifyContent="center"
+                  sx={{
+                    px: 1,
+                    py: 0.5,
+                    backgroundColor: priceError ? errorTint : '#FFFFFF',
+                    boxShadow: priceError ? 'inset 0 0 0 1px #D32F2F' : 'none',
+                    transition: 'background-color 120ms ease, box-shadow 120ms ease',
+                    '&:focus-within': {
+                      backgroundColor: priceError ? errorTint : focusTint,
+                      boxShadow: priceError
+                        ? 'inset 0 0 0 1.5px #D32F2F'
+                        : 'inset 0 0 0 2px #009299'
+                    }
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={0.75}>
+                    <Typography sx={{ color: '#8895A7', fontSize: 18 }}>$</Typography>
+                    <InputBase
+                      value={tier.unitAmountUsd}
+                      onChange={(event) => onUpdateTierUnitPrice(tier.id, event.target.value)}
+                      onBlur={() => onNormalizeTierUnitPriceOnBlur(tier.id)}
+                      placeholder="0.00"
+                      inputProps={{
+                        inputMode: 'decimal',
+                        'aria-label': `Tier ${index + 1} unit price`,
+                        'aria-invalid': Boolean(priceError)
+                      }}
+                      sx={{
+                        width: '100%',
+                        fontSize: 15,
+                        '& input::placeholder': { color: '#8895A7', opacity: 1 }
+                      }}
+                    />
+                  </Stack>
+                </Stack>
+
+                <Stack justifyContent="center" alignItems="center" sx={{ backgroundColor: '#F8F9FA' }}>
+                  {!isLastTier ? (
+                    <AppIconButton
+                      aria-label={`Remove tier ${index + 1}`}
+                      onClick={() => onRemoveTier(tier.id)}
+                      tone="ghost"
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </AppIconButton>
+                  ) : null}
+                </Stack>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+
+      <SecondaryButton
+        startIcon={<AddIcon />}
+        onClick={onAddTier}
+        sx={{
+          width: 'fit-content',
+          px: 1.5,
+          py: 0.75
+        }}
+      >
+        Add tier
+      </SecondaryButton>
+
+      {showValidation && hasTierErrors ? (
+        <Typography sx={{ color: '#d32f2f', fontSize: 12 }}>Fill highlighted tier fields.</Typography>
+      ) : null}
+    </>
+  );
+}

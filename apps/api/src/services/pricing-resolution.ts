@@ -2,6 +2,7 @@ import { PricingType } from '@stripe-integration/db';
 
 type ResolutionStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
 type ResolutionScope = 'ACCOUNT' | 'PROPERTY';
+type PricingTypeValue = (typeof PricingType)[keyof typeof PricingType];
 
 type TierScope = 'ACCOUNT_POOL' | 'PROPERTY';
 
@@ -35,7 +36,7 @@ export type PricingResolutionInput = {
   id: string;
   product: PricingProduct;
   internalName: string;
-  type: PricingType;
+  type: PricingTypeValue;
   fixedAmountCents: number | null;
   minimumPriceCents: number | null;
   currency: string;
@@ -110,7 +111,7 @@ export type PricingTreeResolvedItem = {
   id: string;
   product: PricingProduct;
   internalName: string;
-  type: PricingType;
+  type: PricingTypeValue;
   fixedAmountCents: number | null;
   minimumPriceCents: number | null;
   currency: string;
@@ -185,7 +186,7 @@ function resolveCurrentTier(tiers: TierSnapshot[], units: number): TierSnapshot 
 }
 
 function resolveUnitAmountCents(
-  pricingType: PricingType,
+  pricingType: PricingTypeValue,
   fixedAmountCents: number | null,
   tier: TierSnapshot | null
 ): number | null {

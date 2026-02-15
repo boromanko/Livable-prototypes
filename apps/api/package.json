@@ -7,7 +7,7 @@
     "dev": "tsx watch --include src --exclude node_modules --exclude ../../node_modules src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "pnpm --filter @stripe-integration/db db:generate && tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },

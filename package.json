@@ -20,7 +20,7 @@
     "setup:demo": "pnpm db:generate && pnpm db:push && pnpm db:seed",
     "demo": "pnpm install && pnpm setup:demo && pnpm dev",
     "demo:refresh": "pnpm db:push && pnpm db:seed",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm db:generate && pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint"
   }
 }

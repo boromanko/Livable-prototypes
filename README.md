@@ -17,80 +17,50 @@ Monorepo for the Stripe Integration UX prototype (web, API, and local DB).
 - `packages/shared` - shared package placeholder
 - `docs/agent-notes` - product and prototype notes
 
-## Demo Run (One Command)
+## How to run
 
 Prerequisites:
-- Node.js 22 LTS (recommended)
+- Node.js 22 LTS
 - pnpm
 
-From the repository root:
+If you use `nvm`:
 
 ```bash
-pnpm demo
+source ~/.zshrc
+nvm use
 ```
 
-What this does:
-1. Installs dependencies.
-2. Generates Prisma client.
-3. Syncs DB schema.
-4. Seeds demo data.
-5. Starts web + API in dev mode.
-
-Open after start:
-- Web: `http://localhost:5173`
-- API: `http://localhost:4000`
-
-## Quick Recipes (Copy/Paste)
-
-### I just want to run everything with demo data
-
-```bash
-pnpm demo
-```
-
-### I want to reset demo data and run again
-
-```bash
-pnpm demo:refresh
-pnpm dev
-```
-
-### I want to run without demo data
-
-```bash
-pnpm dev
-```
-
-### I ran `git clean -fdX` and now app does not start
+Install dependencies (first time or after cleanup):
 
 ```bash
 pnpm install
+```
+
+### Daily run
+
+```bash
+pnpm dev
+```
+
+Open:
+- Web: `http://localhost:5173`
+- API: `http://localhost:4000/api/health`
+
+### Run with demo data
+
+```bash
 pnpm setup:demo
 pnpm dev
 ```
 
-Why: `git clean -fdX` removes ignored files, including `node_modules` and local DB files.
-
-## Refresh Demo Data
-
-Use this when you want to reset local runtime data back to the standard demo dataset:
+### Refresh demo data
 
 ```bash
 pnpm demo:refresh
 pnpm dev
 ```
 
-Note: seeding clears and recreates data in local `packages/db/dev.db`.
-
-## Run Without Demo Data
-
-Use this if you want to run the prototype with an empty/local-only dataset:
-
-```bash
-pnpm dev
-```
-
-Optional (first run / recovery):
+### Run without demo data (empty DB)
 
 ```bash
 pnpm db:generate
@@ -98,80 +68,35 @@ pnpm db:push
 pnpm dev
 ```
 
-Important: do not run `pnpm demo`, `pnpm setup:demo`, or `pnpm db:seed` if you want to avoid demo data.
-
-## Troubleshooting
-
-- Error: `spawn ENOENT` or `vite not found`
-  - Run: `pnpm install`
-- Warning: `node_modules missing`
-  - Run: `pnpm install`
-- DB looks empty or broken
-  - Run: `pnpm setup:demo`
-- Error: `P2021` / `table ... does not exist`
-  - Run: `pnpm db:push`
-  - Optional (for demo content): `pnpm setup:demo`
-- API returns `500` on all `/api/admin/*` endpoints
-  - Ensure both apps are running from root with: `pnpm dev`
-  - Do not run only `apps/web` without API
-- API fails on startup with Prisma client error
-  - Run: `pnpm db:generate`
-  - Then run: `pnpm dev`
-
-## Runtime Notes
-
-- `pnpm dev` now auto-runs `db:generate` and `db:push` before starting web + api.
-- This makes startup more stable after cache cleanup or fresh clone.
-- If you use `nvm`, run:
-  ```bash
-  nvm use
-  ```
-  (uses `.nvmrc`, pinned to Node 22).
-
-## Useful Commands
+### CI-equivalent local check
 
 ```bash
-pnpm dev
-pnpm dev:web
-pnpm dev:api
-pnpm setup:demo
-pnpm db:studio
+pnpm install --frozen-lockfile
+pnpm db:generate
 pnpm typecheck
 pnpm lint
+pnpm --filter @stripe-integration/api test
+```
+
+### Full cleanup and recovery
+
+`git clean -fdX` removes ignored files (including `node_modules`, local DB, caches).
+
+```bash
+git clean -fdX
+pnpm install
+pnpm setup:demo
+pnpm dev
+```
+
+### If port is already in use (`EADDRINUSE`)
+
+```bash
+lsof -nP -iTCP:4000 -sTCP:LISTEN -t | xargs kill -9
+lsof -nP -iTCP:5173 -sTCP:LISTEN -t | xargs kill -9
+pnpm dev
 ```
 
 ## Scope
 
 This repository is a prototype-focused implementation with seed data and non-production flows.
-
-
-
-## For Bohdan
-
-<!-- Повне очищення (кеш/артефакти) + запуск -->
-git clean -fdX <!-- Це видалить node_modules, локальну БД, кеші. -->
-
-<!-- Потім відновлення: -->
-source ~/.zshrc
-pnpm install
-
-<!-- Запустити демо (з готовими даними): -->
-pnpm setup:demo
-pnpm dev
-
-<!-- Запустити не демо (порожня БД): -->
-pnpm db:generate
-pnpm db:push
-pnpm dev
-
-<!-- Звичайний щоденний запуск -->
-pnpm dev
-
-<!-- Якщо хочеш оновити демо-дані: -->
-pnpm demo:refresh
-pnpm dev
-
-<!-- Якщо бачиш помилку про зайнятий порт (EADDRINUSE): -->
-lsof -nP -iTCP:4000 -sTCP:LISTEN -t | xargs kill -9
-lsof -nP -iTCP:5173 -sTCP:LISTEN -t | xargs kill -9
-pnpm dev

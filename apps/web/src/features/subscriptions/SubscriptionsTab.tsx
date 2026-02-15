@@ -1,36 +1,6 @@
-import AddIcon from '@mui/icons-material/Add';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import {
-  Alert,
-  Box,
-  Checkbox,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  OutlinedInput,
-  Select,
-  Snackbar,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TablePagination,
-  TableRow,
-  TableSortLabel,
-  TextField,
-  Tooltip,
-  Typography
-} from '@mui/material';
+import { Alert, Snackbar, Stack } from '@mui/material';
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import {
-  ApiError,
   useAccountsQuery,
   useBulkSubscriptionsMutation,
   usePricingsQuery,
@@ -40,114 +10,27 @@ import {
   type SubscriptionItem,
   type SubscriptionStatus
 } from '../../api';
-import { AppIconButton, GhostButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
-import { EmptyState, FiltersToolbar } from '../../components/layout';
+import { SubscriptionsBulkDialog } from './components/SubscriptionsBulkDialog';
+import { SubscriptionsFilters } from './components/SubscriptionsFilters';
+import { SubscriptionsSelectionActions } from './components/SubscriptionsSelectionActions';
+import { SubscriptionsTable } from './components/SubscriptionsTable';
+import {
+  compareSubscriptionRows,
+  getBulkActionLabel,
+  getBulkErrorMessage,
+  type SubscriptionsSortDirection,
+  type SubscriptionsSortField
+} from './subscriptionsTab.utils';
 
 const SubscriptionFormDrawer = lazy(async () => {
   const module = await import('./SubscriptionFormDrawer');
   return { default: module.SubscriptionFormDrawer };
 });
 
-const scopeOptions: Array<'ALL' | BillingScope> = ['ALL', 'ACCOUNT', 'PROPERTY'];
-const statusOptions: Array<'ALL' | SubscriptionStatus> = [
-  'ALL',
-  'DRAFT',
-  'ACTIVE',
-  'PAUSED',
-  'CANCELED'
-];
-
 type BulkDialogState = {
   open: boolean;
   action: SubscriptionBulkAction | null;
 };
-
-type SortField = 'account' | 'property' | 'startDate' | 'endDate' | 'status' | 'pricings';
-type SortDirection = 'asc' | 'desc';
-
-function formatDate(value: string | null): string {
-  if (!value) {
-    return 'Forever';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit'
-  });
-}
-
-function getActionLabel(action: SubscriptionBulkAction | null): string {
-  switch (action) {
-    case 'DELETE_SUBSCRIPTIONS':
-      return 'Delete subscriptions';
-    case 'ADD_PRICING':
-      return 'Add pricing';
-    case 'REPLACE_PRICINGS':
-      return 'Replace pricings';
-    case 'DELETE_PRICING':
-      return 'Delete pricing';
-    default:
-      return 'Apply action';
-  }
-}
-
-function getBulkErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (
-      error.payload &&
-      typeof error.payload === 'object' &&
-      'message' in error.payload &&
-      typeof error.payload.message === 'string'
-    ) {
-      return error.payload.message;
-    }
-    return `Bulk action failed with status ${error.status}`;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'Bulk action failed';
-}
-
-function compareRows(
-  left: SubscriptionItem,
-  right: SubscriptionItem,
-  field: SortField
-): number {
-  if (field === 'account') {
-    return left.account.companyName.localeCompare(right.account.companyName);
-  }
-
-  if (field === 'property') {
-    return (left.property?.address ?? '').localeCompare(right.property?.address ?? '');
-  }
-
-  if (field === 'startDate') {
-    const leftValue = Date.parse(left.startDate);
-    const rightValue = Date.parse(right.startDate);
-    return leftValue - rightValue;
-  }
-
-  if (field === 'endDate') {
-    const leftValue = left.endDate ? Date.parse(left.endDate) : Number.POSITIVE_INFINITY;
-    const rightValue = right.endDate ? Date.parse(right.endDate) : Number.POSITIVE_INFINITY;
-    return leftValue - rightValue;
-  }
-
-  if (field === 'status') {
-    return left.status.localeCompare(right.status);
-  }
-
-  return left.pricings.length - right.pricings.length;
-}
 
 export function SubscriptionsTab(): JSX.Element {
   const [search, setSearch] = useState('');
@@ -160,8 +43,8 @@ export function SubscriptionsTab(): JSX.Element {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<SubscriptionItem | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortField, setSortField] = useState<SubscriptionsSortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SubscriptionsSortDirection>('asc');
   const [bulkDialogState, setBulkDialogState] = useState<BulkDialogState>({
     open: false,
     action: null
@@ -195,14 +78,16 @@ export function SubscriptionsTab(): JSX.Element {
 
     const sorted = [...rows];
     sorted.sort((left, right) => {
-      const result = compareRows(left, right, sortField);
+      const result = compareSubscriptionRows(left, right, sortField);
       return sortDirection === 'asc' ? result : -result;
     });
     return sorted;
   }, [rows, sortDirection, sortField]);
   const visibleIds = useMemo(() => sortedRows.map((row) => row.id), [sortedRows]);
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
-  const someVisibleSelected = visibleIds.some((id) => selectedIds.includes(id)) && !allVisibleSelected;
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+  const someVisibleSelected =
+    visibleIds.some((id) => selectedIds.includes(id)) && !allVisibleSelected;
 
   useEffect(() => {
     if (rows.length === 0) {
@@ -268,7 +153,7 @@ export function SubscriptionsTab(): JSX.Element {
     bulkDialogState.action === 'REPLACE_PRICINGS' ||
     bulkDialogState.action === 'DELETE_PRICING';
 
-  function onSort(field: SortField): void {
+  function onSort(field: SubscriptionsSortField): void {
     if (sortField === field) {
       setSortDirection((previous) => (previous === 'asc' ? 'desc' : 'asc'));
       return;
@@ -301,7 +186,7 @@ export function SubscriptionsTab(): JSX.Element {
         pricingIds: requiresPricingSelection ? bulkPricingIds : undefined
       });
 
-      setBulkSuccess(`${getActionLabel(bulkDialogState.action)} completed.`);
+      setBulkSuccess(`${getBulkActionLabel(bulkDialogState.action)} completed.`);
       setSelectedIds([]);
       closeBulkDialog();
     } catch (error) {
@@ -312,317 +197,63 @@ export function SubscriptionsTab(): JSX.Element {
   return (
     <>
       <Stack spacing={0} sx={{ height: '100%', minHeight: 0 }}>
-        <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1.5, borderBottom: '1px solid #e1e7ec' }}>
-          <FiltersToolbar
-            left={
-              <>
-                <TextField
-                  size="small"
-                  label="Search"
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                    setPage(0);
-                  }}
-                  placeholder="Company, email, or property"
-                  sx={{ minWidth: { md: 220 } }}
-                />
-
-                <TextField
-                  size="small"
-                  select
-                  label="Scope"
-                  value={scopeFilter}
-                  onChange={(event) => {
-                    setScopeFilter(event.target.value as 'ALL' | BillingScope);
-                    setPage(0);
-                  }}
-                  sx={{ minWidth: 120 }}
-                >
-                  {scopeOptions.map((scope) => (
-                    <MenuItem key={scope} value={scope}>
-                      {scope}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  size="small"
-                  select
-                  label="Status"
-                  value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(event.target.value as 'ALL' | SubscriptionStatus);
-                    setPage(0);
-                  }}
-                  sx={{ minWidth: 120 }}
-                >
-                  {statusOptions.map((status) => (
-                    <MenuItem key={status} value={status}>
-                      {status}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  size="small"
-                  select
-                  label="Account"
-                  value={accountIdFilter}
-                  onChange={(event) => {
-                    setAccountIdFilter(event.target.value);
-                    setPage(0);
-                  }}
-                  sx={{ minWidth: 200 }}
-                >
-                  <MenuItem value="">All accounts</MenuItem>
-                  {(accountsQuery.data?.items ?? []).map((account) => (
-                    <MenuItem key={account.id} value={account.id}>
-                      {account.companyName} ({account.totalBillableUnits} units)
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </>
-            }
-            right={
-              <PrimaryButton startIcon={<AddIcon />} onClick={openCreateDrawer}>
-                Create Subscription
-              </PrimaryButton>
-            }
-          />
-        </Box>
+        <SubscriptionsFilters
+          search={search}
+          scopeFilter={scopeFilter}
+          statusFilter={statusFilter}
+          accountIdFilter={accountIdFilter}
+          accounts={accountsQuery.data?.items ?? []}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPage(0);
+          }}
+          onScopeFilterChange={(value) => {
+            setScopeFilter(value);
+            setPage(0);
+          }}
+          onStatusFilterChange={(value) => {
+            setStatusFilter(value);
+            setPage(0);
+          }}
+          onAccountFilterChange={(value) => {
+            setAccountIdFilter(value);
+            setPage(0);
+          }}
+          onCreateSubscription={openCreateDrawer}
+        />
 
         <Stack spacing={2} sx={{ p: { xs: 1.5, sm: 2 }, flex: 1, minHeight: 0 }}>
-          {selectedIds.length > 0 ? (
-            <Alert severity="info">
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={1}
-                alignItems={{ xs: 'flex-start', md: 'center' }}
-              >
-                <Typography variant="body2">
-                  {selectedIds.length} subscription(s) selected
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <GhostButton size="small" onClick={() => openBulkDialog('ADD_PRICING')}>
-                    Add pricing
-                  </GhostButton>
-                  <GhostButton size="small" onClick={() => openBulkDialog('REPLACE_PRICINGS')}>
-                    Replace pricings
-                  </GhostButton>
-                  <GhostButton size="small" onClick={() => openBulkDialog('DELETE_PRICING')}>
-                    Delete pricing
-                  </GhostButton>
-                  <GhostButton
-                    size="small"
-                    sx={{ color: '#B3261E', '&:hover': { backgroundColor: '#FDECEC' } }}
-                    onClick={() => openBulkDialog('DELETE_SUBSCRIPTIONS')}
-                  >
-                    Delete subscriptions
-                  </GhostButton>
-                </Stack>
-              </Stack>
-            </Alert>
-          ) : null}
+          <SubscriptionsSelectionActions
+            selectedCount={selectedIds.length}
+            onOpenBulkDialog={openBulkDialog}
+          />
 
           {subscriptionsQuery.isError ? (
             <Alert severity="error">Failed to load subscriptions.</Alert>
           ) : null}
 
-          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={allVisibleSelected}
-                        indeterminate={someVisibleSelected}
-                        onChange={toggleVisibleSelection}
-                        inputProps={{ 'aria-label': 'Select all visible subscriptions' }}
-                      />
-                    </TableCell>
-                    <TableCell sortDirection={sortField === 'account' ? sortDirection : false}>
-                      <TableSortLabel
-                        active={sortField === 'account'}
-                        direction={sortField === 'account' ? sortDirection : 'asc'}
-                        onClick={() => onSort('account')}
-                      >
-                        Account
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell sortDirection={sortField === 'property' ? sortDirection : false}>
-                      <TableSortLabel
-                        active={sortField === 'property'}
-                        direction={sortField === 'property' ? sortDirection : 'asc'}
-                        onClick={() => onSort('property')}
-                      >
-                        Property
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell sortDirection={sortField === 'startDate' ? sortDirection : false}>
-                      <TableSortLabel
-                        active={sortField === 'startDate'}
-                        direction={sortField === 'startDate' ? sortDirection : 'asc'}
-                        onClick={() => onSort('startDate')}
-                      >
-                        Start
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell sortDirection={sortField === 'endDate' ? sortDirection : false}>
-                      <TableSortLabel
-                        active={sortField === 'endDate'}
-                        direction={sortField === 'endDate' ? sortDirection : 'asc'}
-                        onClick={() => onSort('endDate')}
-                      >
-                        End
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell sortDirection={sortField === 'status' ? sortDirection : false}>
-                      <TableSortLabel
-                        active={sortField === 'status'}
-                        direction={sortField === 'status' ? sortDirection : 'asc'}
-                        onClick={() => onSort('status')}
-                      >
-                        Status
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell sortDirection={sortField === 'pricings' ? sortDirection : false}>
-                      <TableSortLabel
-                        active={sortField === 'pricings'}
-                        direction={sortField === 'pricings' ? sortDirection : 'asc'}
-                        onClick={() => onSort('pricings')}
-                      >
-                        Pricings
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {subscriptionsQuery.isPending ? (
-                    <TableRow>
-                      <TableCell colSpan={8}>
-                        <Typography variant="body2" color="text.secondary">
-                          Loading subscriptions...
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : sortedRows.length ? (
-                    sortedRows.map((subscription) => (
-                      <TableRow
-                        key={subscription.id}
-                        hover
-                        onClick={() => openEditDrawer(subscription)}
-                        sx={{ cursor: 'pointer' }}
-                      >
-                        <TableCell
-                          padding="checkbox"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                          }}
-                        >
-                          <Checkbox
-                            checked={selectedIds.includes(subscription.id)}
-                            onChange={() => toggleOneSelection(subscription.id)}
-                          />
-                        </TableCell>
-
-                        <TableCell>
-                          <Stack spacing={0.25}>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {subscription.account.companyName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {subscription.account.email}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-
-                        <TableCell>
-                          {subscription.property ? (
-                            <Stack spacing={0.25}>
-                              <Typography variant="caption" color="text.secondary">
-                                {subscription.property.address}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {subscription.property.billableUnits} units
-                              </Typography>
-                            </Stack>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              Account-level
-                            </Typography>
-                          )}
-                        </TableCell>
-
-                        <TableCell>{formatDate(subscription.startDate)}</TableCell>
-                        <TableCell>{formatDate(subscription.endDate)}</TableCell>
-                        <TableCell>
-                          <Chip size="small" label={subscription.status} />
-                        </TableCell>
-
-                        <TableCell>
-                          <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                            {subscription.pricings.slice(0, 2).map((pricing) => (
-                              <Chip
-                                key={pricing.id}
-                                size="small"
-                                variant="outlined"
-                                label={pricing.internalName}
-                              />
-                            ))}
-                            {subscription.pricings.length > 2 ? (
-                              <Chip size="small" label={`+${subscription.pricings.length - 2} more`} />
-                            ) : null}
-                          </Stack>
-                        </TableCell>
-
-                        <TableCell align="right">
-                          <Tooltip title="Edit subscription">
-                            <AppIconButton
-                              tone="ghost"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                openEditDrawer(subscription);
-                              }}
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </AppIconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8}>
-                        <EmptyState
-                          title="No subscriptions found"
-                          description="Adjust filters or create your first subscription."
-                          actionLabel="Create Subscription"
-                          onActionClick={openCreateDrawer}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <TablePagination
-              component="div"
-              count={subscriptionsQuery.data?.total ?? 0}
-              page={page}
-              onPageChange={(_event, newPage) => setPage(newPage)}
-              rowsPerPage={pageSize}
-              onRowsPerPageChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(0);
-              }}
-              rowsPerPageOptions={[10, 25, 50]}
-            />
-          </Box>
+          <SubscriptionsTable
+            isPending={subscriptionsQuery.isPending}
+            rows={sortedRows}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            selectedIds={selectedIds}
+            allVisibleSelected={allVisibleSelected}
+            someVisibleSelected={someVisibleSelected}
+            total={subscriptionsQuery.data?.total ?? 0}
+            page={page}
+            pageSize={pageSize}
+            onToggleVisibleSelection={toggleVisibleSelection}
+            onSort={onSort}
+            onToggleRowSelection={toggleOneSelection}
+            onEditSubscription={openEditDrawer}
+            onCreateSubscription={openCreateDrawer}
+            onPageChange={(newPage) => setPage(newPage)}
+            onPageSizeChange={(nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(0);
+            }}
+          />
         </Stack>
       </Stack>
 
@@ -638,70 +269,21 @@ export function SubscriptionsTab(): JSX.Element {
         </Suspense>
       ) : null}
 
-      <Dialog open={bulkDialogState.open} onClose={closeBulkDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{getActionLabel(bulkDialogState.action)}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Selected subscriptions: {selectedIds.length}
-            </Typography>
-
-            {requiresPricingSelection ? (
-              <FormControl>
-                <InputLabel id="bulk-pricing-select-label">Pricings</InputLabel>
-                <Select
-                  labelId="bulk-pricing-select-label"
-                  multiple
-                  value={bulkPricingIds}
-                  onChange={(event) => setBulkPricingIds(event.target.value as string[])}
-                  input={<OutlinedInput label="Pricings" />}
-                  renderValue={(selected) => {
-                    const labels = selected
-                      .map(
-                        (id) =>
-                          pricingsQuery.data?.items.find((pricing) => pricing.id === id)?.internalName ??
-                          id
-                      )
-                      .filter(Boolean);
-                    return labels.join(', ');
-                  }}
-                >
-                  {(pricingsQuery.data?.items ?? []).map((pricing) => (
-                    <MenuItem key={pricing.id} value={pricing.id}>
-                      <Checkbox checked={bulkPricingIds.includes(pricing.id)} />
-                      <Typography variant="body2">
-                        {pricing.internalName} ({pricing.type})
-                      </Typography>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : (
-              <Alert severity="warning">
-                This will permanently delete selected subscriptions.
-              </Alert>
-            )}
-
-            {bulkError ? <Alert severity="error">{bulkError}</Alert> : null}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <SecondaryButton onClick={closeBulkDialog}>Cancel</SecondaryButton>
-          <PrimaryButton
-            sx={
-              bulkDialogState.action === 'DELETE_SUBSCRIPTIONS'
-                ? { backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }
-                : undefined
-            }
-            onClick={() => {
-              void applyBulkAction();
-            }}
-            disabled={bulkMutation.isPending}
-          >
-            {getActionLabel(bulkDialogState.action)}
-          </PrimaryButton>
-        </DialogActions>
-      </Dialog>
+      <SubscriptionsBulkDialog
+        open={bulkDialogState.open}
+        action={bulkDialogState.action}
+        selectedCount={selectedIds.length}
+        requiresPricingSelection={requiresPricingSelection}
+        pricingIds={bulkPricingIds}
+        pricings={pricingsQuery.data?.items ?? []}
+        error={bulkError}
+        isPending={bulkMutation.isPending}
+        onPricingIdsChange={setBulkPricingIds}
+        onClose={closeBulkDialog}
+        onConfirm={() => {
+          void applyBulkAction();
+        }}
+      />
 
       <Snackbar
         open={Boolean(bulkSuccess)}

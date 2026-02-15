@@ -17,7 +17,6 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ApiError,
   useAccountsQuery,
   useCreateSubscriptionMutation,
   usePaymentMethodsQuery,
@@ -29,6 +28,8 @@ import {
   type SubscriptionStatus
 } from '../../api';
 import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
+import { toDateInputValue } from '../../lib/format/date';
 
 type SubscriptionFormDrawerProps = {
   open: boolean;
@@ -54,38 +55,6 @@ type FormState = {
 
 const statusOptions: SubscriptionStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'CANCELED'];
 const scopeOptions: BillingScope[] = ['ACCOUNT', 'PROPERTY'];
-
-function toDateInputValue(value: string | null): string {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  return date.toISOString().slice(0, 10);
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (
-      error.payload &&
-      typeof error.payload === 'object' &&
-      'message' in error.payload &&
-      typeof error.payload.message === 'string'
-    ) {
-      return error.payload.message;
-    }
-    return `Request failed with status ${error.status}`;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'Unexpected error';
-}
 
 function initialFormState(
   defaultAccountId?: string,
@@ -227,7 +196,7 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
 
       onClose();
     } catch (error) {
-      setFormError(getErrorMessage(error));
+      setFormError(getApiErrorMessage(error));
     }
   }
 

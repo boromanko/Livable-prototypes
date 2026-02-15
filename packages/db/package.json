@@ -6,12 +6,12 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "db:generate": "prisma generate",
+    "db:generate": "prisma generate && node scripts/link-prisma-client.mjs",
     "db:push": "touch dev.db && prisma db push",
     "db:migrate": "touch dev.db && prisma migrate dev --name init",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm run db:generate && tsc --noEmit",
     "lint": "eslint ."
   },
   "prisma": {
