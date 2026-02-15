@@ -20,6 +20,7 @@ type SubscriptionFormDrawerProps = {
   defaultAccountId?: string;
   defaultPricingIds?: string[];
   defaultScope?: BillingScope;
+  onSaved?: (subscription: SubscriptionItem) => void;
   onClose: () => void;
 };
 

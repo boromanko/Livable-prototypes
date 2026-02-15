@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { BillingScope, PricingItem, PricingTreeItem, PricingType } from '../../api';
+import type { BillingScope, PricingTreeItem, PricingType } from '../../api';
 import type { DetachConfirmTarget, PricingActionsMenuTarget } from './components/pricingTree.types';
 import type { PricingSortField, SortDirection } from './pricingsTab.utils';
 
@@ -21,7 +21,7 @@ export function usePricingsTabState() {
 
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
   const [pricingModalMode, setPricingModalMode] = useState<'create' | 'edit'>('create');
-  const [editingPricing, setEditingPricing] = useState<PricingItem | null>(null);
+  const [editingPricing, setEditingPricing] = useState<PricingTreeItem | null>(null);
   const [defaultProductId, setDefaultProductId] = useState<string | undefined>(undefined);
 
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);

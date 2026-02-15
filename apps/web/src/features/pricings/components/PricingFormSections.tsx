@@ -1,5 +1,18 @@
-import { Box, InputAdornment, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import type { ProductItem, PricingType } from '../../../api';
+import CloseIcon from '@mui/icons-material/Close';
+import {
+  Autocomplete,
+  Box,
+  Divider,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Paper,
+  type PaperProps,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
+import type { BillingScope, ProductItem, PricingType, SubscriptionStatus } from '../../../api';
 import { PrimaryButton } from '../../../components/buttons';
 import { PricingTierEditor } from './PricingTierEditor';
 import type { TierDraft, TierDraftErrors } from '../pricingForm.utils';
@@ -109,6 +122,248 @@ export function PricingFormProductSection(props: PricingFormProductSectionProps)
           </MenuItem>
         ))}
       </TextField>
+    </Stack>
+  );
+}
+
+type PricingFormSubscriptionsSectionProps = {
+  value: string[];
+  subscriptions: PricingFormSubscriptionOption[];
+  loading: boolean;
+  hasLoadingError?: boolean;
+  blockedSubscriptionIds: string[];
+  selectedSubscriptionConflictIds: string[];
+  canCreateSubscription: boolean;
+  onCreateSubscription: () => void;
+  onChange: (subscriptionIds: string[]) => void;
+};
+
+export type PricingFormSubscriptionOption = {
+  id: string;
+  accountName: string;
+  scope: BillingScope;
+  status: SubscriptionStatus;
+  propertiesLabel: string;
+};
+
+export function PricingFormSubscriptionsSection(
+  props: PricingFormSubscriptionsSectionProps
+): JSX.Element {
+  const {
+    value,
+    subscriptions,
+    loading,
+    hasLoadingError = false,
+    blockedSubscriptionIds,
+    selectedSubscriptionConflictIds,
+    canCreateSubscription,
+    onCreateSubscription,
+    onChange
+  } = props;
+  const subscriptionById = new Map(subscriptions.map((subscription) => [subscription.id, subscription]));
+  const selectedSubscriptions = value
+    .map((subscriptionId) => subscriptionById.get(subscriptionId))
+    .filter(
+      (subscription): subscription is PricingFormSubscriptionOption => Boolean(subscription)
+    );
+  const missingSelectedSubscriptionIds = value.filter(
+    (subscriptionId) => !subscriptionById.has(subscriptionId)
+  );
+  const availableSubscriptions = subscriptions.filter(
+    (subscription) => !value.includes(subscription.id)
+  );
+  const blockedSubscriptionIdSet = new Set(blockedSubscriptionIds);
+  const selectedConflictIdSet = new Set(selectedSubscriptionConflictIds);
+  const pickerFieldSx = {
+    ...getFormFieldSx(false),
+    '& .MuiAutocomplete-inputRoot': {
+      p: '0 40px 0 14px !important'
+    },
+    '& .MuiOutlinedInput-root': {
+      height: 48,
+      minHeight: 48,
+      alignItems: 'center',
+      pr: 5
+    },
+    '& .MuiAutocomplete-input': {
+      p: '0 !important'
+    },
+    '& .MuiInputBase-input::placeholder': {
+      color: '#4B617C',
+      opacity: 1
+    },
+    '& .MuiAutocomplete-popupIndicator': {
+      color: '#4B617C'
+    }
+  };
+
+  return (
+    <Stack spacing={2}>
+      {sectionTitle('Subscriptions')}
+      {value.length > 0 ? (
+        <Stack spacing={1}>
+          {value.map((subscriptionId) => {
+            const subscription = subscriptionById.get(subscriptionId);
+
+            return (
+              <Stack
+                key={subscriptionId}
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  px: 1.5,
+                  py: 1.25,
+                  border: selectedConflictIdSet.has(subscriptionId)
+                    ? '1px solid #D14343'
+                    : '1px solid #E1E7EC',
+                  backgroundColor: selectedConflictIdSet.has(subscriptionId)
+                    ? '#FFF7F7'
+                    : '#F8F9FA',
+                  borderRadius: '2px'
+                }}
+              >
+                <Stack spacing={0.25}>
+                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
+                    {subscription?.accountName ?? subscriptionId}
+                  </Typography>
+                  {subscription ? (
+                    <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                      {getPricingSubscriptionScopeLabel(subscription.scope)} -{' '}
+                      {subscription.propertiesLabel} - {subscription.status}
+                    </Typography>
+                  ) : null}
+                  {selectedConflictIdSet.has(subscriptionId) ? (
+                    <Typography variant="caption" sx={{ color: '#B42318' }}>
+                      Already has pricing for selected product.
+                    </Typography>
+                  ) : null}
+                </Stack>
+
+                <IconButton
+                  size="small"
+                  onClick={() => onChange(value.filter((id) => id !== subscriptionId))}
+                  aria-label="Remove subscription"
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            );
+          })}
+        </Stack>
+      ) : null}
+
+      <Autocomplete<PricingFormSubscriptionOption, true, true, false>
+        multiple
+        disableClearable
+        openOnFocus
+        options={availableSubscriptions}
+        value={selectedSubscriptions}
+        loading={loading}
+        onChange={(_event, selected) =>
+          onChange([
+            ...missingSelectedSubscriptionIds,
+            ...selected.map((subscription) => subscription.id)
+          ])
+        }
+        getOptionLabel={(option) => option.accountName}
+        isOptionEqualToValue={(option, selected) => option.id === selected.id}
+        getOptionDisabled={(option) => blockedSubscriptionIdSet.has(option.id)}
+        noOptionsText={
+          hasLoadingError
+            ? 'Failed to load subscriptions'
+            : loading
+            ? 'Loading subscriptions...'
+            : availableSubscriptions.length === 0
+              ? 'No more subscriptions to select'
+              : 'No subscriptions found'
+        }
+        PaperComponent={(paperProps: PaperProps) => (
+          <Paper
+            {...paperProps}
+            sx={{
+              mt: 0.5,
+              border: '1px solid #E1E7EC',
+              borderRadius: '2px',
+              boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.12)',
+              transformOrigin: 'top center',
+              animation: 'subscriptionAutocompleteOpen 150ms ease-out',
+              '@keyframes subscriptionAutocompleteOpen': {
+                from: {
+                  opacity: 0,
+                  transform: 'translateY(-4px) scale(0.99)'
+                },
+                to: {
+                  opacity: 1,
+                  transform: 'translateY(0) scale(1)'
+                }
+              }
+            }}
+          >
+            {paperProps.children}
+            {canCreateSubscription ? (
+              <>
+                <Divider />
+                <MenuItem
+                  sx={{ minHeight: 48, fontWeight: 500 }}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                  }}
+                  onClick={onCreateSubscription}
+                >
+                  + Add new subscription
+                </MenuItem>
+              </>
+            ) : null}
+          </Paper>
+        )}
+        slotProps={{
+          listbox: {
+            sx: {
+              py: 0,
+              '& .MuiAutocomplete-option': {
+                minHeight: 52,
+                alignItems: 'center'
+              }
+            }
+          }
+        }}
+        renderTags={() => null}
+        renderOption={(optionProps, option) => (
+          <Box
+            component="li"
+            {...optionProps}
+            key={option.id}
+            sx={{
+              minHeight: 48,
+              px: 1.5,
+              py: 0.75,
+              alignItems: 'center'
+            }}
+          >
+            <Stack spacing={0.25} sx={{ py: 0.25 }}>
+              <Typography variant="body2">{option.accountName}</Typography>
+              {blockedSubscriptionIdSet.has(option.id) ? (
+                <Typography variant="caption" sx={{ color: '#B42318' }}>
+                  Already has pricing for selected product.
+                </Typography>
+              ) : (
+                <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                  {getPricingSubscriptionScopeLabel(option.scope)} -{' '}
+                  {option.propertiesLabel} - {option.status}
+                </Typography>
+              )}
+            </Stack>
+          </Box>
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            placeholder="Select subscriptions"
+            sx={pickerFieldSx}
+          />
+        )}
+      />
     </Stack>
   );
 }
@@ -286,4 +541,8 @@ export function PricingFormMinimumPriceSection(
       />
     </Stack>
   );
+}
+
+function getPricingSubscriptionScopeLabel(scope: BillingScope): string {
+  return scope === 'ACCOUNT' ? 'Account level' : 'Property level';
 }

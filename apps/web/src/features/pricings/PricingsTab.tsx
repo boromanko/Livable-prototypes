@@ -150,6 +150,18 @@ export function PricingsTab(): JSX.Element {
             mode={state.pricingModal.pricingModalMode}
             initialPricing={state.pricingModal.editingPricing}
             defaultProductId={state.pricingModal.defaultProductId}
+            defaultSubscriptionIds={
+              state.pricingModal.pricingModalMode === 'edit'
+                ? (state.pricingModal.editingPricing?.subscriptions ?? []).map(
+                    (subscription) => subscription.id
+                  )
+                : undefined
+            }
+            defaultSubscriptions={
+              state.pricingModal.pricingModalMode === 'edit'
+                ? state.pricingModal.editingPricing?.subscriptions ?? []
+                : undefined
+            }
             onClose={state.pricingModal.closePricingModal}
           />
         </Suspense>

@@ -25,6 +25,7 @@ type UseSubscriptionFormControllerInput = {
   defaultAccountId?: string;
   defaultPricingIds?: string[];
   defaultScope?: BillingScope;
+  onSaved?: (subscription: SubscriptionItem) => void;
   onClose: () => void;
 };
 
@@ -36,6 +37,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     defaultAccountId,
     defaultPricingIds,
     defaultScope,
+    onSaved,
     onClose
   } = input;
 
@@ -83,9 +85,10 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     try {
       const normalizedPropertyIds =
         formState.scope === 'PROPERTY' ? uniqueIds(formState.propertyIds) : [];
+      let savedSubscription: SubscriptionItem | null = null;
 
       if (isEdit && initialSubscription) {
-        await updateMutation.mutateAsync({
+        const response = await updateMutation.mutateAsync({
           subscriptionId: initialSubscription.id,
           payload: {
             scope: formState.scope,
@@ -97,8 +100,9 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
             pricingIds: formState.pricingIds
           }
         });
+        savedSubscription = response.item;
       } else {
-        await createMutation.mutateAsync({
+        const response = await createMutation.mutateAsync({
           accountId: formState.accountId,
           scope: formState.scope,
           propertyIds: normalizedPropertyIds,
@@ -108,8 +112,12 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
           paymentMethodId: formState.paymentMethodId || null,
           pricingIds: formState.pricingIds
         });
+        savedSubscription = response.item;
       }
 
+      if (savedSubscription) {
+        onSaved?.(savedSubscription);
+      }
       onClose();
     } catch (error) {
       setFormError(getApiErrorMessage(error));
