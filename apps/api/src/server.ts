@@ -6,6 +6,7 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { ensureDbInvariants } from './services/db-invariants.js';
 
 const app = Fastify({ logger: true });
+const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
 const REQUIRED_TABLES = [
   'accounts',
   'properties',
@@ -40,7 +41,7 @@ async function assertDatabaseIsInitialized(): Promise<void> {
 }
 
 await app.register(cors, {
-  origin: ['http://localhost:5173']
+  origin: corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)
 });
 
 app.get('/health', async () => ({ status: 'ok' }));

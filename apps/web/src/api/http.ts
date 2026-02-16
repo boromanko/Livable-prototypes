@@ -9,6 +9,16 @@ export class ApiError extends Error {
   }
 }
 
+const apiBaseUrl = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/+$/, '');
+
+function withBaseUrl(path: string): string {
+  if (!apiBaseUrl || path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  return `${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 function buildUrl(path: string, query?: Record<string, unknown>): string {
   if (!query) {
     return path;
@@ -47,7 +57,7 @@ export async function apiRequest<TResponse>(
     body?: unknown;
   }
 ): Promise<TResponse> {
-  const url = buildUrl(path, options?.query);
+  const url = withBaseUrl(buildUrl(path, options?.query));
   const hasBody = options?.body !== undefined;
   const headers = hasBody
     ? {
