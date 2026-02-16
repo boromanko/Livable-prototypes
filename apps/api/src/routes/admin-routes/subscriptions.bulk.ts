@@ -328,6 +328,7 @@ export async function applySubscriptionBulkAction(
 
   const pricingIdsToDelete = new Set(pricingIds);
   const preparedCandidates: PreparedBulkCandidate[] = [];
+  const requireAtLeastOnePricing = payload.action !== 'DELETE_PRICING';
 
   for (const subscriptionId of subscriptionIds) {
     const subscription = targetSubscriptionsById.get(subscriptionId);
@@ -349,7 +350,8 @@ export async function applySubscriptionBulkAction(
 
     const selectionValidation = validatePricingSelection({
       pricingIds: nextPricingIds,
-      pricingLookup
+      pricingLookup,
+      requireAtLeastOne: requireAtLeastOnePricing
     });
 
     if (selectionValidation.error) {
@@ -363,7 +365,9 @@ export async function applySubscriptionBulkAction(
       subscription,
       selectionValidation.normalizedPricingIds
     );
-    const conflictError = await validateSubscriptionCandidate(prisma, candidate);
+    const conflictError = await validateSubscriptionCandidate(prisma, candidate, {
+      requireAtLeastOnePricing
+    });
     if (conflictError) {
       reply.status(400).send({
         message: getValidationMessage(subscriptionId, conflictError)

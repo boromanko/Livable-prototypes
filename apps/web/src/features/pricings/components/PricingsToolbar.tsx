@@ -17,6 +17,9 @@ type PricingsToolbarProps = {
   sortDirection: SortDirection;
   onOpenSortMenu: (event: React.MouseEvent<HTMLElement>) => void;
   onToggleSortDirection: () => void;
+  allRowsExpanded: boolean;
+  onToggleExpandAll: () => void;
+  expandAllDisabled?: boolean;
   groupByProduct: boolean;
   onGroupByProductChange: (checked: boolean) => void;
   onAddPricing: () => void;
@@ -32,6 +35,9 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
     sortDirection,
     onOpenSortMenu,
     onToggleSortDirection,
+    allRowsExpanded,
+    onToggleExpandAll,
+    expandAllDisabled = false,
     groupByProduct,
     onGroupByProductChange,
     onAddPricing
@@ -108,6 +114,14 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
               />
             </Tooltip>
 
+            <BorderedButton
+              onClick={onToggleExpandAll}
+              disabled={expandAllDisabled}
+              sx={{ px: 1.5 }}
+            >
+              {allRowsExpanded ? 'Collapse all' : 'Expand all'}
+            </BorderedButton>
+
             <FormControlLabel
               control={
                 <Checkbox
@@ -123,7 +137,7 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
         }
         right={
           <PrimaryButton startIcon={<AddIcon />} onClick={onAddPricing}>
-            Add pricing
+            New pricing
           </PrimaryButton>
         }
       />

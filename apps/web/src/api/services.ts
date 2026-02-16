@@ -79,6 +79,9 @@ export const api = {
   getSubscriptions: (params: SubscriptionsQueryParams): Promise<SubscriptionsResponse> =>
     apiRequest('/api/admin/subscriptions', { query: params }),
 
+  getSubscription: (subscriptionId: string): Promise<UpsertSubscriptionResponse> =>
+    apiRequest(`/api/admin/subscriptions/${subscriptionId}`),
+
   createSubscription: (
     payload: CreateSubscriptionPayload
   ): Promise<UpsertSubscriptionResponse> =>

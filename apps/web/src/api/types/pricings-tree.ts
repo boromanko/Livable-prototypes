@@ -22,6 +22,7 @@ export type PricingTreeSubscriptionSummary = {
   };
   propertiesCount: number;
   totalProperties: number;
+  unitsCount: number;
   coverageLabel: string;
 };
 

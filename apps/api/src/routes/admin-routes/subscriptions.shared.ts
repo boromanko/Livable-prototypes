@@ -98,6 +98,7 @@ export function toSubscriptionResponse(subscription: SubscriptionWithRelations) 
 
 export type SubscriptionListQuery = {
   accountId?: string;
+  accountIds?: string[];
   propertyId?: string;
   scope?: 'ACCOUNT' | 'PROPERTY';
   status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
@@ -110,7 +111,11 @@ export function buildSubscriptionsWhere(query: SubscriptionListQuery): Prisma.Su
   const where: Prisma.SubscriptionWhereInput = {};
   const andFilters: Prisma.SubscriptionWhereInput[] = [];
 
-  if (query.accountId) {
+  if (query.accountIds && query.accountIds.length > 0) {
+    where.accountId = {
+      in: query.accountIds
+    };
+  } else if (query.accountId) {
     where.accountId = query.accountId;
   }
 

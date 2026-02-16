@@ -1,81 +1,95 @@
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
-import { Box, Chip, Link, Stack, Tooltip, Typography } from '@mui/material';
-import type { PricingTreeItem, PricingTreeSubscriptionSummary } from '../../../api';
+import { Box, Stack, Tooltip, Typography } from '@mui/material';
+import type {
+  PricingTreeItem,
+  PricingTreeResolvedTier,
+  PricingTreeSubscriptionSummary
+} from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
-import { EntityTypeIndicator } from './PricingTreeIndicators';
 import { PricingTreeUsageTierGrid } from './PricingTreeUsageTierGrid';
-import type { DetachConfirmTarget } from './pricingTree.types';
+import type { DetachConfirmTarget, OpenEditSubscription } from './pricingTree.types';
 import {
   ACTIONS_COLUMN_WIDTH,
-  CLICKABLE_ENTITY_LINK_SX,
   LEFT_CONTENT_MIN_WIDTH,
-  PROPERTIES_COLUMN_WIDTH,
   TREE_INDENT_STEP,
-  TREE_LABEL_GAP,
-  TREE_TOGGLE_SLOT_WIDTH,
-  UNITS_COLUMN_WIDTH
+  TREE_LABEL_GAP
 } from '../pricingsTab.utils';
 
 type PricingTreeSubscriptionUsageRowProps = {
   pricing: PricingTreeItem;
+  groupByProduct: boolean;
   productTierColumnCount: number;
   subscription: PricingTreeSubscriptionSummary;
-  showSubscriptionsSectionHeader: boolean;
+  isLast: boolean;
+  onEditSubscription: OpenEditSubscription;
   setDetachConfirmTarget: React.Dispatch<React.SetStateAction<DetachConfirmTarget | null>>;
 };
 
-const statusColorBySubscription: Record<
-  PricingTreeSubscriptionSummary['status'],
-  'default' | 'success' | 'warning' | 'error'
-> = {
-  DRAFT: 'default',
-  ACTIVE: 'success',
-  PAUSED: 'warning',
-  CANCELED: 'error'
-};
+const SCOPE_COLUMN_WIDTH = 108;
+const PROPERTIES_COLUMN_WIDTH_COMPACT = 110;
+const UNITS_COLUMN_WIDTH_COMPACT = 100;
 
 export function PricingTreeSubscriptionUsageRow(
   props: PricingTreeSubscriptionUsageRowProps
 ): JSX.Element {
   const {
     pricing,
+    groupByProduct,
     productTierColumnCount,
     subscription,
-    showSubscriptionsSectionHeader,
+    isLast,
+    onEditSubscription,
     setDetachConfirmTarget
   } = props;
 
-  const scopeLabel = subscription.scope === 'ACCOUNT' ? 'Account-level' : 'Property-level';
-  const propertiesLabel = subscription.coverageLabel;
+  const scopeLabel = subscription.scope === 'ACCOUNT' ? 'Acct. Level' : 'Prop. Level';
+  const propertiesLabel = `${subscription.propertiesCount} Prop.`;
+  const unitsLabel = formatUnitsLabel(subscription.unitsCount);
+  const currentTier = getSubscriptionCurrentTier(pricing, subscription.unitsCount);
 
   return (
-    <Stack direction="row" alignItems="stretch" spacing={0} sx={{ minHeight: 44, px: 1.5, borderTop: '1px dotted #E1E7EC' }}>
+    <Stack
+      direction="row"
+      alignItems="stretch"
+      spacing={0}
+      role="button"
+      tabIndex={0}
+      onClick={() => onEditSubscription(subscription.id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onEditSubscription(subscription.id);
+        }
+      }}
+      sx={{
+        minHeight: 44,
+        px: 1.5,
+        borderBottom: isLast ? '1px solid #E1E7EC' : 'none',
+        cursor: 'pointer',
+        transition: 'background-color 120ms ease',
+        '&:hover': {
+          backgroundColor: '#F8FBFD'
+        }
+      }}
+    >
       <Stack direction="row" alignItems="center" spacing={0} sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}>
-        <Box sx={{ width: TREE_INDENT_STEP * (showSubscriptionsSectionHeader ? 3 : 2) }} />
-        <Box sx={{ width: showSubscriptionsSectionHeader ? TREE_TOGGLE_SLOT_WIDTH : 0 }} />
+        <Box sx={{ width: TREE_INDENT_STEP * (groupByProduct ? 3 : 2) }} />
         <Box sx={{ width: TREE_LABEL_GAP }} />
-        <Box sx={{ mr: 1 }}>
-          <EntityTypeIndicator type={subscription.scope === 'ACCOUNT' ? 'ACCOUNT' : 'PROPERTY'} />
-        </Box>
-
         <Stack spacing={0.25} sx={{ py: 0.5 }}>
-          <Link
-            href="#"
-            onClick={(event) => event.preventDefault()}
-            sx={{ ...CLICKABLE_ENTITY_LINK_SX, minWidth: 260, fontSize: 14 }}
-          >
-            {subscription.account.companyName}
-          </Link>
           <Stack direction="row" alignItems="center" spacing={0.75}>
-            <Typography sx={{ fontSize: 11, lineHeight: 1.1, color: '#7A8EA8', fontWeight: 600 }}>
-              {scopeLabel}
+            <Typography sx={{ fontSize: 14, fontWeight: 400, color: '#212934' }}>
+              {subscription.account.companyName}
             </Typography>
-            <Chip
-              size="small"
-              label={subscription.status}
-              color={statusColorBySubscription[subscription.status]}
-              sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
-            />
+            <Typography
+              component="span"
+              sx={{
+                ...getSubscriptionStatusTagSx(),
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
+              {formatSubscriptionStatusLabel(subscription.status)}
+            </Typography>
           </Stack>
         </Stack>
       </Stack>
@@ -85,20 +99,32 @@ export function PricingTreeSubscriptionUsageRow(
           ml: 'auto',
           flexShrink: 0,
           display: 'grid',
-          gridTemplateColumns: `${PROPERTIES_COLUMN_WIDTH}px ${UNITS_COLUMN_WIDTH}px`
+          gridTemplateColumns: `${SCOPE_COLUMN_WIDTH}px ${PROPERTIES_COLUMN_WIDTH_COMPACT}px ${UNITS_COLUMN_WIDTH_COMPACT}px`
         }}
       >
         <Box
           sx={{
             minHeight: 44,
-            px: 1.25,
-            borderLeft: '1px solid #E1E7EC',
+            px: 1,
             display: 'flex',
             alignItems: 'center',
-            color: '#212934',
+            color: '#6F8298',
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 500,
             fontVariantNumeric: 'tabular-nums'
+          }}
+        >
+          {scopeLabel}
+        </Box>
+        <Box
+          sx={{
+            minHeight: 44,
+            px: 1,
+            display: 'flex',
+            alignItems: 'center',
+            color: '#6F8298',
+            fontSize: 13,
+            fontWeight: 500
           }}
         >
           {propertiesLabel}
@@ -106,16 +132,16 @@ export function PricingTreeSubscriptionUsageRow(
         <Box
           sx={{
             minHeight: 44,
-            px: 1.25,
-            borderLeft: '1px solid #E1E7EC',
+            px: 1,
             display: 'flex',
             alignItems: 'center',
-            color: '#98A4B3',
-            fontSize: 12,
-            fontWeight: 600
+            color: '#6F8298',
+            fontSize: 13,
+            fontWeight: 500,
+            fontVariantNumeric: 'tabular-nums'
           }}
         >
-          Subscription
+          {unitsLabel}
         </Box>
       </Box>
 
@@ -123,8 +149,9 @@ export function PricingTreeSubscriptionUsageRow(
         pricing={pricing}
         productTierColumnCount={productTierColumnCount}
         entityId={subscription.id}
-        currentTier={null}
+        currentTier={currentTier}
         rowHeight={44}
+        showColumnDividers={false}
       />
 
       <Box
@@ -135,25 +162,77 @@ export function PricingTreeSubscriptionUsageRow(
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
-          borderLeft: '1px solid #E1E7EC'
+          borderLeft: 'none'
         }}
       >
         <Tooltip title="Detach pricing from subscription">
           <AppIconButton
             tone="ghost"
             aria-label={`Detach pricing from ${subscription.account.companyName}`}
-            onClick={() =>
+            onClick={(event) => {
+              event.stopPropagation();
               setDetachConfirmTarget({
                 pricingId: pricing.id,
                 subscriptionId: subscription.id,
                 title: `Detach pricing from ${scopeLabel.toLowerCase()} subscription (${subscription.account.companyName})`
-              })
-            }
+              });
+            }}
           >
             <CancelOutlinedIcon fontSize="small" />
           </AppIconButton>
         </Tooltip>
       </Box>
     </Stack>
+  );
+}
+
+function getSubscriptionStatusTagSx(): Record<string, string | number> {
+  return {
+    color: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'transparent',
+    py: 0,
+    px: 0,
+    borderRadius: 0,
+    fontWeight: 500,
+    fontSize: 13
+  };
+}
+
+function formatSubscriptionStatusLabel(status: PricingTreeSubscriptionSummary['status']): string {
+  if (status === 'ACTIVE') {
+    return 'Active';
+  }
+
+  if (status === 'DRAFT') {
+    return 'Draft';
+  }
+
+  if (status === 'PAUSED') {
+    return 'Paused';
+  }
+
+  return 'Canceled';
+}
+
+function formatUnitsLabel(unitsCount: number): string {
+  return `${unitsCount} unit${unitsCount === 1 ? '' : 's'}`;
+}
+
+function getSubscriptionCurrentTier(
+  pricing: PricingTreeItem,
+  unitsCount: number
+): PricingTreeResolvedTier {
+  if (pricing.type === 'FIXED') {
+    return null;
+  }
+
+  if (unitsCount <= 0 || pricing.tiers.length === 0) {
+    return null;
+  }
+
+  return (
+    pricing.tiers.find(
+      (tier) => unitsCount >= tier.fromUnit && (tier.toUnit === null || unitsCount <= tier.toUnit)
+    ) ?? null
   );
 }

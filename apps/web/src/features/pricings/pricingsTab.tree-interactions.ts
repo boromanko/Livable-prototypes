@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 export function usePricingTreeInteractions() {
   const [collapsedProducts, setCollapsedProducts] = useState<Set<string>>(new Set());
   const [expandedPricings, setExpandedPricings] = useState<Set<string>>(new Set());
-  const [collapsedUsageSections, setCollapsedUsageSections] = useState<Set<string>>(new Set());
   const cascadeScrollRef = useRef<HTMLDivElement | null>(null);
 
   function toggleExpanded(setter: React.Dispatch<React.SetStateAction<Set<string>>>, key: string): void {
@@ -19,64 +18,31 @@ export function usePricingTreeInteractions() {
   }
 
   function togglePricingSectionLink(pricingId: string, section: 'subscriptions'): void {
+    void section;
     const pricingKey = `pricing:${pricingId}`;
-    const sectionKey = `${section}:${pricingId}`;
-    const isPricingExpanded = expandedPricings.has(pricingKey);
-    const isSectionCollapsed = collapsedUsageSections.has(sectionKey);
-    const isSectionOpen = isPricingExpanded && !isSectionCollapsed;
-
-    if (isSectionOpen) {
-      setCollapsedUsageSections((prev) => {
-        const next = new Set(prev);
-        next.add(sectionKey);
-        return next;
-      });
-
-      setExpandedPricings((prev) => {
-        const next = new Set(prev);
-        next.delete(pricingKey);
-        return next;
-      });
-      return;
-    }
-
     setExpandedPricings((prev) => {
       const next = new Set(prev);
-      next.add(pricingKey);
-      return next;
-    });
-
-    setCollapsedUsageSections((prev) => {
-      const next = new Set(prev);
-      next.delete(sectionKey);
-      return next;
-    });
-  }
-
-  function togglePricingFromCaret(pricingId: string): void {
-    const pricingKey = `pricing:${pricingId}`;
-    const subscriptionsSectionKey = `subscriptions:${pricingId}`;
-
-    const isExpanded = expandedPricings.has(pricingKey);
-
-    setExpandedPricings((prev) => {
-      const next = new Set(prev);
-      if (isExpanded) {
+      if (next.has(pricingKey)) {
         next.delete(pricingKey);
       } else {
         next.add(pricingKey);
       }
       return next;
     });
+  }
 
-    if (!isExpanded) {
-      // Opening a pricing from its caret should keep child sections collapsed.
-      setCollapsedUsageSections((prev) => {
-        const next = new Set(prev);
-        next.add(subscriptionsSectionKey);
-        return next;
-      });
-    }
+  function togglePricingFromCaret(pricingId: string): void {
+    const pricingKey = `pricing:${pricingId}`;
+
+    setExpandedPricings((prev) => {
+      const next = new Set(prev);
+      if (next.has(pricingKey)) {
+        next.delete(pricingKey);
+      } else {
+        next.add(pricingKey);
+      }
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -120,8 +86,6 @@ export function usePricingTreeInteractions() {
     setCollapsedProducts,
     expandedPricings,
     setExpandedPricings,
-    collapsedUsageSections,
-    setCollapsedUsageSections,
     cascadeScrollRef,
     toggleExpanded,
     togglePricingSectionLink,

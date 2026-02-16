@@ -11,6 +11,11 @@ const SubscriptionFormDrawer = lazy(async () => {
   return { default: module.SubscriptionFormDrawer };
 });
 
+const PricingFormDrawer = lazy(async () => {
+  const module = await import('../pricings/PricingFormDrawer');
+  return { default: module.PricingFormDrawer };
+});
+
 export function SubscriptionsTab(): JSX.Element {
   const controller = useSubscriptionsTabController();
 
@@ -21,7 +26,7 @@ export function SubscriptionsTab(): JSX.Element {
           search={controller.filters.search}
           scopeFilter={controller.filters.scopeFilter}
           statusFilter={controller.filters.statusFilter}
-          accountIdFilter={controller.filters.accountIdFilter}
+          accountIdsFilter={controller.filters.accountIdsFilter}
           accounts={controller.filters.accounts}
           onSearchChange={controller.filters.onSearchChange}
           onScopeFilterChange={controller.filters.onScopeFilterChange}
@@ -50,6 +55,7 @@ export function SubscriptionsTab(): JSX.Element {
             someVisibleSelected={controller.table.someVisibleSelected}
             total={controller.table.total}
             accountPropertiesCountById={controller.table.accountPropertiesCountById}
+            accountTotalBillableUnitsById={controller.table.accountTotalBillableUnitsById}
             isAccountPropertiesCountPending={controller.table.isAccountPropertiesCountPending}
             page={controller.table.page}
             pageSize={controller.table.pageSize}
@@ -57,6 +63,8 @@ export function SubscriptionsTab(): JSX.Element {
             onSort={controller.table.onSort}
             onToggleRowSelection={controller.table.onToggleRowSelection}
             onEditSubscription={controller.drawer.openEditDrawer}
+            onEditPricing={controller.pricingDrawer.openEditPricing}
+            onDeleteSubscription={controller.table.onDeleteSubscription}
             onCreateSubscription={controller.drawer.openCreateDrawer}
             onPageChange={controller.table.onPageChange}
             onPageSizeChange={controller.table.onPageSizeChange}
@@ -72,6 +80,17 @@ export function SubscriptionsTab(): JSX.Element {
             initialSubscription={controller.drawer.editingSubscription}
             defaultAccountId={controller.drawer.defaultAccountId}
             onClose={controller.drawer.closeDrawer}
+          />
+        </Suspense>
+      ) : null}
+
+      {controller.pricingDrawer.pricingDrawerOpen && controller.pricingDrawer.editingPricing ? (
+        <Suspense fallback={null}>
+          <PricingFormDrawer
+            open={controller.pricingDrawer.pricingDrawerOpen}
+            mode="edit"
+            initialPricing={controller.pricingDrawer.editingPricing}
+            onClose={controller.pricingDrawer.closePricingDrawer}
           />
         </Suspense>
       ) : null}

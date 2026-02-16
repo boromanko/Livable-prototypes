@@ -49,6 +49,24 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
     };
   });
 
+  app.get('/api/admin/subscriptions/:id', async (request, reply) => {
+    const { id } = subscriptionParamsSchema.parse(request.params);
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { id },
+      include: subscriptionInclude
+    });
+
+    if (!subscription) {
+      reply.status(404).send({ message: 'Subscription not found' });
+      return;
+    }
+
+    return {
+      item: toSubscriptionResponse(subscription)
+    };
+  });
+
   app.post('/api/admin/subscriptions', async (request, reply) => {
     const payload = createSubscriptionBodySchema.parse(request.body);
     const propertyIds =

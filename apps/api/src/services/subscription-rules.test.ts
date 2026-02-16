@@ -266,6 +266,28 @@ describe('validateSubscriptionCandidate', () => {
     assert.equal(error, null);
   });
 
+  it('allows empty pricing selection when explicitly configured', async () => {
+    const db = createMockDb({
+      accounts: [{ id: 'acc-1' }],
+      properties: [{ id: 'prop-1', accountId: 'acc-1' }],
+      paymentMethods: [],
+      pricings: [pricingUnitBase, pricingLateFee],
+      subscriptions: []
+    });
+
+    const error = await validateSubscriptionCandidate(
+      asSubscriptionRulesDb(db),
+      buildCandidate({
+        pricingIds: []
+      }),
+      {
+        requireAtLeastOnePricing: false
+      }
+    );
+
+    assert.equal(error, null);
+  });
+
   it('rejects missing account', async () => {
     const db = createMockDb({
       accounts: [],

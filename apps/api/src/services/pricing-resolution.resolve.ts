@@ -51,6 +51,9 @@ export function resolvePricingTree(
 
     for (const subscription of pricing.subscriptions) {
       const accountProperties = propertiesByAccountId.get(subscription.accountId) ?? [];
+      const unitsByPropertyId = new Map(
+        accountProperties.map((property) => [property.id, property.billableUnits])
+      );
       const totalProperties = accountProperties.length;
       const accountPropertyIds = new Set(accountProperties.map((property) => property.id));
       const selectedPropertyIds = Array.from(
@@ -62,6 +65,16 @@ export function resolvePricingTree(
       );
       const propertiesCount =
         subscription.scope === 'ACCOUNT' ? totalProperties : selectedPropertyIds.length;
+      const totalAccountUnits = accountProperties.reduce(
+        (sum, property) => sum + property.billableUnits,
+        0
+      );
+      const selectedUnitsCount = selectedPropertyIds.reduce(
+        (sum, propertyId) => sum + (unitsByPropertyId.get(propertyId) ?? 0),
+        0
+      );
+      const unitsCount =
+        subscription.scope === 'ACCOUNT' ? totalAccountUnits : selectedUnitsCount;
       const coverageLabel =
         subscription.scope === 'ACCOUNT'
           ? `${totalProperties}/${totalProperties} properties`
@@ -78,6 +91,7 @@ export function resolvePricingTree(
             account: subscription.account,
             propertiesCount,
             totalProperties,
+            unitsCount,
             coverageLabel
           },
           selectedPropertyIds: new Set(selectedPropertyIds)
@@ -92,7 +106,12 @@ export function resolvePricingTree(
         }
 
         const mergedPropertiesCount = existingMeta.selectedPropertyIds.size;
+        const mergedUnitsCount = Array.from(existingMeta.selectedPropertyIds).reduce(
+          (sum, propertyId) => sum + (unitsByPropertyId.get(propertyId) ?? 0),
+          0
+        );
         existingMeta.summary.propertiesCount = mergedPropertiesCount;
+        existingMeta.summary.unitsCount = mergedUnitsCount;
         existingMeta.summary.coverageLabel = `${mergedPropertiesCount} properties`;
       }
     }

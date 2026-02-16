@@ -2,12 +2,11 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { Box, Link, Stack, Typography } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
 import { formatMoneyCents } from '../../../lib/format/money';
-import type { OpenEditPricing, PricingActionsMenuTarget } from './pricingTree.types';
+import type { OpenEditPricing } from './pricingTree.types';
 import {
   ACTIONS_COLUMN_WIDTH,
   LEFT_CONTENT_MIN_WIDTH,
@@ -209,11 +208,10 @@ type PricingTreePricingActionsProps = {
   pricing: PricingTreeItem;
   openEditPricing: OpenEditPricing;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
-  setPricingActionsTarget: React.Dispatch<React.SetStateAction<PricingActionsMenuTarget | null>>;
 };
 
 export function PricingTreePricingActions(props: PricingTreePricingActionsProps): JSX.Element {
-  const { pricing, openEditPricing, setDeletingPricing, setPricingActionsTarget } = props;
+  const { pricing, openEditPricing, setDeletingPricing } = props;
 
   return (
     <Stack
@@ -248,19 +246,6 @@ export function PricingTreePricingActions(props: PricingTreePricingActionsProps)
         }}
       >
         <DeleteIcon fontSize="small" />
-      </AppIconButton>
-
-      <AppIconButton
-        tone="ghost"
-        onClick={(event) => {
-          event.stopPropagation();
-          setPricingActionsTarget({
-            anchorEl: event.currentTarget,
-            pricingId: pricing.id
-          });
-        }}
-      >
-        <MoreHorizIcon fontSize="small" />
       </AppIconButton>
     </Stack>
   );

@@ -4,9 +4,8 @@ import { getProductTierColumnCount } from '../pricingsTab.utils';
 import { PricingProductSection } from './PricingProductSection';
 import type {
   DetachConfirmTarget,
-  OpenCreateSubscription,
+  OpenEditSubscription,
   OpenEditPricing,
-  PricingActionsMenuTarget,
   ToggleExpanded,
   VisibleProduct
 } from './pricingTree.types';
@@ -21,17 +20,14 @@ type PricingTreeViewProps = {
   flatTierColumnCount: number;
   collapsedProducts: Set<string>;
   expandedPricings: Set<string>;
-  collapsedUsageSections: Set<string>;
   toggleExpanded: ToggleExpanded;
   setCollapsedProducts: React.Dispatch<React.SetStateAction<Set<string>>>;
-  setCollapsedUsageSections: React.Dispatch<React.SetStateAction<Set<string>>>;
   togglePricingFromCaret: (pricingId: string) => void;
   togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
   openEditPricing: OpenEditPricing;
+  openEditSubscription: OpenEditSubscription;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
-  setPricingActionsTarget: React.Dispatch<React.SetStateAction<PricingActionsMenuTarget | null>>;
   setDetachConfirmTarget: React.Dispatch<React.SetStateAction<DetachConfirmTarget | null>>;
-  openCreateSubscription: OpenCreateSubscription;
   openCreatePricing: (productId?: string) => void;
 };
 
@@ -52,17 +48,14 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
     flatTierColumnCount,
     collapsedProducts,
     expandedPricings,
-    collapsedUsageSections,
     toggleExpanded,
     setCollapsedProducts,
-    setCollapsedUsageSections,
     togglePricingFromCaret,
     togglePricingSectionLink,
     openEditPricing,
+    openEditSubscription,
     setDeletingPricing,
-    setPricingActionsTarget,
     setDetachConfirmTarget,
-    openCreateSubscription,
     openCreatePricing
   } = props;
 
@@ -100,17 +93,14 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
               productTierColumnCount={productTierColumnCount}
               isProductExpanded={isProductExpanded}
               expandedPricings={expandedPricings}
-              collapsedUsageSections={collapsedUsageSections}
               toggleExpanded={toggleExpanded}
               setCollapsedProducts={setCollapsedProducts}
-              setCollapsedUsageSections={setCollapsedUsageSections}
               togglePricingFromCaret={togglePricingFromCaret}
               togglePricingSectionLink={togglePricingSectionLink}
               openEditPricing={openEditPricing}
+              openEditSubscription={openEditSubscription}
               setDeletingPricing={setDeletingPricing}
-              setPricingActionsTarget={setPricingActionsTarget}
               setDetachConfirmTarget={setDetachConfirmTarget}
-              openCreateSubscription={openCreateSubscription}
               openCreatePricing={openCreatePricing}
             />
           );

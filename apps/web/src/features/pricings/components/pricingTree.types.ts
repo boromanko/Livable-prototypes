@@ -4,11 +4,6 @@ import type {
   ProductItem
 } from '../../../api';
 
-export type PricingActionsMenuTarget = {
-  anchorEl: HTMLElement;
-  pricingId: string;
-};
-
 export type DetachConfirmTarget = {
   pricingId: string;
   subscriptionId: string;
@@ -26,5 +21,7 @@ export type OpenCreateSubscription = (
   pricingId: string,
   options?: { accountId?: string; scope?: BillingScope }
 ) => void;
+
+export type OpenEditSubscription = (subscriptionId: string) => void;
 
 export type OpenEditPricing = (pricing: PricingTreeItem) => void;

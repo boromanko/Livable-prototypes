@@ -79,6 +79,7 @@ export type PricingTreeSubscriptionSummary = {
   account: AccountIdentity;
   propertiesCount: number;
   totalProperties: number;
+  unitsCount: number;
   coverageLabel: string;
 };
 

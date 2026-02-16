@@ -26,7 +26,7 @@ export function SubscriptionsSelectionActions(
         <Typography variant="body2">{selectedCount} subscription(s) selected</Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap">
           <GhostButton size="small" onClick={() => onOpenBulkDialog('ADD_PRICING')}>
-            Add pricing
+            New pricing
           </GhostButton>
           <GhostButton size="small" onClick={() => onOpenBulkDialog('REPLACE_PRICINGS')}>
             Replace pricings

@@ -28,6 +28,8 @@ export const queryKeys = {
     subscriptionsAll: [...adminBaseKey, 'subscriptions'] as const,
     subscriptions: (params: SubscriptionsQueryParams) =>
       [...adminBaseKey, 'subscriptions', params] as const,
+    subscription: (subscriptionId: string) =>
+      [...adminBaseKey, 'subscriptions', subscriptionId] as const,
     subscriptionTransferEligibility: (
       subscriptionId: string,
       payload: SubscriptionTransferEligibilityPayload

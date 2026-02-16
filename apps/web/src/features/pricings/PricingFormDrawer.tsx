@@ -1,7 +1,14 @@
 import CloseIcon from '@mui/icons-material/Close';
 import { Alert, Dialog, Stack, Typography } from '@mui/material';
+import { useQueryClient } from '@tanstack/react-query';
 import { Suspense, lazy, useState } from 'react';
-import type { PricingItem, PricingTreeSubscriptionSummary } from '../../api';
+import {
+  api,
+  queryKeys,
+  type PricingItem,
+  type PricingTreeSubscriptionSummary,
+  type SubscriptionItem
+} from '../../api';
 import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import {
   PricingFormFixedPriceSection,
@@ -32,18 +39,47 @@ const NestedSubscriptionFormDrawer = lazy(async () => {
 
 export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
   const controller = usePricingFormController(props);
-  const [isCreateSubscriptionOpen, setCreateSubscriptionOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const [nestedSubscriptionModal, setNestedSubscriptionModal] = useState<{
+    open: boolean;
+    mode: 'create' | 'edit';
+    initialSubscription: SubscriptionItem | null;
+  }>({
+    open: false,
+    mode: 'create',
+    initialSubscription: null
+  });
 
   function openCreateSubscription(): void {
     if (!controller.isEdit || !controller.pricingId) {
       return;
     }
 
-    setCreateSubscriptionOpen(true);
+    setNestedSubscriptionModal({
+      open: true,
+      mode: 'create',
+      initialSubscription: null
+    });
   }
 
-  function closeCreateSubscription(): void {
-    setCreateSubscriptionOpen(false);
+  function openEditSubscription(subscriptionId: string): void {
+    void queryClient
+      .fetchQuery({
+        queryKey: queryKeys.admin.subscription(subscriptionId),
+        queryFn: () => api.getSubscription(subscriptionId)
+      })
+      .then((response) => {
+        setNestedSubscriptionModal({
+          open: true,
+          mode: 'edit',
+          initialSubscription: response.item
+        });
+      })
+      .catch(() => undefined);
+  }
+
+  function closeNestedSubscription(): void {
+    setNestedSubscriptionModal((prev) => ({ ...prev, open: false }));
   }
 
   return (
@@ -162,6 +198,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
               selectedSubscriptionConflictIds={controller.selectedSubscriptionConflictIds}
               canCreateSubscription={controller.isEdit && Boolean(controller.pricingId)}
               onCreateSubscription={openCreateSubscription}
+              onEditSubscription={openEditSubscription}
               onChange={controller.actions.setSubscriptionIds}
             />
           </Stack>
@@ -187,21 +224,44 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
         </Stack>
       </Dialog>
 
-      {controller.isEdit && controller.pricingId ? (
+      {nestedSubscriptionModal.open ? (
         <Suspense fallback={null}>
           <NestedSubscriptionFormDrawer
-            open={isCreateSubscriptionOpen}
-            mode="create"
-            initialSubscription={null}
-            defaultPricingIds={[controller.pricingId]}
+            open={nestedSubscriptionModal.open}
+            mode={nestedSubscriptionModal.mode}
+            initialSubscription={nestedSubscriptionModal.initialSubscription}
+            defaultPricingIds={
+              nestedSubscriptionModal.mode === 'create' && controller.pricingId
+                ? [controller.pricingId]
+                : undefined
+            }
             onSaved={(subscription) => {
-              controller.actions.appendSubscriptionId(subscription.id, {
-                alreadyLinked: subscription.pricings.some(
+              if (nestedSubscriptionModal.mode === 'create' && controller.pricingId) {
+                controller.actions.appendSubscriptionId(subscription.id, {
+                  alreadyLinked: subscription.pricings.some(
+                    (pricing) => pricing.id === controller.pricingId
+                  )
+                });
+                return;
+              }
+
+              if (nestedSubscriptionModal.mode === 'edit' && controller.pricingId) {
+                const hasCurrentPricing = subscription.pricings.some(
                   (pricing) => pricing.id === controller.pricingId
-                )
-              });
+                );
+
+                if (hasCurrentPricing) {
+                  controller.actions.appendSubscriptionId(subscription.id, {
+                    alreadyLinked: true
+                  });
+                } else {
+                  controller.actions.setSubscriptionIds(
+                    controller.subscriptionIds.filter((id) => id !== subscription.id)
+                  );
+                }
+              }
             }}
-            onClose={closeCreateSubscription}
+            onClose={closeNestedSubscription}
           />
         </Suspense>
       ) : null}

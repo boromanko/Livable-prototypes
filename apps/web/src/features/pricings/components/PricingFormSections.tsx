@@ -135,6 +135,7 @@ type PricingFormSubscriptionsSectionProps = {
   selectedSubscriptionConflictIds: string[];
   canCreateSubscription: boolean;
   onCreateSubscription: () => void;
+  onEditSubscription?: (subscriptionId: string) => void;
   onChange: (subscriptionIds: string[]) => void;
 };
 
@@ -158,6 +159,7 @@ export function PricingFormSubscriptionsSection(
     selectedSubscriptionConflictIds,
     canCreateSubscription,
     onCreateSubscription,
+    onEditSubscription,
     onChange
   } = props;
   const subscriptionById = new Map(subscriptions.map((subscription) => [subscription.id, subscription]));
@@ -316,6 +318,7 @@ export function PricingFormSubscriptionsSection(
         <Stack spacing={1}>
           {value.map((subscriptionId) => {
             const subscription = subscriptionById.get(subscriptionId);
+            const isEditable = Boolean(onEditSubscription);
 
             return (
               <Stack
@@ -323,6 +326,25 @@ export function PricingFormSubscriptionsSection(
                 direction="row"
                 alignItems="center"
                 justifyContent="space-between"
+                onClick={
+                  isEditable
+                    ? () => {
+                        onEditSubscription?.(subscriptionId);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  isEditable
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onEditSubscription?.(subscriptionId);
+                        }
+                      }
+                    : undefined
+                }
+                role={isEditable ? 'button' : undefined}
+                tabIndex={isEditable ? 0 : undefined}
                 sx={{
                   px: 1.5,
                   py: 1.25,
@@ -332,7 +354,19 @@ export function PricingFormSubscriptionsSection(
                   backgroundColor: selectedConflictIdSet.has(subscriptionId)
                     ? '#FFF7F7'
                     : '#F8F9FA',
-                  borderRadius: '2px'
+                  borderRadius: '2px',
+                  cursor: isEditable ? 'pointer' : 'default',
+                  transition: 'background-color 120ms ease, border-color 120ms ease',
+                  '&:hover': isEditable
+                    ? {
+                        backgroundColor: selectedConflictIdSet.has(subscriptionId)
+                          ? '#FFEDED'
+                          : '#F1F5F9',
+                        borderColor: selectedConflictIdSet.has(subscriptionId)
+                          ? '#D14343'
+                          : '#C7D2DE'
+                      }
+                    : undefined
                 }}
               >
                 <Stack spacing={0.25}>
@@ -354,7 +388,10 @@ export function PricingFormSubscriptionsSection(
 
                 <IconButton
                   size="small"
-                  onClick={() => onChange(value.filter((id) => id !== subscriptionId))}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onChange(value.filter((id) => id !== subscriptionId));
+                  }}
                   aria-label="Remove subscription"
                 >
                   <CloseIcon fontSize="small" />

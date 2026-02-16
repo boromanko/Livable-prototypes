@@ -2,11 +2,23 @@ import { z } from 'zod';
 
 export const billingScopeSchema = z.enum(['ACCOUNT', 'PROPERTY']);
 export const subscriptionStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'CANCELED']);
+const listQueryAccountIdsSchema = z.preprocess((value) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return [value];
+}, z.array(z.string().trim().min(1)).min(1).optional());
 
 export const subscriptionListQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().max(100).optional(),
   accountId: z.string().min(1).optional(),
+  accountIds: listQueryAccountIdsSchema,
   propertyId: z.string().min(1).optional(),
   scope: billingScopeSchema.optional(),
   status: subscriptionStatusSchema.optional(),

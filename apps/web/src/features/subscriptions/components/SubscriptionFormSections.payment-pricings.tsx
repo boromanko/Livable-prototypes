@@ -74,13 +74,14 @@ type SubscriptionFormPricingsSectionProps = {
   pricings: PricingItem[];
   error: boolean;
   onCreatePricing: () => void;
+  onEditPricing?: (pricing: PricingItem) => void;
   onChange: (pricingIds: string[]) => void;
 };
 
 export function SubscriptionFormPricingsSection(
   props: SubscriptionFormPricingsSectionProps
 ): JSX.Element {
-  const { value, pricings, error, onCreatePricing, onChange } = props;
+  const { value, pricings, error, onCreatePricing, onEditPricing, onChange } = props;
   const pricingById = new Map(pricings.map((pricing) => [pricing.id, pricing]));
   const selectedPricings = value
     .map((pricingId) => pricingById.get(pricingId))
@@ -213,6 +214,7 @@ export function SubscriptionFormPricingsSection(
         <Stack spacing={1}>
           {value.map((pricingId) => {
             const pricing = pricingById.get(pricingId);
+            const isEditable = Boolean(pricing && onEditPricing);
 
             return (
               <Stack
@@ -220,12 +222,39 @@ export function SubscriptionFormPricingsSection(
                 direction="row"
                 alignItems="center"
                 justifyContent="space-between"
+                onClick={
+                  isEditable && pricing
+                    ? () => {
+                        onEditPricing?.(pricing);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  isEditable && pricing
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onEditPricing?.(pricing);
+                        }
+                      }
+                    : undefined
+                }
+                role={isEditable ? 'button' : undefined}
+                tabIndex={isEditable ? 0 : undefined}
                 sx={{
                   px: 1.5,
                   py: 1.25,
                   border: '1px solid #E1E7EC',
                   backgroundColor: '#F8F9FA',
-                  borderRadius: '2px'
+                  borderRadius: '2px',
+                  cursor: isEditable ? 'pointer' : 'default',
+                  transition: 'background-color 120ms ease, border-color 120ms ease',
+                  '&:hover': isEditable
+                    ? {
+                        backgroundColor: '#F1F5F9',
+                        borderColor: '#C7D2DE'
+                      }
+                    : undefined
                 }}
               >
                 <Stack spacing={0.25}>
@@ -253,7 +282,10 @@ export function SubscriptionFormPricingsSection(
                   </Typography>
                   <IconButton
                     size="small"
-                    onClick={() => onChange(value.filter((id) => id !== pricingId))}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onChange(value.filter((id) => id !== pricingId));
+                    }}
                     aria-label="Remove pricing"
                   >
                     <CloseIcon fontSize="small" />

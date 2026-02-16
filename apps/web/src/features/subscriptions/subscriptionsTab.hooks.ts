@@ -5,8 +5,10 @@ import {
   usePricingsQuery,
   useSubscriptionsQuery,
   type BillingScope,
+  type PricingItem,
   type SubscriptionBulkAction,
   type SubscriptionItem,
+  type SubscriptionPricingItem,
   type SubscriptionStatus
 } from '../../api';
 import {
@@ -31,12 +33,14 @@ export function useSubscriptionsTabController() {
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<'ALL' | BillingScope>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SubscriptionStatus>('ALL');
-  const [accountIdFilter, setAccountIdFilter] = useState('');
+  const [accountIdsFilter, setAccountIdsFilter] = useState<string[]>([]);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(25);
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<SubscriptionItem | null>(null);
+  const [pricingDrawerOpen, setPricingDrawerOpen] = useState(false);
+  const [editingPricing, setEditingPricing] = useState<PricingItem | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sortField, setSortField] = useState<SubscriptionsSortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SubscriptionsSortDirection>('asc');
@@ -56,9 +60,9 @@ export function useSubscriptionsTabController() {
         search,
         scopeFilter,
         statusFilter,
-        accountIdFilter
+        accountIdsFilter
       }),
-    [accountIdFilter, page, pageSize, scopeFilter, search, statusFilter]
+    [accountIdsFilter, page, pageSize, scopeFilter, search, statusFilter]
   );
 
   const subscriptionsQuery = useSubscriptionsQuery(queryParams);
@@ -66,10 +70,17 @@ export function useSubscriptionsTabController() {
   const pricingsQuery = usePricingsQuery({ page: 1, pageSize: 100 });
   const bulkMutation = useBulkSubscriptionsMutation();
 
+  const accountTotalBillableUnitsById = useMemo(
+    () =>
+      Object.fromEntries(
+        (accountsQuery.data?.items ?? []).map((account) => [account.id, account.totalBillableUnits])
+      ),
+    [accountsQuery.data?.items]
+  );
   const rows = useMemo(() => subscriptionsQuery.data?.items ?? [], [subscriptionsQuery.data?.items]);
   const sortedRows = useMemo(
-    () => sortSubscriptionRows(rows, sortField, sortDirection),
-    [rows, sortDirection, sortField]
+    () => sortSubscriptionRows(rows, sortField, sortDirection, accountTotalBillableUnitsById),
+    [rows, sortDirection, sortField, accountTotalBillableUnitsById]
   );
   const visibleIds = useMemo(() => sortedRows.map((row) => row.id), [sortedRows]);
   const allVisibleSelected =
@@ -104,8 +115,8 @@ export function useSubscriptionsTabController() {
     setPage(0);
   }
 
-  function onAccountFilterChange(value: string): void {
-    setAccountIdFilter(value);
+  function onAccountFilterChange(value: string[]): void {
+    setAccountIdsFilter(value);
     setPage(0);
   }
 
@@ -123,6 +134,17 @@ export function useSubscriptionsTabController() {
 
   function closeDrawer(): void {
     setDrawerOpen(false);
+  }
+
+  function openEditPricing(pricing: SubscriptionPricingItem): void {
+    const fullPricing = pricingsQuery.data?.items.find((item) => item.id === pricing.id);
+    setEditingPricing(fullPricing ?? toPricingItem(pricing));
+    setPricingDrawerOpen(true);
+  }
+
+  function closePricingDrawer(): void {
+    setPricingDrawerOpen(false);
+    setEditingPricing(null);
   }
 
   function toggleOneSelection(subscriptionId: string): void {
@@ -155,6 +177,24 @@ export function useSubscriptionsTabController() {
 
     setSortField(field);
     setSortDirection('asc');
+  }
+
+  async function deleteOneSubscription(subscriptionId: string): Promise<void> {
+    if (!window.confirm('Delete this subscription?')) {
+      return;
+    }
+
+    try {
+      await bulkMutation.mutateAsync({
+        action: 'DELETE_SUBSCRIPTIONS',
+        subscriptionIds: [subscriptionId]
+      });
+
+      setSelectedIds((previous) => previous.filter((id) => id !== subscriptionId));
+      setBulkSuccess('Subscription deleted.');
+    } catch (error) {
+      setBulkError(getBulkErrorMessage(error));
+    }
   }
 
   async function applyBulkAction(): Promise<void> {
@@ -194,7 +234,7 @@ export function useSubscriptionsTabController() {
       search,
       scopeFilter,
       statusFilter,
-      accountIdFilter,
+      accountIdsFilter,
       accounts: accountsQuery.data?.items ?? [],
       onSearchChange,
       onScopeFilterChange,
@@ -205,10 +245,16 @@ export function useSubscriptionsTabController() {
       drawerOpen,
       drawerMode,
       editingSubscription,
-      defaultAccountId: accountIdFilter || undefined,
+      defaultAccountId: accountIdsFilter.length === 1 ? accountIdsFilter[0] : undefined,
       openCreateDrawer,
       openEditDrawer,
       closeDrawer
+    },
+    pricingDrawer: {
+      pricingDrawerOpen,
+      editingPricing,
+      openEditPricing,
+      closePricingDrawer
     },
     table: {
       isPending: subscriptionsQuery.isPending,
@@ -221,12 +267,14 @@ export function useSubscriptionsTabController() {
       someVisibleSelected,
       total: subscriptionsQuery.data?.total ?? 0,
       accountPropertiesCountById,
+      accountTotalBillableUnitsById,
       isAccountPropertiesCountPending: accountsQuery.isPending,
       page,
       pageSize,
       onToggleVisibleSelection: toggleVisibleSelection,
       onSort,
       onToggleRowSelection: toggleOneSelection,
+      onDeleteSubscription: deleteOneSubscription,
       onPageChange: setPage,
       onPageSizeChange: (nextPageSize: number) => {
         setPageSize(nextPageSize);
@@ -251,5 +299,22 @@ export function useSubscriptionsTabController() {
       bulkSuccess,
       clearBulkSuccess: () => setBulkSuccess(null)
     }
+  };
+}
+
+function toPricingItem(pricing: SubscriptionPricingItem): PricingItem {
+  return {
+    id: pricing.id,
+    product: pricing.product,
+    internalName: pricing.internalName,
+    type: pricing.type,
+    fixedAmountCents: pricing.fixedAmountCents,
+    minimumPriceCents: pricing.minimumPriceCents,
+    currency: pricing.currency,
+    billingInterval: pricing.billingInterval,
+    isActive: pricing.isActive,
+    createdAt: '',
+    subscriptionsCount: 0,
+    tiers: pricing.tiers
   };
 }

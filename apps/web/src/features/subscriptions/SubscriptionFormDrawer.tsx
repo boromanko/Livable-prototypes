@@ -1,7 +1,7 @@
 import CloseIcon from '@mui/icons-material/Close';
 import { Alert, Dialog, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
-import type { BillingScope, SubscriptionItem } from '../../api';
+import type { BillingScope, PricingItem, SubscriptionItem } from '../../api';
 import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import { PricingFormDrawer as NestedPricingFormDrawer } from '../pricings/PricingFormDrawer';
 import {
@@ -28,14 +28,34 @@ type SubscriptionFormDrawerProps = {
 
 export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.Element {
   const controller = useSubscriptionFormController(props);
-  const [isCreatePricingOpen, setCreatePricingOpen] = useState(false);
+  const [nestedPricingModal, setNestedPricingModal] = useState<{
+    open: boolean;
+    mode: 'create' | 'edit';
+    initialPricing: PricingItem | null;
+  }>({
+    open: false,
+    mode: 'create',
+    initialPricing: null
+  });
 
   function openCreatePricing(): void {
-    setCreatePricingOpen(true);
+    setNestedPricingModal({
+      open: true,
+      mode: 'create',
+      initialPricing: null
+    });
+  }
+
+  function openEditPricing(pricing: PricingItem): void {
+    setNestedPricingModal({
+      open: true,
+      mode: 'edit',
+      initialPricing: pricing
+    });
   }
 
   function closeCreatePricing(): void {
-    setCreatePricingOpen(false);
+    setNestedPricingModal((prev) => ({ ...prev, open: false }));
   }
 
   return (
@@ -136,6 +156,7 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
               pricings={controller.pricings}
               error={controller.showValidation && controller.validation.pricingsError}
               onCreatePricing={openCreatePricing}
+              onEditPricing={openEditPricing}
               onChange={controller.actions.setPricingIds}
             />
 
@@ -172,11 +193,13 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
       </Dialog>
 
       <NestedPricingFormDrawer
-        open={isCreatePricingOpen}
-        mode="create"
-        initialPricing={null}
+        open={nestedPricingModal.open}
+        mode={nestedPricingModal.mode}
+        initialPricing={nestedPricingModal.initialPricing}
         onSaved={(pricing) => {
-          controller.actions.appendPricingId(pricing.id);
+          if (nestedPricingModal.mode === 'create') {
+            controller.actions.appendPricingId(pricing.id);
+          }
         }}
         onClose={closeCreatePricing}
       />

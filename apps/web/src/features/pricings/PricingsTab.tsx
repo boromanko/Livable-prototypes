@@ -1,7 +1,8 @@
 import { Alert, Box, Snackbar, Stack, Typography } from '@mui/material';
-import { Suspense, lazy } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Suspense, lazy, useMemo } from 'react';
+import { api, queryKeys } from '../../api';
 import { EmptyState } from '../../components/layout';
-import { PricingActionsMenu } from './components/PricingActionsMenu';
 import { PricingConfirmationDialogs } from './components/PricingConfirmationDialogs';
 import { PricingFiltersPopover } from './components/PricingFiltersPopover';
 import { PricingSortMenu } from './components/PricingSortMenu';
@@ -24,6 +25,7 @@ const SubscriptionFormDrawer = lazy(async () => {
 export function PricingsTab(): JSX.Element {
   const state = usePricingsTabState();
   const tree = usePricingTreeInteractions();
+  const queryClient = useQueryClient();
 
   const data = usePricingsTabData({
     search: state.filters.search,
@@ -47,6 +49,52 @@ export function PricingsTab(): JSX.Element {
     setDetachConfirmTarget: state.confirmations.setDetachConfirmTarget
   });
 
+  const allPricingRowKeys = useMemo(
+    () => data.flatPricings.map((pricing) => `pricing:${pricing.id}`),
+    [data.flatPricings]
+  );
+  const allProductIds = useMemo(
+    () => data.visibleProducts.map((product) => product.id),
+    [data.visibleProducts]
+  );
+  const allPricingRowsExpanded =
+    allPricingRowKeys.length > 0 &&
+    allPricingRowKeys.every((pricingKey) => tree.expandedPricings.has(pricingKey));
+  const allProductsExpanded =
+    !state.view.groupByProduct ||
+    allProductIds.every((productId) => !tree.collapsedProducts.has(productId));
+  const allRowsExpanded = allPricingRowsExpanded && allProductsExpanded;
+  const expandAllDisabled = allPricingRowKeys.length === 0;
+
+  function toggleExpandAllRows(): void {
+    if (allRowsExpanded) {
+      tree.setExpandedPricings(new Set());
+      if (state.view.groupByProduct) {
+        tree.setCollapsedProducts(new Set(allProductIds));
+      }
+      return;
+    }
+
+    if (state.view.groupByProduct) {
+      tree.setCollapsedProducts(new Set());
+    }
+    tree.setExpandedPricings(new Set(allPricingRowKeys));
+  }
+
+  function openEditSubscription(subscriptionId: string): void {
+    void queryClient
+      .fetchQuery({
+        queryKey: queryKeys.admin.subscription(subscriptionId),
+        queryFn: () => api.getSubscription(subscriptionId)
+      })
+      .then((response) => {
+        state.subscriptionModal.openEditSubscription(response.item);
+      })
+      .catch(() => {
+        state.feedback.setSuccessMessage('Failed to load subscription.');
+      });
+  }
+
   return (
     <>
       <Stack spacing={0} sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
@@ -59,6 +107,9 @@ export function PricingsTab(): JSX.Element {
           sortDirection={state.sort.sortDirection}
           onOpenSortMenu={state.sort.openSortMenu}
           onToggleSortDirection={state.sort.toggleSortDirection}
+          allRowsExpanded={allRowsExpanded}
+          onToggleExpandAll={toggleExpandAllRows}
+          expandAllDisabled={expandAllDisabled}
           groupByProduct={state.view.groupByProduct}
           onGroupByProductChange={state.view.setGroupByProduct}
           onAddPricing={() => state.pricingModal.openCreatePricing()}
@@ -112,7 +163,7 @@ export function PricingsTab(): JSX.Element {
             <EmptyState
               title="No pricings found"
               description="Create your first pricing or adjust filters."
-              actionLabel="Add pricing"
+              actionLabel="New pricing"
               onActionClick={() => state.pricingModal.openCreatePricing()}
             />
           ) : (
@@ -126,17 +177,14 @@ export function PricingsTab(): JSX.Element {
               flatTierColumnCount={data.flatTierColumnCount}
               collapsedProducts={tree.collapsedProducts}
               expandedPricings={tree.expandedPricings}
-              collapsedUsageSections={tree.collapsedUsageSections}
               toggleExpanded={tree.toggleExpanded}
               setCollapsedProducts={tree.setCollapsedProducts}
-              setCollapsedUsageSections={tree.setCollapsedUsageSections}
               togglePricingFromCaret={tree.togglePricingFromCaret}
               togglePricingSectionLink={tree.togglePricingSectionLink}
               openEditPricing={state.pricingModal.openEditPricing}
+              openEditSubscription={openEditSubscription}
               setDeletingPricing={state.confirmations.setDeletingPricing}
-              setPricingActionsTarget={state.actionsMenu.setPricingActionsTarget}
               setDetachConfirmTarget={state.confirmations.setDetachConfirmTarget}
-              openCreateSubscription={state.subscriptionModal.openCreateSubscription}
               openCreatePricing={state.pricingModal.openCreatePricing}
             />
           )}
@@ -171,28 +219,27 @@ export function PricingsTab(): JSX.Element {
         <Suspense fallback={null}>
           <SubscriptionFormDrawer
             open={state.subscriptionModal.subscriptionModalOpen}
-            mode="create"
-            initialSubscription={null}
-            defaultAccountId={state.subscriptionModal.defaultSubscriptionAccountId}
-            defaultPricingIds={state.subscriptionModal.defaultSubscriptionPricingIds}
-            defaultScope={state.subscriptionModal.defaultSubscriptionScope}
+            mode={state.subscriptionModal.subscriptionModalMode}
+            initialSubscription={state.subscriptionModal.editingSubscription}
+            defaultAccountId={
+              state.subscriptionModal.subscriptionModalMode === 'create'
+                ? state.subscriptionModal.defaultSubscriptionAccountId
+                : undefined
+            }
+            defaultPricingIds={
+              state.subscriptionModal.subscriptionModalMode === 'create'
+                ? state.subscriptionModal.defaultSubscriptionPricingIds
+                : undefined
+            }
+            defaultScope={
+              state.subscriptionModal.subscriptionModalMode === 'create'
+                ? state.subscriptionModal.defaultSubscriptionScope
+                : undefined
+            }
             onClose={state.subscriptionModal.closeSubscriptionModal}
           />
         </Suspense>
       ) : null}
-
-      <PricingActionsMenu
-        target={state.actionsMenu.pricingActionsTarget}
-        onClose={() => state.actionsMenu.setPricingActionsTarget(null)}
-        onAssignAccount={(pricingId) => {
-          state.subscriptionModal.openCreateSubscription(pricingId, { scope: 'ACCOUNT' });
-          state.actionsMenu.setPricingActionsTarget(null);
-        }}
-        onAssignProperty={(pricingId) => {
-          state.subscriptionModal.openCreateSubscription(pricingId, { scope: 'PROPERTY' });
-          state.actionsMenu.setPricingActionsTarget(null);
-        }}
-      />
 
       <PricingConfirmationDialogs
         deletingPricing={state.confirmations.deletingPricing}

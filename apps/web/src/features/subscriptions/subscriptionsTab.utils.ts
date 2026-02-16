@@ -11,6 +11,7 @@ export type SubscriptionsSortField =
   | 'account'
   | 'scope'
   | 'property'
+  | 'units'
   | 'startDate'
   | 'endDate'
   | 'status'
@@ -28,7 +29,7 @@ export function getBulkActionLabel(action: SubscriptionBulkAction | null): strin
     case 'DELETE_SUBSCRIPTIONS':
       return 'Delete subscriptions';
     case 'ADD_PRICING':
-      return 'Add pricing';
+      return 'New pricing';
     case 'REPLACE_PRICINGS':
       return 'Replace pricings';
     case 'DELETE_PRICING':
@@ -48,7 +49,8 @@ export function getBulkErrorMessage(error: unknown): string {
 export function compareSubscriptionRows(
   left: SubscriptionItem,
   right: SubscriptionItem,
-  field: SubscriptionsSortField
+  field: SubscriptionsSortField,
+  accountTotalBillableUnitsById: Record<string, number>
 ): number {
   if (field === 'account') {
     return left.account.companyName.localeCompare(right.account.companyName);
@@ -64,6 +66,12 @@ export function compareSubscriptionRows(
     const leftPropertiesCount = getSubscriptionProperties(left).length;
     const rightPropertiesCount = getSubscriptionProperties(right).length;
     return leftPropertiesCount - rightPropertiesCount;
+  }
+
+  if (field === 'units') {
+    const leftUnits = getSubscriptionUnitsCount(left, accountTotalBillableUnitsById);
+    const rightUnits = getSubscriptionUnitsCount(right, accountTotalBillableUnitsById);
+    return leftUnits - rightUnits;
   }
 
   if (field === 'startDate') {
@@ -91,13 +99,13 @@ type BuildSubscriptionsQueryParamsInput = {
   search: string;
   scopeFilter: 'ALL' | BillingScope;
   statusFilter: 'ALL' | SubscriptionStatus;
-  accountIdFilter: string;
+  accountIdsFilter: string[];
 };
 
 export function buildSubscriptionsQueryParams(
   input: BuildSubscriptionsQueryParamsInput
 ): SubscriptionsQueryParams {
-  const { page, pageSize, search, scopeFilter, statusFilter, accountIdFilter } = input;
+  const { page, pageSize, search, scopeFilter, statusFilter, accountIdsFilter } = input;
 
   return {
     page: page + 1,
@@ -105,14 +113,15 @@ export function buildSubscriptionsQueryParams(
     search: search || undefined,
     scope: scopeFilter === 'ALL' ? undefined : scopeFilter,
     status: statusFilter === 'ALL' ? undefined : statusFilter,
-    accountId: accountIdFilter || undefined
+    accountIds: accountIdsFilter.length > 0 ? accountIdsFilter : undefined
   };
 }
 
 export function sortSubscriptionRows(
   rows: SubscriptionItem[],
   sortField: SubscriptionsSortField | null,
-  sortDirection: SubscriptionsSortDirection
+  sortDirection: SubscriptionsSortDirection,
+  accountTotalBillableUnitsById: Record<string, number>
 ): SubscriptionItem[] {
   if (!sortField) {
     return rows;
@@ -120,11 +129,22 @@ export function sortSubscriptionRows(
 
   const sorted = [...rows];
   sorted.sort((left, right) => {
-    const result = compareSubscriptionRows(left, right, sortField);
+    const result = compareSubscriptionRows(left, right, sortField, accountTotalBillableUnitsById);
     return sortDirection === 'asc' ? result : -result;
   });
 
   return sorted;
+}
+
+function getSubscriptionUnitsCount(
+  subscription: SubscriptionItem,
+  accountTotalBillableUnitsById: Record<string, number>
+): number {
+  if (subscription.scope === 'ACCOUNT') {
+    return accountTotalBillableUnitsById[subscription.account.id] ?? 0;
+  }
+
+  return subscription.properties.reduce((sum, property) => sum + property.billableUnits, 0);
 }
 
 export function filterSelectedIdsToVisible(selectedIds: string[], visibleIds: string[]): string[] {

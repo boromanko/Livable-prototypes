@@ -1,9 +1,6 @@
 import { Stack } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
-import type {
-  OpenEditPricing,
-  PricingActionsMenuTarget
-} from './pricingTree.types';
+import type { OpenEditPricing } from './pricingTree.types';
 import {
   PricingTreePricingActions,
   PricingTreePricingLeftContent,
@@ -16,7 +13,6 @@ import {
 
 type PricingTreePricingRowProps = {
   pricing: PricingTreeItem;
-  pricingIndex: number;
   groupByProduct: boolean;
   productTierColumnCount: number;
   isPricingExpanded: boolean;
@@ -26,13 +22,11 @@ type PricingTreePricingRowProps = {
   togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
   openEditPricing: OpenEditPricing;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
-  setPricingActionsTarget: React.Dispatch<React.SetStateAction<PricingActionsMenuTarget | null>>;
 };
 
 export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.Element {
   const {
     pricing,
-    pricingIndex,
     groupByProduct,
     productTierColumnCount,
     isPricingExpanded,
@@ -41,8 +35,7 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
     togglePricingFromCaret,
     togglePricingSectionLink,
     openEditPricing,
-    setDeletingPricing,
-    setPricingActionsTarget
+    setDeletingPricing
   } = props;
 
   return (
@@ -55,10 +48,8 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
         minHeight: 44,
         px: 1.5,
         py: 0.25,
-        borderTop:
-          groupByProduct || pricingIndex > 0
-            ? '1px solid #E1E7EC'
-            : 'none',
+        borderTop: 'none',
+        borderBottom: '1px solid #E1E7EC',
         backgroundColor: '#FFFFFF',
         transition: 'background-color 120ms ease',
         cursor: 'pointer',
@@ -93,7 +84,6 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
         pricing={pricing}
         openEditPricing={openEditPricing}
         setDeletingPricing={setDeletingPricing}
-        setPricingActionsTarget={setPricingActionsTarget}
       />
     </Stack>
   );

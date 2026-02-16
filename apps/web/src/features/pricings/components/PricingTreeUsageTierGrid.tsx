@@ -9,10 +9,18 @@ type PricingTreeUsageTierGridProps = {
   entityId: string;
   currentTier: PricingTreeAccountUsage['currentTier'] | PricingTreePropertyUsage['currentTier'];
   rowHeight: number;
+  showColumnDividers?: boolean;
 };
 
 export function PricingTreeUsageTierGrid(props: PricingTreeUsageTierGridProps): JSX.Element {
-  const { pricing, productTierColumnCount, entityId, currentTier, rowHeight } = props;
+  const {
+    pricing,
+    productTierColumnCount,
+    entityId,
+    currentTier,
+    rowHeight,
+    showColumnDividers = true
+  } = props;
   const activeTierColumnIndex = getActiveTierColumnIndex(pricing, productTierColumnCount, currentTier);
 
   return (
@@ -28,10 +36,11 @@ export function PricingTreeUsageTierGrid(props: PricingTreeUsageTierGridProps): 
           key={`${pricing.id}:${entityId}:tier-check:${columnIndex}`}
           sx={{
             minHeight: rowHeight,
-            borderLeft: '1px solid #E1E7EC',
+            px: 1.25,
+            borderLeft: showColumnDividers ? '1px solid #E1E7EC' : 'none',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'flex-start'
           }}
         >
           {columnIndex === activeTierColumnIndex ? <TierMatchIndicator /> : null}

@@ -1,12 +1,48 @@
-import { useState } from 'react';
-import type { BillingScope, PricingTreeItem, PricingType } from '../../api';
-import type { DetachConfirmTarget, PricingActionsMenuTarget } from './components/pricingTree.types';
+import { useEffect, useState } from 'react';
+import type {
+  BillingScope,
+  PricingTreeItem,
+  PricingType,
+  SubscriptionItem
+} from '../../api';
+import type { DetachConfirmTarget } from './components/pricingTree.types';
 import type { PricingSortField, SortDirection } from './pricingsTab.utils';
 
 type SubscriptionOpenOptions = {
   accountId?: string;
   scope?: BillingScope;
 };
+
+const GROUP_BY_PRODUCT_SESSION_KEY = 'pricings.groupByProduct';
+
+function readGroupByProductSessionValue(): boolean {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(GROUP_BY_PRODUCT_SESSION_KEY);
+    if (rawValue === null) {
+      return true;
+    }
+
+    return rawValue === '1';
+  } catch {
+    return true;
+  }
+}
+
+function writeGroupByProductSessionValue(value: boolean): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(GROUP_BY_PRODUCT_SESSION_KEY, value ? '1' : '0');
+  } catch {
+    // Ignore storage write failures to avoid breaking UI interactions.
+  }
+}
 
 export function usePricingsTabState() {
   const [search, setSearch] = useState('');
@@ -15,7 +51,7 @@ export function usePricingsTabState() {
   const [accountIdFilter, setAccountIdFilter] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<PricingSortField>('NAME');
   const [sortDirection, setSortDirection] = useState<SortDirection>('ASC');
-  const [groupByProduct, setGroupByProduct] = useState(true);
+  const [groupByProduct, setGroupByProduct] = useState(readGroupByProductSessionValue);
   const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
   const [sortMenuAnchorEl, setSortMenuAnchorEl] = useState<HTMLElement | null>(null);
 
@@ -25,14 +61,14 @@ export function usePricingsTabState() {
   const [defaultProductId, setDefaultProductId] = useState<string | undefined>(undefined);
 
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [subscriptionModalMode, setSubscriptionModalMode] = useState<'create' | 'edit'>('create');
+  const [editingSubscription, setEditingSubscription] = useState<SubscriptionItem | null>(null);
   const [defaultSubscriptionAccountId, setDefaultSubscriptionAccountId] =
     useState<string | undefined>(undefined);
   const [defaultSubscriptionPricingIds, setDefaultSubscriptionPricingIds] = useState<string[]>([]);
   const [defaultSubscriptionScope, setDefaultSubscriptionScope] = useState<BillingScope>('ACCOUNT');
 
   const [deletingPricing, setDeletingPricing] = useState<PricingTreeItem | null>(null);
-  const [pricingActionsTarget, setPricingActionsTarget] =
-    useState<PricingActionsMenuTarget | null>(null);
   const [detachConfirmTarget, setDetachConfirmTarget] = useState<DetachConfirmTarget | null>(null);
 
   const [actionError, setActionError] = useState<string | null>(null);
@@ -40,6 +76,10 @@ export function usePricingsTabState() {
 
   const isFiltersPopoverOpen = Boolean(filtersAnchorEl);
   const isSortMenuOpen = Boolean(sortMenuAnchorEl);
+
+  useEffect(() => {
+    writeGroupByProductSessionValue(groupByProduct);
+  }, [groupByProduct]);
 
   function openCreatePricing(productId?: string): void {
     setPricingModalMode('create');
@@ -61,14 +101,27 @@ export function usePricingsTabState() {
   }
 
   function openCreateSubscription(pricingId: string, options?: SubscriptionOpenOptions): void {
+    setSubscriptionModalMode('create');
+    setEditingSubscription(null);
     setDefaultSubscriptionPricingIds([pricingId]);
     setDefaultSubscriptionAccountId(options?.accountId);
     setDefaultSubscriptionScope(options?.scope ?? 'ACCOUNT');
     setSubscriptionModalOpen(true);
   }
 
+  function openEditSubscription(subscription: SubscriptionItem): void {
+    setSubscriptionModalMode('edit');
+    setEditingSubscription(subscription);
+    setDefaultSubscriptionAccountId(undefined);
+    setDefaultSubscriptionPricingIds([]);
+    setDefaultSubscriptionScope('ACCOUNT');
+    setSubscriptionModalOpen(true);
+  }
+
   function closeSubscriptionModal(): void {
     setSubscriptionModalOpen(false);
+    setSubscriptionModalMode('create');
+    setEditingSubscription(null);
     setDefaultSubscriptionAccountId(undefined);
     setDefaultSubscriptionPricingIds([]);
     setDefaultSubscriptionScope('ACCOUNT');
@@ -146,10 +199,13 @@ export function usePricingsTabState() {
     },
     subscriptionModal: {
       subscriptionModalOpen,
+      subscriptionModalMode,
+      editingSubscription,
       defaultSubscriptionAccountId,
       defaultSubscriptionPricingIds,
       defaultSubscriptionScope,
       openCreateSubscription,
+      openEditSubscription,
       closeSubscriptionModal
     },
     confirmations: {
@@ -157,10 +213,6 @@ export function usePricingsTabState() {
       setDeletingPricing,
       detachConfirmTarget,
       setDetachConfirmTarget
-    },
-    actionsMenu: {
-      pricingActionsTarget,
-      setPricingActionsTarget
     },
     feedback: {
       actionError,

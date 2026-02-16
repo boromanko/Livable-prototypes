@@ -152,7 +152,10 @@ export function validatePricingSelection(input: {
 
 export async function validateSubscriptionCandidate(
   db: SubscriptionRulesDb,
-  candidate: SubscriptionCandidate
+  candidate: SubscriptionCandidate,
+  options?: {
+    requireAtLeastOnePricing?: boolean;
+  }
 ): Promise<string | null> {
   const duplicatePropertyIds = findDuplicateIds(candidate.propertyIds);
   if (duplicatePropertyIds.length > 0) {
@@ -224,7 +227,8 @@ export async function validateSubscriptionCandidate(
   const pricingLookup = await loadPricingLookupByIds(db, candidate.pricingIds);
   const pricingValidation = validatePricingSelection({
     pricingIds: candidate.pricingIds,
-    pricingLookup
+    pricingLookup,
+    requireAtLeastOne: options?.requireAtLeastOnePricing ?? true
   });
 
   if (pricingValidation.error) {
