@@ -56,7 +56,10 @@ export function usePricingTreeInteractions() {
       if (
         target?.closest('[role="dialog"]') ||
         target?.closest('[role="menu"]') ||
-        target?.closest('.MuiPopover-root')
+        target?.closest('.MuiPopover-root') ||
+        target?.closest('.MuiAutocomplete-popper') ||
+        target?.closest('.MuiAutocomplete-listbox') ||
+        target?.closest('[role="listbox"]')
       ) {
         return;
       }
