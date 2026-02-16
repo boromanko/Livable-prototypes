@@ -2,6 +2,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { Box, InputBase, Stack, Typography } from '@mui/material';
 import { AppIconButton, SecondaryButton } from '../../../components/buttons';
+import { prototypeTokens } from '../../../theme/tokens';
 import type { TierDraft, TierDraftErrors } from '../pricingForm.utils';
 
 type PricingTierEditorProps = {
@@ -20,8 +21,8 @@ type PricingTierEditorProps = {
 };
 
 const tableColumnTemplate = '64px minmax(240px, 1fr) minmax(240px, 1fr) 48px';
-const errorTint = '#FFF1F1';
-const focusTint = '#EEF8F8';
+const errorTint = prototypeTokens.color.bg.errorTint;
+const focusTint = prototypeTokens.color.bg.focusTint;
 
 export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
   const {
@@ -45,7 +46,7 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
         <Box
           sx={{
             minWidth: 620,
-            border: '1px solid #E1E7EC',
+            border: `1px solid ${prototypeTokens.color.border.default}`,
             borderRadius: '8px',
             overflow: 'hidden'
           }}
@@ -54,17 +55,17 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
             sx={{
               display: 'grid',
               gridTemplateColumns: tableColumnTemplate,
-              backgroundColor: '#F8F9FA',
-              borderBottom: '1px solid #E1E7EC'
+              backgroundColor: prototypeTokens.color.bg.surfaceMuted,
+              borderBottom: `1px solid ${prototypeTokens.color.border.default}`
             }}
           >
-            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: prototypeTokens.color.text.primary }}>
               Tier
             </Box>
-            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: prototypeTokens.color.text.primary }}>
               Units quantity
             </Box>
-            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: '#212934' }}>
+            <Box sx={{ px: 1, py: 1.5, fontSize: 13, fontWeight: 600, color: prototypeTokens.color.text.primary }}>
               Price per unit
             </Box>
             <Box sx={{ px: 1, py: 1.5 }} />
@@ -85,12 +86,17 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                   display: 'grid',
                   gridTemplateColumns: tableColumnTemplate,
                   minHeight: 48,
-                  borderTop: index === 0 ? 'none' : '1px solid #E1E7EC'
+                  borderTop: index === 0 ? 'none' : `1px solid ${prototypeTokens.color.border.default}`
                 }}
               >
                 <Stack
                   justifyContent="center"
-                  sx={{ px: 1, py: 1.25, backgroundColor: '#F8F9FA', color: '#212934' }}
+                  sx={{
+                    px: 1,
+                    py: 1.25,
+                    backgroundColor: prototypeTokens.color.bg.surfaceMuted,
+                    color: prototypeTokens.color.text.primary
+                  }}
                 >
                   <Typography sx={{ fontSize: 15 }}>{index + 1}</Typography>
                 </Stack>
@@ -100,14 +106,16 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                   sx={{
                     px: 1,
                     py: 0.5,
-                    backgroundColor: unitsError ? errorTint : '#FFFFFF',
-                    boxShadow: unitsError ? 'inset 0 0 0 1px #D32F2F' : 'none',
+                    backgroundColor: unitsError ? errorTint : prototypeTokens.color.bg.surface,
+                    boxShadow: unitsError
+                      ? `inset 0 0 0 1px ${prototypeTokens.color.status.dangerStrong}`
+                      : 'none',
                     transition: 'background-color 120ms ease, box-shadow 120ms ease',
                     '&:focus-within': {
                       backgroundColor: unitsError ? errorTint : focusTint,
                       boxShadow: unitsError
-                        ? 'inset 0 0 0 1.5px #D32F2F'
-                        : 'inset 0 0 0 2px #009299'
+                        ? `inset 0 0 0 1.5px ${prototypeTokens.color.status.dangerStrong}`
+                        : `inset 0 0 0 2px ${prototypeTokens.color.brand.teal500}`
                     }
                   }}
                 >
@@ -127,7 +135,9 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                       fontSize: 15,
                       px: 0.5,
                       '& input::placeholder': {
-                        color: isLastTier ? '#B8C4CE' : '#8895A7',
+                        color: isLastTier
+                          ? prototypeTokens.color.border.strong
+                          : prototypeTokens.color.icon.muted,
                         opacity: 1
                       }
                     }}
@@ -139,19 +149,21 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                   sx={{
                     px: 1,
                     py: 0.5,
-                    backgroundColor: priceError ? errorTint : '#FFFFFF',
-                    boxShadow: priceError ? 'inset 0 0 0 1px #D32F2F' : 'none',
+                    backgroundColor: priceError ? errorTint : prototypeTokens.color.bg.surface,
+                    boxShadow: priceError
+                      ? `inset 0 0 0 1px ${prototypeTokens.color.status.dangerStrong}`
+                      : 'none',
                     transition: 'background-color 120ms ease, box-shadow 120ms ease',
                     '&:focus-within': {
                       backgroundColor: priceError ? errorTint : focusTint,
                       boxShadow: priceError
-                        ? 'inset 0 0 0 1.5px #D32F2F'
-                        : 'inset 0 0 0 2px #009299'
+                        ? `inset 0 0 0 1.5px ${prototypeTokens.color.status.dangerStrong}`
+                        : `inset 0 0 0 2px ${prototypeTokens.color.brand.teal500}`
                     }
                   }}
                 >
                   <Stack direction="row" alignItems="center" spacing={0.75}>
-                    <Typography sx={{ color: '#8895A7', fontSize: 18 }}>$</Typography>
+                    <Typography sx={{ color: prototypeTokens.color.icon.muted, fontSize: 18 }}>$</Typography>
                     <InputBase
                       value={tier.unitAmountUsd}
                       disabled={disabled}
@@ -166,13 +178,17 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                       sx={{
                         width: '100%',
                         fontSize: 15,
-                        '& input::placeholder': { color: '#8895A7', opacity: 1 }
+                        '& input::placeholder': { color: prototypeTokens.color.icon.muted, opacity: 1 }
                       }}
                     />
                   </Stack>
                 </Stack>
 
-                <Stack justifyContent="center" alignItems="center" sx={{ backgroundColor: '#F8F9FA' }}>
+                <Stack
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{ backgroundColor: prototypeTokens.color.bg.surfaceMuted }}
+                >
                   {!isLastTier ? (
                     <AppIconButton
                       aria-label={`Remove tier ${index + 1}`}
@@ -204,7 +220,9 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
       </SecondaryButton>
 
       {showValidation && hasTierErrors ? (
-        <Typography sx={{ color: '#d32f2f', fontSize: 12 }}>Fill highlighted tier fields.</Typography>
+        <Typography sx={{ color: prototypeTokens.color.status.dangerStrong, fontSize: 12 }}>
+          Fill highlighted tier fields.
+        </Typography>
       ) : null}
     </>
   );

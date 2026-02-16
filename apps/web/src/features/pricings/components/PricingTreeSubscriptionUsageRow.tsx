@@ -6,6 +6,8 @@ import type {
   PricingTreeSubscriptionSummary
 } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
+import { formatSubscriptionStatusLabel } from '../../../lib/subscriptions/status';
+import { prototypeTokens } from '../../../theme/tokens';
 import { PricingTreeUsageTierGrid } from './PricingTreeUsageTierGrid';
 import type { DetachConfirmTarget, OpenEditSubscription } from './pricingTree.types';
 import {
@@ -67,11 +69,11 @@ export function PricingTreeSubscriptionUsageRow(
       sx={{
         minHeight: 44,
         px: 1.5,
-        borderBottom: isLast ? '1px solid #E1E7EC' : 'none',
+        borderBottom: isLast ? `1px solid ${prototypeTokens.color.border.default}` : 'none',
         cursor: 'pointer',
         transition: 'background-color 120ms ease',
         '&:hover': {
-          backgroundColor: '#F8FBFD'
+          backgroundColor: prototypeTokens.color.bg.rowHover
         }
       }}
     >
@@ -81,7 +83,7 @@ export function PricingTreeSubscriptionUsageRow(
         <Box sx={{ width: TREE_LABEL_GAP }} />
         <Stack spacing={0.25} sx={{ py: 0.5 }}>
           <Stack direction="row" alignItems="center" spacing={0.75}>
-            <Typography sx={{ fontSize: 14, fontWeight: 400, color: '#212934' }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 400, color: prototypeTokens.color.text.primary }}>
               {subscription.account.companyName}
             </Typography>
             <Typography
@@ -112,7 +114,7 @@ export function PricingTreeSubscriptionUsageRow(
             px: 1,
             display: 'flex',
             alignItems: 'center',
-            color: '#6F8298',
+            color: prototypeTokens.color.text.muted,
             fontSize: 13,
             fontWeight: 500,
             fontVariantNumeric: 'tabular-nums'
@@ -126,7 +128,7 @@ export function PricingTreeSubscriptionUsageRow(
             px: 1,
             display: 'flex',
             alignItems: 'center',
-            color: '#6F8298',
+            color: prototypeTokens.color.text.muted,
             fontSize: 13,
             fontWeight: 500
           }}
@@ -139,7 +141,7 @@ export function PricingTreeSubscriptionUsageRow(
             px: 1,
             display: 'flex',
             alignItems: 'center',
-            color: '#6F8298',
+            color: prototypeTokens.color.text.muted,
             fontSize: 13,
             fontWeight: 500,
             fontVariantNumeric: 'tabular-nums'
@@ -202,22 +204,6 @@ function getSubscriptionStatusTagSx(): Record<string, string | number> {
     fontWeight: 500,
     fontSize: 13
   };
-}
-
-function formatSubscriptionStatusLabel(status: PricingTreeSubscriptionSummary['status']): string {
-  if (status === 'ACTIVE') {
-    return 'Active';
-  }
-
-  if (status === 'DRAFT') {
-    return 'Draft';
-  }
-
-  if (status === 'PAUSED') {
-    return 'Paused';
-  }
-
-  return 'Canceled';
 }
 
 function formatUnitsLabel(unitsCount: number): string {

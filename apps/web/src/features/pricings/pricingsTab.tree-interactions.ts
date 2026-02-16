@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 export function usePricingTreeInteractions() {
   const [collapsedProducts, setCollapsedProducts] = useState<Set<string>>(new Set());
@@ -44,45 +44,6 @@ export function usePricingTreeInteractions() {
       return next;
     });
   }
-
-  useEffect(() => {
-    function handleGlobalWheel(event: WheelEvent): void {
-      const container = cascadeScrollRef.current;
-      if (!container) {
-        return;
-      }
-
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.closest('[role="dialog"]') ||
-        target?.closest('[role="menu"]') ||
-        target?.closest('.MuiPopover-root') ||
-        target?.closest('.MuiAutocomplete-popper') ||
-        target?.closest('.MuiAutocomplete-listbox') ||
-        target?.closest('[role="listbox"]')
-      ) {
-        return;
-      }
-
-      if (Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
-        return;
-      }
-
-      if (container.scrollHeight <= container.clientHeight) {
-        return;
-      }
-
-      event.preventDefault();
-      const maxScrollTop = container.scrollHeight - container.clientHeight;
-      const nextScrollTop = Math.min(maxScrollTop, Math.max(0, container.scrollTop + event.deltaY));
-      container.scrollTop = nextScrollTop;
-    }
-
-    window.addEventListener('wheel', handleGlobalWheel, { passive: false });
-    return () => {
-      window.removeEventListener('wheel', handleGlobalWheel);
-    };
-  }, []);
 
   return {
     collapsedProducts,

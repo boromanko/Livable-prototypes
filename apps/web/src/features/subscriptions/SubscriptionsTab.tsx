@@ -1,5 +1,5 @@
 import { Alert, Snackbar, Stack } from '@mui/material';
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useRef } from 'react';
 import { canManagePricings, canManageSubscriptions, useDemoRole } from '../../demoRole';
 import { ManagePricingsDialog } from './components/ManagePricingsDialog';
 import { SubscriptionDeleteDialog } from './components/SubscriptionDeleteDialog';
@@ -26,11 +26,8 @@ export function SubscriptionsTab(): JSX.Element {
   const canEditSubscriptions = canManageSubscriptions(role);
   const canEditPricings = canManagePricings(role);
 
-  useEffect(() => {
-    if (canEditSubscriptions) {
-      return;
-    }
-
+  const resetReadOnlyStateRef = useRef<() => void>(() => undefined);
+  resetReadOnlyStateRef.current = () => {
     controller.bulk.clearSelection();
     controller.bulk.closeDeleteDialog();
     controller.bulk.manageDialog.close();
@@ -38,6 +35,14 @@ export function SubscriptionsTab(): JSX.Element {
     controller.singleDeleteDialog.close();
     controller.drawer.closeDrawer();
     controller.pricingDrawer.closePricingDrawer();
+  };
+
+  useEffect(() => {
+    if (canEditSubscriptions) {
+      return;
+    }
+
+    resetReadOnlyStateRef.current();
   }, [canEditSubscriptions]);
 
   return (

@@ -1,9 +1,6 @@
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
 import {
   Box,
   Checkbox,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -12,20 +9,17 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
-  Tooltip,
   Typography
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import type { SubscriptionItem } from '../../../api';
-import { AppIconButton } from '../../../components/buttons';
 import { EmptyState } from '../../../components/layout';
-import { formatDateLabel } from '../../../lib/format/date';
-import { formatMoneyCents } from '../../../lib/format/money';
-import { PricingValueCard } from './PricingValueCard';
+import { prototypeTokens } from '../../../theme/tokens';
 import type {
   SubscriptionsSortDirection,
   SubscriptionsSortField
 } from '../subscriptionsTab.utils';
-import { getSubscriptionProperties } from '../subscriptionsTab.utils';
+import { SubscriptionsTableRowItem } from './SubscriptionsTableRow';
 
 type SubscriptionsTableProps = {
   isPending: boolean;
@@ -54,6 +48,40 @@ type SubscriptionsTableProps = {
   canManageSubscriptions: boolean;
   canOpenPricingEditor: boolean;
 };
+
+type SortHeaderCell = {
+  field: SubscriptionsSortField;
+  label: string;
+  sx?: SxProps<Theme>;
+};
+
+const sortHeaderCells: SortHeaderCell[] = [
+  { field: 'account', label: 'Account' },
+  { field: 'scope', label: 'Scope' },
+  {
+    field: 'property',
+    label: 'Properties',
+    sx: { width: 92, minWidth: 92, maxWidth: 92, whiteSpace: 'nowrap' }
+  },
+  { field: 'units', label: 'Units' },
+  { field: 'startDate', label: 'Start' },
+  { field: 'endDate', label: 'End' },
+  { field: 'status', label: 'Status' },
+  { field: 'pricings', label: 'Pricings' }
+];
+
+const tableSx = {
+  '& .MuiTableHead-root .MuiTableCell-root': {
+    borderBottom: `1px solid ${prototypeTokens.color.border.default}`,
+    backgroundColor: prototypeTokens.color.bg.surface,
+    zIndex: 2
+  },
+  '& .MuiTableBody-root .MuiTableCell-root': {
+    borderBottom: `1px solid ${prototypeTokens.color.border.default}`,
+    verticalAlign: 'top',
+    pt: 1
+  }
+} as const;
 
 export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element {
   const {
@@ -87,22 +115,7 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-        <Table
-          size="small"
-          stickyHeader
-          sx={{
-            '& .MuiTableHead-root .MuiTableCell-root': {
-              borderBottom: '1px solid #E1E7EC',
-              backgroundColor: '#FFFFFF',
-              zIndex: 2
-            },
-            '& .MuiTableBody-root .MuiTableCell-root': {
-              borderBottom: '1px solid #E1E7EC',
-              verticalAlign: 'top',
-              pt: 1
-            }
-          }}
-        >
+        <Table size="small" stickyHeader sx={tableSx}>
           <TableHead>
             <TableRow>
               <TableCell padding="checkbox">
@@ -116,81 +129,23 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   inputProps={{ 'aria-label': 'Select all subscriptions' }}
                 />
               </TableCell>
-              <TableCell sortDirection={sortField === 'account' ? sortDirection : false}>
-                <TableSortLabel
-                  active={sortField === 'account'}
-                  direction={sortField === 'account' ? sortDirection : 'asc'}
-                  onClick={() => onSort('account')}
+
+              {sortHeaderCells.map((cell) => (
+                <TableCell
+                  key={cell.field}
+                  sortDirection={sortField === cell.field ? sortDirection : false}
+                  sx={cell.sx}
                 >
-                  Account
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'scope' ? sortDirection : false}>
-                <TableSortLabel
-                  active={sortField === 'scope'}
-                  direction={sortField === 'scope' ? sortDirection : 'asc'}
-                  onClick={() => onSort('scope')}
-                >
-                  Scope
-                </TableSortLabel>
-              </TableCell>
-              <TableCell
-                sortDirection={sortField === 'property' ? sortDirection : false}
-                sx={{ width: 92, minWidth: 92, maxWidth: 92, whiteSpace: 'nowrap' }}
-              >
-                <TableSortLabel
-                  active={sortField === 'property'}
-                  direction={sortField === 'property' ? sortDirection : 'asc'}
-                  onClick={() => onSort('property')}
-                >
-                  Properties
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'units' ? sortDirection : false}>
-                <TableSortLabel
-                  active={sortField === 'units'}
-                  direction={sortField === 'units' ? sortDirection : 'asc'}
-                  onClick={() => onSort('units')}
-                >
-                  Units
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'startDate' ? sortDirection : false}>
-                <TableSortLabel
-                  active={sortField === 'startDate'}
-                  direction={sortField === 'startDate' ? sortDirection : 'asc'}
-                  onClick={() => onSort('startDate')}
-                >
-                  Start
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'endDate' ? sortDirection : false}>
-                <TableSortLabel
-                  active={sortField === 'endDate'}
-                  direction={sortField === 'endDate' ? sortDirection : 'asc'}
-                  onClick={() => onSort('endDate')}
-                >
-                  End
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'status' ? sortDirection : false}>
-                <TableSortLabel
-                  active={sortField === 'status'}
-                  direction={sortField === 'status' ? sortDirection : 'asc'}
-                  onClick={() => onSort('status')}
-                >
-                  Status
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'pricings' ? sortDirection : false}>
-                <TableSortLabel
-                  active={sortField === 'pricings'}
-                  direction={sortField === 'pricings' ? sortDirection : 'asc'}
-                  onClick={() => onSort('pricings')}
-                >
-                  Pricings
-                </TableSortLabel>
-              </TableCell>
+                  <TableSortLabel
+                    active={sortField === cell.field}
+                    direction={sortField === cell.field ? sortDirection : 'asc'}
+                    onClick={() => onSort(cell.field)}
+                  >
+                    {cell.label}
+                  </TableSortLabel>
+                </TableCell>
+              ))}
+
               <TableCell align="right" />
             </TableRow>
           </TableHead>
@@ -205,152 +160,22 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                 </TableCell>
               </TableRow>
             ) : rows.length ? (
-              rows.map((subscription) => {
-                const subscriptionProperties = getSubscriptionProperties(subscription);
-
-	                return (
-                  <TableRow
-                    key={subscription.id}
-                    hover={canManageSubscriptions}
-                    onClick={() => {
-                      if (canManageSubscriptions) {
-                        onEditSubscription(subscription);
-                      }
-                    }}
-                    sx={{
-                      cursor: canManageSubscriptions ? 'pointer' : 'default'
-                    }}
-                  >
-                  <TableCell
-                    padding="checkbox"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                    }}
-                  >
-                    <Checkbox
-                      checked={selectedIds.includes(subscription.id)}
-                      disabled={!canManageSubscriptions}
-                      onChange={() => onToggleRowSelection(subscription.id)}
-                      size="small"
-                      sx={{ p: 0.5 }}
-                    />
-                  </TableCell>
-
-                  <TableCell>
-                    <Stack spacing={0.25}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {subscription.account.companyName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {subscription.account.email}
-                      </Typography>
-                    </Stack>
-                  </TableCell>
-
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {getScopeLabel(subscription.scope)}
-                    </Typography>
-                  </TableCell>
-
-                  <TableCell sx={{ width: 92, minWidth: 92, maxWidth: 92 }}>
-                    {subscription.scope === 'ACCOUNT' ? (
-                      <Typography variant="body2" color="text.secondary">
-                        {getAccountPropertiesCountLabel(
-                          subscription.account.id,
-                          accountPropertiesCountById,
-                          isAccountPropertiesCountPending
-                        )}
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        {subscriptionProperties.length}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary">
-                      {getSubscriptionUnitsLabel(
-                        subscription,
-                        accountTotalBillableUnitsById,
-                        isAccountPropertiesCountPending
-                      )}
-                    </Typography>
-                  </TableCell>
-
-                  <TableCell>{formatDateLabel(subscription.startDate)}</TableCell>
-                  <TableCell>{formatDateLabel(subscription.endDate, { fallback: '—' })}</TableCell>
-                  <TableCell>
-                    <Typography
-                      component="span"
-                      sx={{
-                        ...getSubscriptionStatusTagSx(subscription.status),
-                        display: 'inline-flex',
-                        alignItems: 'center'
-                      }}
-                    >
-                      {formatSubscriptionStatusLabel(subscription.status)}
-                    </Typography>
-                  </TableCell>
-
-                  <TableCell>
-                    {subscription.pricings.length > 0 ? (
-                      <Stack spacing={0.5}>
-                        {subscription.pricings.map((pricing) => (
-                          <PricingValueCard
-                            key={pricing.id}
-                            title={pricing.internalName}
-                            subtitle={`${pricing.product.code} - ${pricing.type}`}
-                            amountLabel={getSubscriptionPricingAmountLabel(pricing)}
-                            variant="table"
-                            onTitleClick={() => {
-                              if (canOpenPricingEditor) {
-                                onEditPricing?.(pricing);
-                              }
-                            }}
-                          />
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        —
-                      </Typography>
-                    )}
-                  </TableCell>
-
-                  <TableCell align="right">
-                    <Stack direction="row" justifyContent="flex-end" alignItems="flex-start" spacing={0.25}>
-                      {canManageSubscriptions ? (
-                        <>
-                          <Tooltip title="Edit subscription">
-                            <AppIconButton
-                              tone="ghost"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onEditSubscription(subscription);
-                              }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </AppIconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete subscription">
-                            <AppIconButton
-                              tone="ghost"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onDeleteSubscription(subscription);
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </AppIconButton>
-                          </Tooltip>
-                        </>
-                      ) : null}
-                    </Stack>
-                  </TableCell>
-                  </TableRow>
-                );
-              })
+              rows.map((subscription) => (
+                <SubscriptionsTableRowItem
+                  key={subscription.id}
+                  subscription={subscription}
+                  isSelected={selectedIds.includes(subscription.id)}
+                  accountPropertiesCountById={accountPropertiesCountById}
+                  accountTotalBillableUnitsById={accountTotalBillableUnitsById}
+                  isAccountPropertiesCountPending={isAccountPropertiesCountPending}
+                  canManageSubscriptions={canManageSubscriptions}
+                  canOpenPricingEditor={canOpenPricingEditor}
+                  onToggleRowSelection={onToggleRowSelection}
+                  onEditSubscription={onEditSubscription}
+                  onEditPricing={onEditPricing}
+                  onDeleteSubscription={onDeleteSubscription}
+                />
+              ))
             ) : (
               <TableRow>
                 <TableCell colSpan={10}>
@@ -378,133 +203,4 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
       />
     </Box>
   );
-}
-
-function getScopeLabel(scope: SubscriptionItem['scope']): string {
-  return scope === 'ACCOUNT' ? 'Account level' : 'Property level';
-}
-
-function getAccountPropertiesCountLabel(
-  accountId: string,
-  accountPropertiesCountById: Record<string, number>,
-  isPending: boolean
-): string {
-  const count = accountPropertiesCountById[accountId];
-  if (typeof count !== 'number') {
-    return isPending ? '...' : '-';
-  }
-
-  return String(count);
-}
-
-function getSubscriptionUnitsLabel(
-  subscription: SubscriptionItem,
-  accountTotalBillableUnitsById: Record<string, number>,
-  isPending: boolean
-): string {
-  if (subscription.scope === 'ACCOUNT') {
-    const totalUnits = accountTotalBillableUnitsById[subscription.account.id];
-    if (typeof totalUnits !== 'number') {
-      return isPending ? '...' : '-';
-    }
-
-    return String(totalUnits);
-  }
-
-  const totalUnits = subscription.properties.reduce((sum, property) => sum + property.billableUnits, 0);
-  return String(totalUnits);
-}
-
-function getSubscriptionPricingAmountLabel(
-  pricing: SubscriptionItem['pricings'][number]
-): string {
-  if (pricing.type === 'FIXED') {
-    return formatMoneyCents(pricing.fixedAmountCents, pricing.currency);
-  }
-
-  const amounts = pricing.tiers.map((tier) => tier.unitAmountCents).filter((amount) => amount >= 0);
-  if (amounts.length === 0) {
-    return formatMoneyCents(pricing.minimumPriceCents, pricing.currency);
-  }
-
-  const minAmount = Math.min(...amounts);
-  const maxAmount = Math.max(...amounts);
-  if (minAmount === maxAmount) {
-    return formatMoneyCents(minAmount, pricing.currency);
-  }
-
-  return `${formatMoneyCents(minAmount, pricing.currency)} - ${formatMoneyCents(
-    maxAmount,
-    pricing.currency
-  )}`;
-}
-
-function getSubscriptionStatusTagSx(
-  status: SubscriptionItem['status']
-): Record<string, string | number> {
-  if (status === 'ACTIVE') {
-    return {
-      color: '#1F9D55',
-      backgroundColor: '#E8F7EF',
-      py: '2px',
-      px: '4px',
-      borderRadius: '2px',
-      fontWeight: 600,
-      fontSize: 14,
-      lineHeight: 1.1
-    };
-  }
-
-  if (status === 'DRAFT') {
-    return {
-      color: '#2B6CB0',
-      backgroundColor: '#E9F2FC',
-      py: '2px',
-      px: '4px',
-      borderRadius: '2px',
-      fontWeight: 600,
-      fontSize: 14,
-      lineHeight: 1.1
-    };
-  }
-
-  if (status === 'PAUSED') {
-    return {
-      color: '#B7791F',
-      backgroundColor: '#FFF5E5',
-      py: '2px',
-      px: '4px',
-      borderRadius: '2px',
-      fontWeight: 600,
-      fontSize: 14,
-      lineHeight: 1.1
-    };
-  }
-
-  return {
-    color: '#4B617C',
-    backgroundColor: '#EEF2F6',
-    py: '2px',
-    px: '4px',
-    borderRadius: '2px',
-    fontWeight: 600,
-    fontSize: 14,
-    lineHeight: 1.1
-  };
-}
-
-function formatSubscriptionStatusLabel(status: SubscriptionItem['status']): string {
-  if (status === 'ACTIVE') {
-    return 'Active';
-  }
-
-  if (status === 'DRAFT') {
-    return 'Draft';
-  }
-
-  if (status === 'PAUSED') {
-    return 'Paused';
-  }
-
-  return 'Canceled';
 }

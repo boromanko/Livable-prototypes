@@ -2,6 +2,7 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import { Box, Link, Stack, Tooltip } from '@mui/material';
 import type { PricingTreeAccountUsage, PricingTreeItem, PricingTreePropertyUsage } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
+import { prototypeTokens } from '../../../theme/tokens';
 import { EntityTypeIndicator } from './PricingTreeIndicators';
 import { PricingTreeUsageTierGrid } from './PricingTreeUsageTierGrid';
 import type { DetachConfirmTarget } from './pricingTree.types';
@@ -36,7 +37,12 @@ export function PricingTreePropertyUsageRow(props: PricingTreePropertyUsageRowPr
   } = props;
 
   return (
-    <Stack direction="row" alignItems="stretch" spacing={0} sx={{ minHeight: 44, px: 1.5, borderTop: '1px dotted #E1E7EC' }}>
+    <Stack
+      direction="row"
+      alignItems="stretch"
+      spacing={0}
+      sx={{ minHeight: 44, px: 1.5, borderTop: `1px dotted ${prototypeTokens.color.border.default}` }}
+    >
       <Stack direction="row" alignItems="center" spacing={0} sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}>
         <Box sx={{ width: TREE_INDENT_STEP * (showPropertiesSectionHeader ? 3 : 2) }} />
         <Box sx={{ width: showPropertiesSectionHeader ? TREE_TOGGLE_SLOT_WIDTH : 0 }} />
@@ -60,7 +66,7 @@ export function PricingTreePropertyUsageRow(props: PricingTreePropertyUsageRowPr
               ...CLICKABLE_ENTITY_LINK_SX,
               fontSize: 11,
               lineHeight: 1.1,
-              color: '#7A8EA8'
+              color: prototypeTokens.color.text.tertiary
             }}
           >
             {accountUsage.account.companyName}
@@ -80,17 +86,17 @@ export function PricingTreePropertyUsageRow(props: PricingTreePropertyUsageRowPr
           sx={{
             minHeight: 44,
             px: 1.25,
-            borderLeft: '1px solid #E1E7EC'
+            borderLeft: `1px solid ${prototypeTokens.color.border.default}`
           }}
         />
         <Box
           sx={{
             minHeight: 44,
             px: 1.25,
-            borderLeft: '1px solid #E1E7EC',
+            borderLeft: `1px solid ${prototypeTokens.color.border.default}`,
             display: 'flex',
             alignItems: 'center',
-            color: '#212934',
+            color: prototypeTokens.color.text.primary,
             fontSize: 13,
             fontWeight: 600,
             fontVariantNumeric: 'tabular-nums'
@@ -116,7 +122,7 @@ export function PricingTreePropertyUsageRow(props: PricingTreePropertyUsageRowPr
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
-          borderLeft: '1px solid #E1E7EC'
+          borderLeft: `1px solid ${prototypeTokens.color.border.default}`
         }}
       >
         {propertyUsage.resolvedBySubscriptionId ? (

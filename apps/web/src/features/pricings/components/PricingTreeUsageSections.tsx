@@ -3,6 +3,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Stack, Typography } from '@mui/material';
 import { GhostButton } from '../../../components/buttons';
+import { prototypeTokens } from '../../../theme/tokens';
 import type { OpenCreateSubscription } from './pricingTree.types';
 import {
   TABLE_GHOST_BUTTON_SX,
@@ -41,8 +42,8 @@ export function PricingTreeUsageSectionHeader(
       sx={{
         minHeight: 34,
         px: 1.5,
-        borderTop: '1px dashed #E1E7EC',
-        backgroundColor: '#F8F9FA',
+        borderTop: `1px dashed ${prototypeTokens.color.border.default}`,
+        backgroundColor: prototypeTokens.color.bg.surfaceMuted,
         cursor: 'pointer'
       }}
     >
@@ -57,7 +58,7 @@ export function PricingTreeUsageSectionHeader(
             justifyContent: 'center',
             borderRadius: '2px',
             transition: 'background-color 120ms ease',
-            '&:hover': { backgroundColor: '#EAF0F5' }
+            '&:hover': { backgroundColor: prototypeTokens.color.bg.hover }
           }}
           aria-label={collapsed ? expandLabel : collapseLabel}
         >
@@ -65,7 +66,9 @@ export function PricingTreeUsageSectionHeader(
         </Box>
       </Box>
       <Box sx={{ width: TREE_LABEL_GAP }} />
-      <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>{title}</Typography>
+      <Typography sx={{ fontWeight: 500, fontSize: 14, color: prototypeTokens.color.text.primary }}>
+        {title}
+      </Typography>
     </Stack>
   );
 }
@@ -88,8 +91,8 @@ export function PricingTreeUsageAssignRow(props: PricingTreeUsageAssignRowProps)
         pl: 0,
         pr: 1.5,
         py: 0.75,
-        borderTop: '1px dashed #E1E7EC',
-        backgroundColor: '#FFFFFF'
+        borderTop: `1px dashed ${prototypeTokens.color.border.default}`,
+        backgroundColor: prototypeTokens.color.bg.surface
       }}
     >
       <Box sx={{ width: TREE_INDENT_STEP * (showSectionHeader ? 3 : 2) }} />

@@ -3,6 +3,17 @@ type DateLabelOptions = {
   locale?: string;
 };
 
+function padDatePart(value: number): string {
+  return value.toString().padStart(2, '0');
+}
+
+function toLocalDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = padDatePart(date.getMonth() + 1);
+  const day = padDatePart(date.getDate());
+  return `${year}-${month}-${day}`;
+}
+
 export function formatDateLabel(value: string | null, options?: DateLabelOptions): string {
   if (!value) {
     return options?.fallback ?? 'Forever';
@@ -20,6 +31,10 @@ export function formatDateLabel(value: string | null, options?: DateLabelOptions
   });
 }
 
+export function getTodayDateInputValue(): string {
+  return toLocalDateInputValue(new Date());
+}
+
 export function toDateInputValue(value: string | null): string {
   if (!value) {
     return '';
@@ -30,5 +45,5 @@ export function toDateInputValue(value: string | null): string {
     return '';
   }
 
-  return date.toISOString().slice(0, 10);
+  return toLocalDateInputValue(date);
 }

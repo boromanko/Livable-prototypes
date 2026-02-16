@@ -6,18 +6,37 @@ export const prototypeTokens = {
       surfaceMuted: '#F8F9FA',
       surfaceSubtle: '#F3F7FA',
       search: '#EBF0F5',
-      navActive: '#E1E7EC'
+      navActive: '#E1E7EC',
+      hover: '#EAF0F5',
+      brandSoft: '#EAF6F6',
+      rowHover: '#F8FBFD',
+      errorTint: '#FFF1F1',
+      errorSurface: '#FFF6F6',
+      errorSurfaceAlt: '#FFF7F7',
+      focusTint: '#EEF8F8'
     },
     border: {
       default: '#E1E7EC',
-      strong: '#D7DEE6'
+      strong: '#D7DEE6',
+      error: '#E7B5B5',
+      danger: '#D14343'
     },
     text: {
       primary: '#212934',
-      secondary: '#4B617C'
+      secondary: '#4B617C',
+      muted: '#6F8298',
+      subtle: '#6B7F99',
+      tertiary: '#7A8EA8',
+      placeholder: '#98A4B3',
+      inverse: '#FFFFFF',
+      link: '#1A4E80'
     },
     icon: {
       muted: '#8895A7'
+    },
+    status: {
+      danger: '#B42318',
+      dangerStrong: '#D32F2F'
     },
     brand: {
       teal500: '#009299',

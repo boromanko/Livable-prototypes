@@ -1,5 +1,6 @@
 import type { BillingScope, SubscriptionItem, SubscriptionStatus } from '../../api';
-import { toDateInputValue } from '../../lib/format/date';
+import { getTodayDateInputValue, toDateInputValue } from '../../lib/format/date';
+import { subscriptionStatusOptions } from '../../lib/subscriptions/status';
 
 export type SubscriptionFormState = {
   accountId: string;
@@ -20,12 +21,7 @@ export type SubscriptionFormValidationState = {
   hasErrors: boolean;
 };
 
-export const subscriptionStatusOptions: SubscriptionStatus[] = [
-  'DRAFT',
-  'ACTIVE',
-  'PAUSED',
-  'CANCELED'
-];
+export { subscriptionStatusOptions };
 
 export function buildInitialSubscriptionFormState(
   defaultAccountId?: string,
@@ -36,7 +32,7 @@ export function buildInitialSubscriptionFormState(
     accountId: defaultAccountId ?? '',
     scope: defaultScope,
     propertyIds: [],
-    startDate: new Date().toISOString().slice(0, 10),
+    startDate: getTodayDateInputValue(),
     endDate: '',
     status: 'DRAFT',
     paymentMethodId: '',

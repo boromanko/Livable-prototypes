@@ -1,10 +1,12 @@
 import { Alert, Box, Snackbar, Stack, Typography } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { api, queryKeys } from '../../api';
+import { Suspense, lazy, useEffect, useRef } from 'react';
 import { EmptyState } from '../../components/layout';
-import { canManagePricings as canManagePricingsByRole, canViewPricings, useDemoRole } from '../../demoRole';
-import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
+import {
+  canManagePricings as canManagePricingsByRole,
+  canViewPricings,
+  useDemoRole
+} from '../../demoRole';
 import { PricingConfirmationDialogs } from './components/PricingConfirmationDialogs';
 import { PricingFiltersPopover } from './components/PricingFiltersPopover';
 import { PricingsBulkDeleteDialog } from './components/PricingsBulkDeleteDialog';
@@ -15,6 +17,7 @@ import { PricingsToolbar } from './components/PricingsToolbar';
 import { usePricingsTabActions } from './pricingsTab.actions';
 import { usePricingsTabData } from './pricingsTab.data';
 import { usePricingsTabState, usePricingTreeInteractions } from './pricingsTab.hooks';
+import { usePricingsTabSelection } from './pricingsTab.selection';
 
 const PricingFormDrawer = lazy(async () => {
   const module = await import('./PricingFormDrawer');
@@ -33,9 +36,6 @@ export function PricingsTab(): JSX.Element {
   const state = usePricingsTabState();
   const tree = usePricingTreeInteractions();
   const queryClient = useQueryClient();
-  const [selectedPricingIds, setSelectedPricingIds] = useState<string[]>([]);
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
 
   const data = usePricingsTabData({
     search: state.filters.search,
@@ -59,122 +59,31 @@ export function PricingsTab(): JSX.Element {
     setDetachConfirmTarget: state.confirmations.setDetachConfirmTarget
   });
 
-  const allPricingRowKeys = useMemo(
-    () => data.flatPricings.map((pricing) => `pricing:${pricing.id}`),
-    [data.flatPricings]
-  );
-  const allPricingRowsExpanded =
-    allPricingRowKeys.length > 0 &&
-    allPricingRowKeys.every((pricingKey) => tree.expandedPricings.has(pricingKey));
-  const allRowsExpanded = allPricingRowsExpanded;
-  const expandAllDisabled = allPricingRowKeys.length === 0;
-  const visiblePricingIds = useMemo(
-    () => data.flatPricings.map((pricing) => pricing.id),
-    [data.flatPricings]
-  );
-  const selectedPricingIdSet = useMemo(() => new Set(selectedPricingIds), [selectedPricingIds]);
-  const allVisibleSelected =
-    visiblePricingIds.length > 0 &&
-    visiblePricingIds.every((pricingId) => selectedPricingIdSet.has(pricingId));
-  const someVisibleSelected =
-    visiblePricingIds.some((pricingId) => selectedPricingIdSet.has(pricingId)) && !allVisibleSelected;
+  const selection = usePricingsTabSelection({
+    flatPricings: data.flatPricings,
+    expandedPricings: tree.expandedPricings,
+    setExpandedPricings: tree.setExpandedPricings,
+    isDeletePending: data.isDeletePending,
+    deletePricing: data.deletePricing,
+    queryClient,
+    openEditSubscriptionModal: state.subscriptionModal.openEditSubscription,
+    setSuccessMessage: state.feedback.setSuccessMessage
+  });
 
-  useEffect(() => {
-    const visibleSet = new Set(visiblePricingIds);
-
-    setSelectedPricingIds((previous) => {
-      const next = previous.filter((pricingId) => visibleSet.has(pricingId));
-      return next.length === previous.length ? previous : next;
-    });
-  }, [visiblePricingIds]);
-
-  useEffect(() => {
-    if (selectedPricingIds.length === 0) {
-      setIsBulkDeleteDialogOpen(false);
-      setBulkDeleteError(null);
-    }
-  }, [selectedPricingIds.length]);
+  const resetReadOnlyStateRef = useRef<() => void>(() => undefined);
+  resetReadOnlyStateRef.current = () => {
+    selection.clearSelection();
+    state.pricingModal.closePricingModal();
+    state.confirmations.setDeletingPricing(null);
+  };
 
   useEffect(() => {
     if (canManagePricings) {
       return;
     }
 
-    setSelectedPricingIds([]);
-    setBulkDeleteError(null);
-    setIsBulkDeleteDialogOpen(false);
-    state.pricingModal.closePricingModal();
-    state.confirmations.setDeletingPricing(null);
+    resetReadOnlyStateRef.current();
   }, [canManagePricings]);
-
-  function toggleExpandAllRows(): void {
-    if (allRowsExpanded) {
-      tree.setExpandedPricings(new Set());
-      return;
-    }
-
-    tree.setExpandedPricings(new Set(allPricingRowKeys));
-  }
-
-  function togglePricingSelection(pricingId: string): void {
-    setSelectedPricingIds((previous) => {
-      if (previous.includes(pricingId)) {
-        return previous.filter((id) => id !== pricingId);
-      }
-
-      return [...previous, pricingId];
-    });
-  }
-
-  function toggleAllVisibleSelection(): void {
-    if (allVisibleSelected) {
-      setSelectedPricingIds([]);
-      return;
-    }
-
-    setSelectedPricingIds(visiblePricingIds);
-  }
-
-  async function confirmBulkDeletePricings(): Promise<void> {
-    if (selectedPricingIds.length === 0 || data.isDeletePending) {
-      return;
-    }
-
-    setBulkDeleteError(null);
-    const targetPricingIds = [...selectedPricingIds];
-    let deletedCount = 0;
-
-    for (const pricingId of targetPricingIds) {
-      try {
-        await data.deletePricing(pricingId);
-        deletedCount += 1;
-        setSelectedPricingIds((previous) => previous.filter((id) => id !== pricingId));
-      } catch (error) {
-        setBulkDeleteError(getApiErrorMessage(error));
-        return;
-      }
-    }
-
-    setIsBulkDeleteDialogOpen(false);
-    setSelectedPricingIds([]);
-    state.feedback.setSuccessMessage(
-      deletedCount === 1 ? '1 pricing deleted.' : `${deletedCount} pricings deleted.`
-    );
-  }
-
-  function openEditSubscription(subscriptionId: string): void {
-    void queryClient
-      .fetchQuery({
-        queryKey: queryKeys.admin.subscription(subscriptionId),
-        queryFn: () => api.getSubscription(subscriptionId)
-      })
-      .then((response) => {
-        state.subscriptionModal.openEditSubscription(response.item);
-      })
-      .catch(() => {
-        state.feedback.setSuccessMessage('Failed to load subscription.');
-      });
-  }
 
   if (!canReadPricings) {
     return (
@@ -184,7 +93,7 @@ export function PricingsTab(): JSX.Element {
     );
   }
 
-  const selectedCount = canManagePricings ? selectedPricingIds.length : 0;
+  const selectedCount = canManagePricings ? selection.selectedPricingIds.length : 0;
 
   return (
     <>
@@ -206,9 +115,9 @@ export function PricingsTab(): JSX.Element {
           sortDirection={state.sort.sortDirection}
           onOpenSortMenu={state.sort.openSortMenu}
           onToggleSortDirection={state.sort.toggleSortDirection}
-          allRowsExpanded={allRowsExpanded}
-          onToggleExpandAll={toggleExpandAllRows}
-          expandAllDisabled={expandAllDisabled}
+          allRowsExpanded={selection.allRowsExpanded}
+          onToggleExpandAll={selection.toggleExpandAllRows}
+          expandAllDisabled={selection.expandAllDisabled}
           groupByProduct={state.view.groupByProduct}
           onGroupByProductChange={state.view.setGroupByProduct}
           onAddPricing={() => state.pricingModal.openCreatePricing()}
@@ -268,7 +177,9 @@ export function PricingsTab(): JSX.Element {
                   : 'No pricings match the current filters.'
               }
               actionLabel={canManagePricings ? 'New pricing' : undefined}
-              onActionClick={canManagePricings ? () => state.pricingModal.openCreatePricing() : undefined}
+              onActionClick={
+                canManagePricings ? () => state.pricingModal.openCreatePricing() : undefined
+              }
             />
           ) : (
             <PricingTreeView
@@ -286,15 +197,19 @@ export function PricingsTab(): JSX.Element {
               togglePricingFromCaret={tree.togglePricingFromCaret}
               togglePricingSectionLink={tree.togglePricingSectionLink}
               openEditPricing={state.pricingModal.openEditPricing}
-              openEditSubscription={openEditSubscription}
+              openEditSubscription={selection.openEditSubscription}
               setDeletingPricing={state.confirmations.setDeletingPricing}
               setDetachConfirmTarget={state.confirmations.setDetachConfirmTarget}
               openCreatePricing={state.pricingModal.openCreatePricing}
-              allSelected={canManagePricings ? allVisibleSelected : false}
-              someSelected={canManagePricings ? someVisibleSelected : false}
-              onToggleAllSelection={canManagePricings ? toggleAllVisibleSelection : () => undefined}
-              selectedPricingIds={canManagePricings ? selectedPricingIds : []}
-              onTogglePricingSelection={canManagePricings ? togglePricingSelection : () => undefined}
+              allSelected={canManagePricings ? selection.allVisibleSelected : false}
+              someSelected={canManagePricings ? selection.someVisibleSelected : false}
+              onToggleAllSelection={
+                canManagePricings ? selection.toggleAllVisibleSelection : () => undefined
+              }
+              selectedPricingIds={canManagePricings ? selection.selectedPricingIds : []}
+              onTogglePricingSelection={
+                canManagePricings ? selection.togglePricingSelection : () => undefined
+              }
               canManagePricings={canManagePricings}
             />
           )}
@@ -305,15 +220,8 @@ export function PricingsTab(): JSX.Element {
         <PricingsSelectionActions
           selectedCount={selectedCount}
           isPending={data.isDeletePending}
-          onOpenDeletePricings={() => {
-            setBulkDeleteError(null);
-            setIsBulkDeleteDialogOpen(true);
-          }}
-          onClearSelection={() => {
-            setSelectedPricingIds([]);
-            setBulkDeleteError(null);
-            setIsBulkDeleteDialogOpen(false);
-          }}
+          onOpenDeletePricings={selection.openBulkDeleteDialog}
+          onClearSelection={selection.clearSelection}
         />
       ) : null}
 
@@ -384,16 +292,13 @@ export function PricingsTab(): JSX.Element {
 
       {canManagePricings ? (
         <PricingsBulkDeleteDialog
-          open={isBulkDeleteDialogOpen}
+          open={selection.isBulkDeleteDialogOpen}
           selectedCount={selectedCount}
-          error={bulkDeleteError}
+          error={selection.bulkDeleteError}
           isPending={data.isDeletePending}
-          onClose={() => {
-            setBulkDeleteError(null);
-            setIsBulkDeleteDialogOpen(false);
-          }}
+          onClose={selection.closeBulkDeleteDialog}
           onConfirm={() => {
-            void confirmBulkDeletePricings();
+            void selection.confirmBulkDeletePricings();
           }}
         />
       ) : null}
@@ -404,6 +309,21 @@ export function PricingsTab(): JSX.Element {
         onClose={() => state.feedback.setSuccessMessage(null)}
         message={state.feedback.successMessage}
       />
+
+      <Snackbar
+        open={Boolean(selection.subscriptionLoadError)}
+        autoHideDuration={2500}
+        onClose={selection.clearSubscriptionLoadError}
+      >
+        <Alert
+          severity="error"
+          variant="filled"
+          onClose={selection.clearSubscriptionLoadError}
+          sx={{ width: '100%' }}
+        >
+          {selection.subscriptionLoadError}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

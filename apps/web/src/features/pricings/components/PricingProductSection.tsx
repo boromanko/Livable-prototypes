@@ -4,6 +4,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Stack, Tooltip, Typography } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
+import { prototypeTokens } from '../../../theme/tokens';
 import { PricingTreePricingRow } from './PricingTreePricingRow';
 import { PricingTreeUsageRows } from './PricingTreeUsageRows';
 import type {
@@ -82,7 +83,7 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
             minHeight: 40,
             px: 1.5,
             py: 0.5,
-            backgroundColor: '#EEF2F6',
+            backgroundColor: prototypeTokens.color.bg.surfaceSubtle,
             cursor: 'pointer',
             position: 'sticky',
             top: PRODUCT_ROW_STICKY_TOP,
@@ -99,7 +100,7 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
                 justifyContent: 'center',
                 borderRadius: '2px',
                 transition: 'background-color 120ms ease',
-                '&:hover': { backgroundColor: '#EAF0F5' }
+                '&:hover': { backgroundColor: prototypeTokens.color.bg.hover }
               }}
               aria-label={isProductExpanded ? 'Collapse product' : 'Expand product'}
             >
@@ -112,18 +113,18 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
           </Box>
           <Box sx={{ width: TREE_LABEL_GAP }} />
           <Stack direction="row" alignItems="center" spacing={1.25}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, color: '#212934' }}>
+            <Typography sx={{ fontWeight: 500, fontSize: 14, color: prototypeTokens.color.text.primary }}>
               {product.name}
             </Typography>
-            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: prototypeTokens.color.border.strong }}>
               |
             </Typography>
-            <Typography sx={{ fontWeight: 600, fontSize: 14, color: '#98A4B3' }}>
+            <Typography sx={{ fontWeight: 600, fontSize: 14, color: prototypeTokens.color.text.placeholder }}>
               {productPricings.length} pricings
             </Typography>
             {canManagePricings ? (
               <>
-                <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: prototypeTokens.color.border.strong }}>
                   |
                 </Typography>
                 <Tooltip title="Create new pricing for this product">

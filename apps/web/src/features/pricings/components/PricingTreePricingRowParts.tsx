@@ -6,6 +6,7 @@ import { Box, Checkbox, Link, Stack, Typography } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
 import { formatMoneyCents } from '../../../lib/format/money';
+import { prototypeTokens } from '../../../theme/tokens';
 import type { OpenEditPricing } from './pricingTree.types';
 import {
   ACTIONS_COLUMN_WIDTH,
@@ -81,10 +82,10 @@ export function PricingTreePricingLeftContent(
       <Box sx={{ width: TREE_LABEL_GAP }} />
       <Stack spacing={0.25}>
         <Stack direction="row" alignItems="center" spacing={1.25}>
-          <Typography sx={{ fontWeight: 600, fontSize: 15, color: '#212934' }}>
+          <Typography sx={{ fontWeight: 600, fontSize: 15, color: prototypeTokens.color.text.primary }}>
             {pricing.internalName}
           </Typography>
-          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+          <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: prototypeTokens.color.border.strong }}>
             |
           </Typography>
           <Typography
@@ -102,7 +103,7 @@ export function PricingTreePricingLeftContent(
             {pricing.type === 'TIERED' ? 'Tiered' : 'Fixed'}
           </Typography>
           {hasSubscriptions ? (
-            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: prototypeTokens.color.border.strong }}>
               |
             </Typography>
           ) : null}
@@ -117,7 +118,7 @@ export function PricingTreePricingLeftContent(
               sx={{
                 fontWeight: 600,
                 fontSize: 15,
-                color: '#98A4B3',
+                color: prototypeTokens.color.text.placeholder,
                 textDecoration: 'none',
                 cursor: 'pointer',
                 '&:hover': { textDecoration: 'underline' }
@@ -132,7 +133,7 @@ export function PricingTreePricingLeftContent(
             sx={{
               fontSize: 11,
               lineHeight: 1.1,
-              color: '#7A8EA8',
+              color: prototypeTokens.color.text.tertiary,
               fontWeight: 600
             }}
           >
@@ -173,7 +174,7 @@ export function PricingTreePricingValueGrid(props: PricingTreePricingValueGridPr
               minHeight: 44,
               px: 1.25,
               py: 0.5,
-              borderLeft: '1px solid #E1E7EC',
+              borderLeft: `1px solid ${prototypeTokens.color.border.default}`,
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
@@ -182,12 +183,14 @@ export function PricingTreePricingValueGrid(props: PricingTreePricingValueGridPr
           >
             {isFixedCell ? (
               <>
-                <Typography sx={{ fontSize: 11, color: '#6F8298', fontWeight: 600 }}>FIXED</Typography>
+                <Typography sx={{ fontSize: 11, color: prototypeTokens.color.text.muted, fontWeight: 600 }}>
+                  FIXED
+                </Typography>
                 <Typography
                   sx={{
                     fontSize: 14,
                     fontWeight: 700,
-                    color: '#212934',
+                    color: prototypeTokens.color.text.primary,
                     fontVariantNumeric: 'tabular-nums'
                   }}
                 >
@@ -199,7 +202,7 @@ export function PricingTreePricingValueGrid(props: PricingTreePricingValueGridPr
                 <Typography
                   sx={{
                     fontSize: 11,
-                    color: '#6F8298',
+                    color: prototypeTokens.color.text.muted,
                     fontWeight: 600,
                     textTransform: 'uppercase'
                   }}
@@ -210,7 +213,7 @@ export function PricingTreePricingValueGrid(props: PricingTreePricingValueGridPr
                   sx={{
                     fontSize: 14,
                     fontWeight: 700,
-                    color: '#212934',
+                    color: prototypeTokens.color.text.primary,
                     fontVariantNumeric: 'tabular-nums'
                   }}
                 >
@@ -251,7 +254,7 @@ export function PricingTreePricingActions(props: PricingTreePricingActionsProps)
         flexShrink: 0,
         justifyContent: 'flex-end',
         alignSelf: 'stretch',
-        borderLeft: '1px solid #E1E7EC'
+        borderLeft: `1px solid ${prototypeTokens.color.border.default}`
       }}
     >
       <AppIconButton

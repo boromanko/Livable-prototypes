@@ -1,12 +1,5 @@
-import {
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Stack,
-  Typography
-} from '@mui/material';
-import { PrimaryButton, SecondaryButton } from '../../../components/buttons';
+import { Alert, Typography } from '@mui/material';
+import { AppConfirmDialog } from '../../../components/layout';
 
 type SubscriptionsBulkDialogProps = {
   open: boolean;
@@ -18,46 +11,24 @@ type SubscriptionsBulkDialogProps = {
 };
 
 export function SubscriptionsBulkDialog(props: SubscriptionsBulkDialogProps): JSX.Element {
-  const {
-    open,
-    selectedCount,
-    isPending,
-    onClose,
-    onConfirm
-  } = props;
+  const { open, selectedCount, error, isPending, onClose, onConfirm } = props;
   const subscriptionsLabel =
     selectedCount === 1 ? '1 subscription' : `${selectedCount} subscriptions`;
 
   return (
-    <Dialog
+    <AppConfirmDialog
       open={open}
+      title={`Delete ${subscriptionsLabel}`}
       onClose={onClose}
-      maxWidth={false}
-      PaperProps={{
-        sx: {
-          width: 600,
-          maxWidth: 600
-        }
-      }}
+      onConfirm={onConfirm}
+      confirmTone="destructive"
+      confirmLabel="Delete subscriptions"
+      confirmDisabled={isPending}
     >
-      <DialogTitle>{`Delete ${subscriptionsLabel}`}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          <Typography variant="body2" color="text.secondary">
-            {`This will permanently delete selected ${subscriptionsLabel}.`}
-          </Typography>
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-        <PrimaryButton
-          sx={{ backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }}
-          onClick={onConfirm}
-          disabled={isPending}
-        >
-          Delete subscriptions
-        </PrimaryButton>
-      </DialogActions>
-    </Dialog>
+      <Typography variant="body2" color="text.secondary">
+        {`This will permanently delete selected ${subscriptionsLabel}.`}
+      </Typography>
+      {error ? <Alert severity="error">{error}</Alert> : null}
+    </AppConfirmDialog>
   );
 }

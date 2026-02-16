@@ -1,5 +1,6 @@
 import { Stack } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
+import { prototypeTokens } from '../../../theme/tokens';
 import type { OpenEditPricing } from './pricingTree.types';
 import {
   PricingTreePricingActions,
@@ -59,14 +60,14 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
         px: 1.5,
         py: 0.25,
         borderTop: 'none',
-        borderBottom: '1px solid #E1E7EC',
-        backgroundColor: '#FFFFFF',
+        borderBottom: `1px solid ${prototypeTokens.color.border.default}`,
+        backgroundColor: prototypeTokens.color.bg.surface,
         transition: 'background-color 120ms ease',
         cursor: canManagePricings ? 'pointer' : 'default',
         ...(canManagePricings
           ? {
               '&:hover': {
-                backgroundColor: '#F8FBFD'
+                backgroundColor: prototypeTokens.color.bg.rowHover
               }
             }
           : {}),

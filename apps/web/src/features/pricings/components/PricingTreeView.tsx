@@ -1,5 +1,6 @@
 import { Box, Checkbox, Stack } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
+import { prototypeTokens } from '../../../theme/tokens';
 import { TREE_SELECTION_SLOT_WIDTH, getProductTierColumnCount } from '../pricingsTab.utils';
 import { PricingProductSection } from './PricingProductSection';
 import type {
@@ -92,8 +93,8 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
             minHeight: 40,
             px: 1.5,
             py: 0.5,
-            borderBottom: '1px solid #E1E7EC',
-            backgroundColor: '#FFFFFF',
+            borderBottom: `1px solid ${prototypeTokens.color.border.default}`,
+            backgroundColor: prototypeTokens.color.bg.surface,
             position: 'sticky',
             top: 0,
             zIndex: 40
@@ -120,12 +121,16 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
                   aria-label="Select all pricings"
                 />
               </Box>
-              <Box sx={{ pl: 1.5, fontWeight: 500, fontSize: 14, color: '#212934' }}>
+              <Box
+                sx={{ pl: 1.5, fontWeight: 500, fontSize: 14, color: prototypeTokens.color.text.primary }}
+              >
                 Select all pricings
               </Box>
             </Stack>
           ) : (
-            <Box sx={{ px: 0.75, fontWeight: 600, fontSize: 14, color: '#212934' }}>Pricings</Box>
+            <Box sx={{ px: 0.75, fontWeight: 600, fontSize: 14, color: prototypeTokens.color.text.primary }}>
+              Pricings
+            </Box>
           )}
         </Stack>
 

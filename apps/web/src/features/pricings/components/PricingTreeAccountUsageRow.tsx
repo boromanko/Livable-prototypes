@@ -2,6 +2,7 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import { Box, Link, Stack, Tooltip } from '@mui/material';
 import type { PricingTreeAccountUsage, PricingTreeItem } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
+import { prototypeTokens } from '../../../theme/tokens';
 import { EntityTypeIndicator } from './PricingTreeIndicators';
 import { PricingTreeUsageTierGrid } from './PricingTreeUsageTierGrid';
 import type { DetachConfirmTarget } from './pricingTree.types';
@@ -34,7 +35,11 @@ export function PricingTreeAccountUsageRow(props: PricingTreeAccountUsageRowProp
         direction="row"
         alignItems="stretch"
         spacing={0}
-        sx={{ minHeight: 34, px: 1.5, borderTop: '1px dashed #E1E7EC' }}
+        sx={{
+          minHeight: 34,
+          px: 1.5,
+          borderTop: `1px dashed ${prototypeTokens.color.border.default}`
+        }}
       >
         <Stack direction="row" alignItems="center" spacing={0} sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}>
           <Box sx={{ width: TREE_INDENT_STEP * (showAccountsSectionHeader ? 3 : 2) }} />
@@ -64,10 +69,10 @@ export function PricingTreeAccountUsageRow(props: PricingTreeAccountUsageRowProp
             sx={{
               minHeight: 34,
               px: 1.25,
-              borderLeft: '1px solid #E1E7EC',
+              borderLeft: `1px solid ${prototypeTokens.color.border.default}`,
               display: 'flex',
               alignItems: 'center',
-              color: '#212934',
+              color: prototypeTokens.color.text.primary,
               fontSize: 13,
               fontWeight: 600,
               fontVariantNumeric: 'tabular-nums'
@@ -79,10 +84,10 @@ export function PricingTreeAccountUsageRow(props: PricingTreeAccountUsageRowProp
             sx={{
               minHeight: 34,
               px: 1.25,
-              borderLeft: '1px solid #E1E7EC',
+              borderLeft: `1px solid ${prototypeTokens.color.border.default}`,
               display: 'flex',
               alignItems: 'center',
-              color: '#212934',
+              color: prototypeTokens.color.text.primary,
               fontSize: 13,
               fontWeight: 600,
               fontVariantNumeric: 'tabular-nums'
@@ -108,7 +113,7 @@ export function PricingTreeAccountUsageRow(props: PricingTreeAccountUsageRowProp
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
-            borderLeft: '1px solid #E1E7EC'
+            borderLeft: `1px solid ${prototypeTokens.color.border.default}`
           }}
         >
           {accountUsage.accountSubscriptionId ? (

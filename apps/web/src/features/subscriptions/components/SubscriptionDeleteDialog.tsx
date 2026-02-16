@@ -1,5 +1,5 @@
-import { Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
-import { PrimaryButton, SecondaryButton } from '../../../components/buttons';
+import { Typography } from '@mui/material';
+import { AppConfirmDialog } from '../../../components/layout';
 
 type SubscriptionDeleteDialogProps = {
   open: boolean;
@@ -10,44 +10,22 @@ type SubscriptionDeleteDialogProps = {
 };
 
 export function SubscriptionDeleteDialog(props: SubscriptionDeleteDialogProps): JSX.Element {
-  const {
-    open,
-    subscriptionName,
-    isPending,
-    onClose,
-    onConfirm
-  } = props;
+  const { open, subscriptionName, isPending, onClose, onConfirm } = props;
 
   return (
-    <Dialog
+    <AppConfirmDialog
       open={open}
+      title={`Delete ${subscriptionName}`}
       onClose={onClose}
-      maxWidth={false}
-      PaperProps={{
-        sx: {
-          width: 600,
-          maxWidth: 600
-        }
-      }}
+      onConfirm={onConfirm}
+      confirmTone="destructive"
+      confirmLabel="Delete subscription"
+      confirmDisabled={isPending}
+      cancelDisabled={isPending}
     >
-      <DialogTitle>{`Delete ${subscriptionName}`}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>
-          This action is permanent and cannot be undone.
-        </Typography>
-      </DialogContent>
-      <DialogActions>
-        <SecondaryButton onClick={onClose} disabled={isPending}>
-          Cancel
-        </SecondaryButton>
-        <PrimaryButton
-          sx={{ backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }}
-          onClick={onConfirm}
-          disabled={isPending}
-        >
-          Delete subscription
-        </PrimaryButton>
-      </DialogActions>
-    </Dialog>
+      <Typography variant="body2" color="text.secondary">
+        This action is permanent and cannot be undone.
+      </Typography>
+    </AppConfirmDialog>
   );
 }

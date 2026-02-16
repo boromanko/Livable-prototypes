@@ -1,5 +1,6 @@
 import { Stack, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
+import { prototypeTokens } from '../../../theme/tokens';
 
 type PricingValueCardVariant = 'table' | 'form';
 
@@ -44,8 +45,12 @@ export function PricingValueCard(props: PricingValueCardProps): JSX.Element {
       sx={{
         px: styles.px,
         py: styles.py,
-        border: hasError ? '1px solid #E7B5B5' : '1px solid #E1E7EC',
-        backgroundColor: hasError ? '#FFF6F6' : '#F8F9FA',
+        border: `1px solid ${
+          hasError ? prototypeTokens.color.border.error : prototypeTokens.color.border.default
+        }`,
+        backgroundColor: hasError
+          ? prototypeTokens.color.bg.errorSurface
+          : prototypeTokens.color.bg.surfaceMuted,
         borderRadius: '2px'
       }}
     >
@@ -61,12 +66,12 @@ export function PricingValueCard(props: PricingValueCardProps): JSX.Element {
             variant="body2"
             sx={{
               all: 'unset',
-              color: '#212934',
+              color: prototypeTokens.color.text.primary,
               fontWeight: 500,
               lineHeight: styles.titleLineHeight,
               cursor: 'pointer',
               '&:hover': {
-                color: '#1A4E80',
+                color: prototypeTokens.color.text.link,
                 textDecoration: 'underline'
               }
             }}
@@ -76,25 +81,32 @@ export function PricingValueCard(props: PricingValueCardProps): JSX.Element {
         ) : (
           <Typography
             variant="body2"
-            sx={{ color: '#212934', fontWeight: 500, lineHeight: styles.titleLineHeight }}
+            sx={{
+              color: prototypeTokens.color.text.primary,
+              fontWeight: 500,
+              lineHeight: styles.titleLineHeight
+            }}
           >
             {title}
           </Typography>
         )}
 
         {subtitle ? (
-          <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: styles.subtitleLineHeight }}>
+          <Typography
+            variant="caption"
+            sx={{ color: prototypeTokens.color.text.muted, lineHeight: styles.subtitleLineHeight }}
+          >
             {subtitle}
           </Typography>
         ) : null}
 
         {usageLabel ? (
-          <Typography variant="caption" sx={{ color: '#6F8298' }}>
+          <Typography variant="caption" sx={{ color: prototypeTokens.color.text.muted }}>
             {usageLabel}
           </Typography>
         ) : null}
         {errorLabel ? (
-          <Typography variant="caption" sx={{ color: '#B42318' }}>
+          <Typography variant="caption" sx={{ color: prototypeTokens.color.status.danger }}>
             {errorLabel}
           </Typography>
         ) : null}
@@ -103,7 +115,7 @@ export function PricingValueCard(props: PricingValueCardProps): JSX.Element {
       <Stack direction="row" alignItems="center" spacing={0.5}>
         <Typography
           sx={{
-            color: '#212934',
+            color: prototypeTokens.color.text.primary,
             fontWeight: 700,
             fontSize: styles.amountFontSize,
             lineHeight: 1.1,

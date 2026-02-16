@@ -158,6 +158,25 @@ export function PrimaryButton({ sx, variant, ...props }: AppButtonProps): JSX.El
   );
 }
 
+export function DestructiveButton({ sx, variant, ...props }: AppButtonProps): JSX.Element {
+  return (
+    <Button
+      {...props}
+      variant={variant ?? 'contained'}
+      sx={composeSx(
+        {
+          backgroundColor: '#B3261E',
+          color: prototypeTokens.color.bg.surface,
+          '&:hover': {
+            backgroundColor: '#8C1D18'
+          }
+        },
+        sx
+      )}
+    />
+  );
+}
+
 export function SecondaryButton({ sx, variant, ...props }: AppButtonProps): JSX.Element {
   return (
     <Button

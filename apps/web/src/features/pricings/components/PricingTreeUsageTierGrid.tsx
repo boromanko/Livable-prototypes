@@ -1,5 +1,6 @@
 import { Box } from '@mui/material';
 import type { PricingTreeAccountUsage, PricingTreeItem, PricingTreePropertyUsage } from '../../../api';
+import { prototypeTokens } from '../../../theme/tokens';
 import { TierMatchIndicator } from './PricingTreeIndicators';
 import { TIER_COLUMN_MIN_WIDTH, getActiveTierColumnIndex } from '../pricingsTab.utils';
 
@@ -37,7 +38,9 @@ export function PricingTreeUsageTierGrid(props: PricingTreeUsageTierGridProps): 
           sx={{
             minHeight: rowHeight,
             px: 1.25,
-            borderLeft: showColumnDividers ? '1px solid #E1E7EC' : 'none',
+            borderLeft: showColumnDividers
+              ? `1px solid ${prototypeTokens.color.border.default}`
+              : 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-start'

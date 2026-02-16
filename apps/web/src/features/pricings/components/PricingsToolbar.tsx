@@ -2,10 +2,10 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import { Box, Checkbox, FormControlLabel, Stack, TextField, Tooltip } from '@mui/material';
 import { AppSplitButton, BorderedButton, PrimaryButton } from '../../../components/buttons';
-import { FiltersToolbar } from '../../../components/layout';
+import { FiltersToolbar, FilterTriggerButton } from '../../../components/layout';
+import { prototypeTokens } from '../../../theme/tokens';
 import { SORT_FIELD_LABELS, type PricingSortField, type SortDirection } from '../pricingsTab.utils';
 
 type PricingsToolbarProps = {
@@ -46,7 +46,13 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
   } = props;
 
   return (
-    <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1.5, borderBottom: '1px solid #E1E7EC' }}>
+    <Box
+      sx={{
+        px: { xs: 1.5, sm: 2 },
+        py: 1.5,
+        borderBottom: `1px solid ${prototypeTokens.color.border.default}`
+      }}
+    >
       <FiltersToolbar
         left={
           <>
@@ -59,35 +65,10 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
               sx={{ minWidth: { md: 220 } }}
             />
 
-            <BorderedButton
+            <FilterTriggerButton
+              activeFiltersCount={activeFiltersCount}
               onClick={onOpenFilters}
-              startIcon={<FilterListIcon fontSize="small" />}
-              sx={{ px: 1.5 }}
-            >
-              <Stack direction="row" alignItems="center" spacing={0.75}>
-                <Box component="span">Filters</Box>
-                {activeFiltersCount > 0 ? (
-                  <Box
-                    component="span"
-                    sx={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      backgroundColor: '#009299',
-                      color: '#FFFFFF',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      lineHeight: 1
-                    }}
-                  >
-                    {activeFiltersCount}
-                  </Box>
-                ) : null}
-              </Stack>
-            </BorderedButton>
+            />
 
             <Tooltip title={sortDirection === 'ASC' ? 'Ascending' : 'Descending'}>
               <AppSplitButton
@@ -133,7 +114,14 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
                 />
               }
               label="Group by product"
-              sx={{ ml: 0.5, mr: 0, '& .MuiFormControlLabel-label': { fontSize: 13, color: '#4B617C' } }}
+              sx={{
+                ml: 0.5,
+                mr: 0,
+                '& .MuiFormControlLabel-label': {
+                  fontSize: 13,
+                  color: prototypeTokens.color.text.secondary
+                }
+              }}
             />
           </>
         }

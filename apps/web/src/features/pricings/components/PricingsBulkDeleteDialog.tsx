@@ -1,5 +1,5 @@
-import { Alert, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
-import { PrimaryButton, SecondaryButton } from '../../../components/buttons';
+import { Alert, Typography } from '@mui/material';
+import { AppConfirmDialog } from '../../../components/layout';
 
 type PricingsBulkDeleteDialogProps = {
   open: boolean;
@@ -15,36 +15,20 @@ export function PricingsBulkDeleteDialog(props: PricingsBulkDeleteDialogProps): 
   const pricingsLabel = selectedCount === 1 ? '1 pricing' : `${selectedCount} pricings`;
 
   return (
-    <Dialog
+    <AppConfirmDialog
       open={open}
+      title={`Delete ${pricingsLabel}`}
       onClose={onClose}
-      maxWidth={false}
-      PaperProps={{
-        sx: {
-          width: 600,
-          maxWidth: 600
-        }
-      }}
+      onConfirm={onConfirm}
+      confirmTone="destructive"
+      confirmLabel="Delete pricings"
+      confirmDisabled={isPending}
+      cancelDisabled={isPending}
     >
-      <DialogTitle>{`Delete ${pricingsLabel}`}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>
-          {`This will permanently delete selected ${pricingsLabel}.`}
-        </Typography>
-        {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
-      </DialogContent>
-      <DialogActions>
-        <SecondaryButton onClick={onClose} disabled={isPending}>
-          Cancel
-        </SecondaryButton>
-        <PrimaryButton
-          sx={{ backgroundColor: '#B3261E', '&:hover': { backgroundColor: '#8C1D18' } }}
-          onClick={onConfirm}
-          disabled={isPending}
-        >
-          Delete pricings
-        </PrimaryButton>
-      </DialogActions>
-    </Dialog>
+      <Typography variant="body2" color="text.secondary">
+        {`This will permanently delete selected ${pricingsLabel}.`}
+      </Typography>
+      {error ? <Alert severity="error">{error}</Alert> : null}
+    </AppConfirmDialog>
   );
 }

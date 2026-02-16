@@ -1,5 +1,4 @@
-import CloseIcon from '@mui/icons-material/Close';
-import { Alert, Dialog, Stack, Typography } from '@mui/material';
+import { Alert } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import { Suspense, lazy, useState } from 'react';
 import {
@@ -9,7 +8,8 @@ import {
   type PricingTreeSubscriptionSummary,
   type SubscriptionItem
 } from '../../api';
-import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { AppFormDialog } from '../../components/layout';
 import { canManagePricings, useDemoRole } from '../../demoRole';
 import {
   PricingFormFixedPriceSection,
@@ -88,151 +88,98 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
 
   return (
     <>
-      <Dialog
+      <AppFormDialog
         open={props.open}
         onClose={controller.actions.onClose}
-        fullWidth
-        maxWidth={false}
-        PaperProps={{
-          sx: {
-            width: { xs: 'calc(100vw - 16px)', sm: 760 },
-            maxWidth: 760,
-            height: 'min(920px, calc(100vh - 16px))',
-            m: { xs: 1, sm: 2 },
-            overflow: 'hidden',
-            borderRadius: '2px',
-            boxShadow: '0px 18px 32px rgba(0, 0, 0, 0.15)'
-          }
-        }}
-      >
-        <Stack sx={{ height: '100%' }}>
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{
-              px: { xs: 2.5, sm: 5 },
-              py: 3.5,
-              background: 'linear-gradient(180deg, #F8F9FA 0%, #FFFFFF 100%)',
-              borderBottom: '1px solid #E1E7EC',
-              flexShrink: 0
-            }}
-          >
-            <Typography sx={{ color: '#212934', fontSize: 20, fontWeight: 600 }}>
-              {controller.title}
-            </Typography>
-            <AppIconButton tone="plain" onClick={controller.actions.onClose} aria-label="Close dialog">
-              <CloseIcon sx={{ color: '#4B617C' }} />
-            </AppIconButton>
-          </Stack>
-
-          <Stack
-            spacing={4}
-            sx={{
-              px: { xs: 2.5, sm: 4 },
-              py: 4,
-              flex: 1,
-              overflowY: 'auto'
-            }}
-          >
-            {controller.formError ? <Alert severity="error">{controller.formError}</Alert> : null}
-
-            <PricingFormNameSection
-              fieldRef={controller.refs.internalNameFieldRef}
-              value={controller.formState.internalName}
-              error={controller.validation.pricingNameError}
-              disabled={isSubscriptionsOnlyEdit}
-              onChange={controller.actions.setInternalName}
-            />
-
-            <PricingFormProductSection
-              fieldRef={controller.refs.productFieldRef}
-              value={controller.formState.productId}
-              productItems={controller.productItems}
-              productsLoading={controller.productsLoading}
-              error={controller.validation.productError}
-              disabled={isSubscriptionsOnlyEdit}
-              onChange={controller.actions.setProductId}
-            />
-
-            <PricingFormTypeSection
-              value={controller.formState.type}
-              disabled={isSubscriptionsOnlyEdit}
-              onChange={controller.actions.setPricingType}
-            />
-
-            {controller.formState.type === 'FIXED' ? (
-              <PricingFormFixedPriceSection
-                fieldRef={controller.refs.fixedAmountFieldRef}
-                value={controller.formState.fixedAmountUsd}
-                error={controller.validation.fixedAmountError}
-                disabled={isSubscriptionsOnlyEdit}
-                onChange={controller.actions.setFixedAmount}
-                onBlur={controller.actions.onNormalizeFixedAmountOnBlur}
-              />
-            ) : (
-              <PricingFormTieredSection
-                fieldRef={controller.refs.tierSectionRef}
-                tiers={controller.formState.tiers}
-                tierStartUnits={controller.validation.tierStartUnits}
-                tierValidationErrors={controller.validation.tierValidation.errors}
-                showValidation={controller.showValidation}
-                hasTierErrors={controller.validation.hasTierErrors}
-                disabled={isSubscriptionsOnlyEdit}
-                onAddTier={controller.actions.onAddTier}
-                onRemoveTier={controller.actions.onRemoveTier}
-                onUpdateTierMaxUnits={controller.actions.onUpdateTierMaxUnits}
-                onNormalizeTierMaxUnitsOnBlur={controller.actions.onNormalizeTierMaxUnitsOnBlur}
-                onUpdateTierUnitPrice={controller.actions.onUpdateTierUnitPrice}
-                onNormalizeTierUnitPriceOnBlur={controller.actions.onNormalizeTierUnitPriceOnBlur}
-              />
-            )}
-
-            {controller.formState.type === 'TIERED' ? (
-              <PricingFormMinimumPriceSection
-                fieldRef={controller.refs.minimumPriceFieldRef}
-                value={controller.formState.minimumPriceUsd}
-                error={controller.validation.minimumPriceError}
-                disabled={isSubscriptionsOnlyEdit}
-                onChange={controller.actions.setMinimumPrice}
-                onBlur={controller.actions.onNormalizeMinimumPriceOnBlur}
-              />
-            ) : null}
-
-            <PricingFormSubscriptionsSection
-              value={controller.subscriptionIds}
-              subscriptions={controller.subscriptions}
-              loading={controller.subscriptionsLoading}
-              hasLoadingError={controller.subscriptionsError}
-              blockedSubscriptionIds={controller.blockedSubscriptionIds}
-              selectedSubscriptionConflictIds={controller.selectedSubscriptionConflictIds}
-              canCreateSubscription={controller.isEdit && Boolean(controller.pricingId)}
-              onCreateSubscription={openCreateSubscription}
-              onEditSubscription={openEditSubscription}
-              onChange={controller.actions.setSubscriptionIds}
-            />
-          </Stack>
-
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            sx={{
-              px: 3,
-              py: 2,
-              borderTop: '1px solid #E1E7EC',
-              backgroundColor: '#FFFFFF',
-              flexShrink: 0
-            }}
-          >
+        title={controller.title}
+        footer={
+          <>
             <SecondaryButton onClick={controller.actions.onClose} disabled={controller.isSaving}>
               Cancel
             </SecondaryButton>
             <PrimaryButton onClick={controller.actions.onSubmit} disabled={controller.isSaving}>
               Save pricing
             </PrimaryButton>
-          </Stack>
-        </Stack>
-      </Dialog>
+          </>
+        }
+      >
+        {controller.formError ? <Alert severity="error">{controller.formError}</Alert> : null}
+
+        <PricingFormNameSection
+          fieldRef={controller.refs.internalNameFieldRef}
+          value={controller.formState.internalName}
+          error={controller.validation.pricingNameError}
+          disabled={isSubscriptionsOnlyEdit}
+          onChange={controller.actions.setInternalName}
+        />
+
+        <PricingFormProductSection
+          fieldRef={controller.refs.productFieldRef}
+          value={controller.formState.productId}
+          productItems={controller.productItems}
+          productsLoading={controller.productsLoading}
+          error={controller.validation.productError}
+          disabled={isSubscriptionsOnlyEdit}
+          onChange={controller.actions.setProductId}
+        />
+
+        <PricingFormTypeSection
+          value={controller.formState.type}
+          disabled={isSubscriptionsOnlyEdit}
+          onChange={controller.actions.setPricingType}
+        />
+
+        {controller.formState.type === 'FIXED' ? (
+          <PricingFormFixedPriceSection
+            fieldRef={controller.refs.fixedAmountFieldRef}
+            value={controller.formState.fixedAmountUsd}
+            error={controller.validation.fixedAmountError}
+            disabled={isSubscriptionsOnlyEdit}
+            onChange={controller.actions.setFixedAmount}
+            onBlur={controller.actions.onNormalizeFixedAmountOnBlur}
+          />
+        ) : (
+          <PricingFormTieredSection
+            fieldRef={controller.refs.tierSectionRef}
+            tiers={controller.formState.tiers}
+            tierStartUnits={controller.validation.tierStartUnits}
+            tierValidationErrors={controller.validation.tierValidation.errors}
+            showValidation={controller.showValidation}
+            hasTierErrors={controller.validation.hasTierErrors}
+            disabled={isSubscriptionsOnlyEdit}
+            onAddTier={controller.actions.onAddTier}
+            onRemoveTier={controller.actions.onRemoveTier}
+            onUpdateTierMaxUnits={controller.actions.onUpdateTierMaxUnits}
+            onNormalizeTierMaxUnitsOnBlur={controller.actions.onNormalizeTierMaxUnitsOnBlur}
+            onUpdateTierUnitPrice={controller.actions.onUpdateTierUnitPrice}
+            onNormalizeTierUnitPriceOnBlur={controller.actions.onNormalizeTierUnitPriceOnBlur}
+          />
+        )}
+
+        {controller.formState.type === 'TIERED' ? (
+          <PricingFormMinimumPriceSection
+            fieldRef={controller.refs.minimumPriceFieldRef}
+            value={controller.formState.minimumPriceUsd}
+            error={controller.validation.minimumPriceError}
+            disabled={isSubscriptionsOnlyEdit}
+            onChange={controller.actions.setMinimumPrice}
+            onBlur={controller.actions.onNormalizeMinimumPriceOnBlur}
+          />
+        ) : null}
+
+        <PricingFormSubscriptionsSection
+          value={controller.subscriptionIds}
+          subscriptions={controller.subscriptions}
+          loading={controller.subscriptionsLoading}
+          hasLoadingError={controller.subscriptionsError}
+          blockedSubscriptionIds={controller.blockedSubscriptionIds}
+          selectedSubscriptionConflictIds={controller.selectedSubscriptionConflictIds}
+          canCreateSubscription={controller.isEdit && Boolean(controller.pricingId)}
+          onCreateSubscription={openCreateSubscription}
+          onEditSubscription={openEditSubscription}
+          onChange={controller.actions.setSubscriptionIds}
+        />
+      </AppFormDialog>
 
       {nestedSubscriptionModal.open ? (
         <Suspense fallback={null}>

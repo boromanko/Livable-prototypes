@@ -1,18 +1,20 @@
 import AddIcon from '@mui/icons-material/Add';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import { Autocomplete, Box, Checkbox, MenuItem, Popover, Stack, TextField, Typography } from '@mui/material';
+import { Autocomplete, Box, Checkbox, MenuItem, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
 import type { AccountItem, BillingScope, PricingItem, SubscriptionStatus } from '../../../api';
-import { BorderedButton, GhostButton, PrimaryButton } from '../../../components/buttons';
-import { FiltersToolbar } from '../../../components/layout';
+import { PrimaryButton } from '../../../components/buttons';
+import { FiltersPopoverPanel, FiltersToolbar, FilterTriggerButton } from '../../../components/layout';
+import {
+  formatSubscriptionStatusLabel,
+  subscriptionStatusOptions
+} from '../../../lib/subscriptions/status';
+import { prototypeTokens } from '../../../theme/tokens';
 
 const scopeOptions: Array<{ value: 'ALL' | BillingScope; label: string }> = [
   { value: 'ALL', label: 'All scopes' },
   { value: 'ACCOUNT', label: 'Account level' },
   { value: 'PROPERTY', label: 'Property level' }
 ];
-const statusOptions: SubscriptionStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'CANCELED'];
-
 type SubscriptionsFiltersProps = {
   search: string;
   scopeFilter: 'ALL' | BillingScope;
@@ -48,7 +50,9 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
     canCreateSubscription
   } = props;
   const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
-  const selectedStatusOptions = statusOptions.filter((status) => statusFilter.includes(status));
+  const selectedStatusOptions = subscriptionStatusOptions.filter((status) =>
+    statusFilter.includes(status)
+  );
   const selectedAccountOptions = accounts.filter((account) => accountIdsFilter.includes(account.id));
   const selectedPricingOptions = pricings.filter((pricing) => pricingIdsFilter.includes(pricing.id));
   const activeFiltersCount =
@@ -65,7 +69,13 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
   }
 
   return (
-    <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 1.5, borderBottom: '1px solid #e1e7ec' }}>
+    <Box
+      sx={{
+        px: { xs: 1.5, sm: 2 },
+        py: 1.5,
+        borderBottom: `1px solid ${prototypeTokens.color.border.default}`
+      }}
+    >
       <FiltersToolbar
         left={
           <>
@@ -78,35 +88,10 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
               sx={{ minWidth: { md: 220 } }}
             />
 
-            <BorderedButton
+            <FilterTriggerButton
+              activeFiltersCount={activeFiltersCount}
               onClick={(event) => setFiltersAnchorEl(event.currentTarget)}
-              startIcon={<FilterListIcon fontSize="small" />}
-              sx={{ px: 1.5 }}
-            >
-              <Stack direction="row" alignItems="center" spacing={0.75}>
-                <Box component="span">Filters</Box>
-                {activeFiltersCount > 0 ? (
-                  <Box
-                    component="span"
-                    sx={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      backgroundColor: '#009299',
-                      color: '#FFFFFF',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      lineHeight: 1
-                    }}
-                  >
-                    {activeFiltersCount}
-                  </Box>
-                ) : null}
-              </Stack>
-            </BorderedButton>
+            />
           </>
         }
         right={
@@ -118,164 +103,123 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
         }
       />
 
-      <Popover
+      <FiltersPopoverPanel
         open={Boolean(filtersAnchorEl)}
         anchorEl={filtersAnchorEl}
         onClose={() => setFiltersAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        slotProps={{
-          paper: {
-            sx: {
-              mt: 0.75,
-              width: 360,
-              p: 1.5,
-              border: '1px solid #E1E7EC'
-            }
-          }
-        }}
+        width={360}
+        activeFiltersCount={activeFiltersCount}
+        onClearFilters={clearFilters}
       >
-        <Stack spacing={1.5}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#212934' }}>
-            Filters
-          </Typography>
+        <TextField
+          size="small"
+          select
+          label="Scope"
+          value={scopeFilter}
+          onChange={(event) => onScopeFilterChange(event.target.value as 'ALL' | BillingScope)}
+          fullWidth
+        >
+          {scopeOptions.map((scope) => (
+            <MenuItem key={scope.value} value={scope.value}>
+              {scope.label}
+            </MenuItem>
+          ))}
+        </TextField>
 
-          <TextField
-            size="small"
-            select
-            label="Scope"
-            value={scopeFilter}
-            onChange={(event) => onScopeFilterChange(event.target.value as 'ALL' | BillingScope)}
-            fullWidth
-          >
-            {scopeOptions.map((scope) => (
-              <MenuItem key={scope.value} value={scope.value}>
-                {scope.label}
-              </MenuItem>
-            ))}
-          </TextField>
+        <Autocomplete
+          multiple
+          disableCloseOnSelect
+          options={subscriptionStatusOptions}
+          value={selectedStatusOptions}
+          onChange={(_event, nextValue) => onStatusFilterChange(nextValue)}
+          getOptionLabel={(option) => formatSubscriptionStatusLabel(option)}
+          isOptionEqualToValue={(option, value) => option === value}
+          noOptionsText="No statuses"
+          fullWidth
+          renderOption={(autocompleteProps, option, { selected }) => (
+            <li {...autocompleteProps}>
+              <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
+              <Typography variant="body2" sx={{ color: prototypeTokens.color.text.primary }}>
+                {formatSubscriptionStatusLabel(option)}
+              </Typography>
+            </li>
+          )}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              size="small"
+              label="Status"
+              placeholder={selectedStatusOptions.length === 0 ? 'Select statuses' : ''}
+            />
+          )}
+        />
 
-          <Autocomplete
-            multiple
-            disableCloseOnSelect
-            options={statusOptions}
-            value={selectedStatusOptions}
-            onChange={(_event, nextValue) => onStatusFilterChange(nextValue)}
-            getOptionLabel={(option) => formatStatusLabel(option)}
-            isOptionEqualToValue={(option, value) => option === value}
-            noOptionsText="No statuses"
-            fullWidth
-            renderOption={(autocompleteProps, option, { selected }) => (
-              <li {...autocompleteProps}>
-                <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
-                <Typography variant="body2" sx={{ color: '#212934' }}>
-                  {formatStatusLabel(option)}
+        <Autocomplete
+          multiple
+          disableCloseOnSelect
+          options={accounts}
+          value={selectedAccountOptions}
+          onChange={(_event, nextValue) => onAccountFilterChange(nextValue.map((item) => item.id))}
+          getOptionLabel={(option) => option.companyName}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          noOptionsText="No accounts"
+          fullWidth
+          renderOption={(autocompleteProps, option, { selected }) => (
+            <li {...autocompleteProps}>
+              <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
+              <Box>
+                <Typography variant="body2" sx={{ color: prototypeTokens.color.text.primary }}>
+                  {option.companyName}
                 </Typography>
-              </li>
-            )}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                size="small"
-                label="Status"
-                placeholder={selectedStatusOptions.length === 0 ? 'Select statuses' : ''}
-              />
-            )}
-          />
+                <Typography variant="caption" sx={{ color: prototypeTokens.color.text.subtle }}>
+                  {option.totalBillableUnits} units
+                </Typography>
+              </Box>
+            </li>
+          )}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              size="small"
+              label="Account"
+              placeholder={selectedAccountOptions.length === 0 ? 'Search accounts' : ''}
+            />
+          )}
+        />
 
-          <Autocomplete
-            multiple
-            disableCloseOnSelect
-            options={accounts}
-            value={selectedAccountOptions}
-            onChange={(_event, nextValue) => onAccountFilterChange(nextValue.map((item) => item.id))}
-            getOptionLabel={(option) => option.companyName}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            noOptionsText="No accounts"
-            fullWidth
-            renderOption={(autocompleteProps, option, { selected }) => (
-              <li {...autocompleteProps}>
-                <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
-                <Stack spacing={0}>
-                  <Typography variant="body2" sx={{ color: '#212934' }}>
-                    {option.companyName}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#6B7F99' }}>
-                    {option.totalBillableUnits} units
-                  </Typography>
-                </Stack>
-              </li>
-            )}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                size="small"
-                label="Account"
-                placeholder={selectedAccountOptions.length === 0 ? 'Search accounts' : ''}
-              />
-            )}
-          />
-
-          <Autocomplete
-            multiple
-            disableCloseOnSelect
-            options={pricings}
-            value={selectedPricingOptions}
-            onChange={(_event, nextValue) => onPricingFilterChange(nextValue.map((item) => item.id))}
-            getOptionLabel={(option) => option.internalName}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            noOptionsText="No pricings"
-            fullWidth
-            renderOption={(autocompleteProps, option, { selected }) => (
-              <li {...autocompleteProps}>
-                <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
-                <Stack spacing={0}>
-                  <Typography variant="body2" sx={{ color: '#212934' }}>
-                    {option.internalName}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#6B7F99' }}>
-                    {option.product.code}
-                  </Typography>
-                </Stack>
-              </li>
-            )}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                size="small"
-                label="Pricing"
-                placeholder={selectedPricingOptions.length === 0 ? 'Search pricing' : ''}
-              />
-            )}
-          />
-
-          <Stack direction="row" justifyContent="flex-end">
-            <GhostButton
-              onClick={clearFilters}
-              disabled={activeFiltersCount === 0}
-              sx={{ minHeight: 34, px: 1.25 }}
-            >
-              Clear all
-            </GhostButton>
-          </Stack>
-        </Stack>
-      </Popover>
+        <Autocomplete
+          multiple
+          disableCloseOnSelect
+          options={pricings}
+          value={selectedPricingOptions}
+          onChange={(_event, nextValue) => onPricingFilterChange(nextValue.map((item) => item.id))}
+          getOptionLabel={(option) => option.internalName}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          noOptionsText="No pricings"
+          fullWidth
+          renderOption={(autocompleteProps, option, { selected }) => (
+            <li {...autocompleteProps}>
+              <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
+              <Box>
+                <Typography variant="body2" sx={{ color: prototypeTokens.color.text.primary }}>
+                  {option.internalName}
+                </Typography>
+                <Typography variant="caption" sx={{ color: prototypeTokens.color.text.subtle }}>
+                  {option.product.code}
+                </Typography>
+              </Box>
+            </li>
+          )}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              size="small"
+              label="Pricing"
+              placeholder={selectedPricingOptions.length === 0 ? 'Search pricing' : ''}
+            />
+          )}
+        />
+      </FiltersPopoverPanel>
     </Box>
   );
-}
-
-function formatStatusLabel(status: SubscriptionStatus): string {
-  if (status === 'DRAFT') {
-    return 'Draft';
-  }
-
-  if (status === 'ACTIVE') {
-    return 'Active';
-  }
-
-  if (status === 'PAUSED') {
-    return 'Paused';
-  }
-
-  return 'Canceled';
 }

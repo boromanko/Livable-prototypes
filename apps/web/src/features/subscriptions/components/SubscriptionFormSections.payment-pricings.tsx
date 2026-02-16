@@ -12,9 +12,16 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import type { PaymentMethodItem, PricingItem } from '../../../api';
+import { prototypeTokens } from '../../../theme/tokens';
 import { formatMoneyCents } from '../../../lib/format/money';
 import { PricingValueCard } from './PricingValueCard';
-import { getFormFieldSx, sectionTitle } from './SubscriptionFormSections.shared';
+import {
+  AUTOCOMPLETE_LISTBOX_SX,
+  AUTOCOMPLETE_PAPER_ANIMATED_SX,
+  getAutocompleteFieldSx,
+  getFormFieldSx,
+  sectionTitle
+} from './SubscriptionFormSections.shared';
 
 type SubscriptionFormPaymentMethodSectionProps = {
   accountId: string;
@@ -42,7 +49,7 @@ export function SubscriptionFormPaymentMethodSection(
           renderValue: (selected) => {
             if (typeof selected !== 'string' || selected === '') {
               return (
-                <Box component="span" sx={{ color: '#4B617C' }}>
+                <Box component="span" sx={{ color: prototypeTokens.color.text.secondary }}>
                   Use fallback/default behavior
                 </Box>
               );
@@ -124,28 +131,6 @@ export function SubscriptionFormPricingsSection(
 
     return availability.available;
   });
-  const pickerFieldSx = {
-    ...getFormFieldSx(error),
-    '& .MuiAutocomplete-inputRoot': {
-      p: '0 40px 0 14px !important'
-    },
-    '& .MuiOutlinedInput-root': {
-      height: 48,
-      minHeight: 48,
-      alignItems: 'center',
-      pr: 5
-    },
-    '& .MuiAutocomplete-input': {
-      p: '0 !important'
-    },
-    '& .MuiInputBase-input::placeholder': {
-      color: '#4B617C',
-      opacity: 1
-    },
-    '& .MuiAutocomplete-popupIndicator': {
-      color: '#4B617C'
-    }
-  };
 
   return (
     <Stack spacing={2}>
@@ -170,24 +155,7 @@ export function SubscriptionFormPricingsSection(
         PaperComponent={(paperProps: PaperProps) => (
           <Paper
             {...paperProps}
-            sx={{
-              mt: 0.5,
-              border: '1px solid #E1E7EC',
-              borderRadius: '2px',
-              boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.12)',
-              transformOrigin: 'top center',
-              animation: 'subscriptionAutocompleteOpen 150ms ease-out',
-              '@keyframes subscriptionAutocompleteOpen': {
-                from: {
-                  opacity: 0,
-                  transform: 'translateY(-4px) scale(0.99)'
-                },
-                to: {
-                  opacity: 1,
-                  transform: 'translateY(0) scale(1)'
-                }
-              }
-            }}
+            sx={AUTOCOMPLETE_PAPER_ANIMATED_SX}
           >
             {paperProps.children}
             {onCreatePricing ? (
@@ -208,13 +176,7 @@ export function SubscriptionFormPricingsSection(
         )}
         slotProps={{
           listbox: {
-            sx: {
-              py: 0,
-              '& .MuiAutocomplete-option': {
-                minHeight: 52,
-                alignItems: 'center'
-              }
-            }
+            sx: AUTOCOMPLETE_LISTBOX_SX
           }
         }}
         renderTags={() => null}
@@ -232,7 +194,7 @@ export function SubscriptionFormPricingsSection(
           >
             <Stack spacing={0.25} sx={{ py: 0.25 }}>
               <Typography variant="body2">{option.internalName}</Typography>
-              <Typography variant="caption" sx={{ color: '#6F8298' }}>
+              <Typography variant="caption" sx={{ color: prototypeTokens.color.text.muted }}>
                 {option.product.code} - {option.type}
               </Typography>
             </Stack>
@@ -243,17 +205,20 @@ export function SubscriptionFormPricingsSection(
             {...params}
             placeholder="Add pricings"
             error={error}
-            sx={pickerFieldSx}
+            sx={getAutocompleteFieldSx(error)}
           />
         )}
       />
       {error ? (
-        <Typography variant="caption" sx={{ color: '#D32F2F', lineHeight: 1.4 }}>
+        <Typography
+          variant="caption"
+          sx={{ color: prototypeTokens.color.status.dangerStrong, lineHeight: 1.4 }}
+        >
           Add at least one pricing.
         </Typography>
       ) : null}
       {availabilityLoading ? (
-        <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
+        <Typography variant="caption" sx={{ color: prototypeTokens.color.text.muted, lineHeight: 1.4 }}>
           Checking pricing compatibility...
         </Typography>
       ) : null}
