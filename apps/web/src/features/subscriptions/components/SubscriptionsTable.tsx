@@ -32,20 +32,21 @@ type SubscriptionsTableProps = {
   sortField: SubscriptionsSortField | null;
   sortDirection: SubscriptionsSortDirection;
   selectedIds: string[];
-  allVisibleSelected: boolean;
-  someVisibleSelected: boolean;
+  allSelected: boolean;
+  someSelected: boolean;
   total: number;
+  isSelectingAll: boolean;
   accountPropertiesCountById: Record<string, number>;
   accountTotalBillableUnitsById: Record<string, number>;
   isAccountPropertiesCountPending: boolean;
   page: number;
   pageSize: number;
-  onToggleVisibleSelection: () => void;
+  onToggleAllSelection: () => void;
   onSort: (field: SubscriptionsSortField) => void;
   onToggleRowSelection: (subscriptionId: string) => void;
   onEditSubscription: (subscription: SubscriptionItem) => void;
   onEditPricing: (pricing: SubscriptionItem['pricings'][number]) => void;
-  onDeleteSubscription: (subscriptionId: string) => void;
+  onDeleteSubscription: (subscription: SubscriptionItem) => void;
   onCreateSubscription: () => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
@@ -58,15 +59,16 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
     sortField,
     sortDirection,
     selectedIds,
-    allVisibleSelected,
-    someVisibleSelected,
+    allSelected,
+    someSelected,
     total,
+    isSelectingAll,
     accountPropertiesCountById,
     accountTotalBillableUnitsById,
     isAccountPropertiesCountPending,
     page,
     pageSize,
-    onToggleVisibleSelection,
+    onToggleAllSelection,
     onSort,
     onToggleRowSelection,
     onEditSubscription,
@@ -99,10 +101,11 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
             <TableRow>
               <TableCell padding="checkbox">
                 <Checkbox
-                  checked={allVisibleSelected}
-                  indeterminate={someVisibleSelected}
-                  onChange={onToggleVisibleSelection}
-                  inputProps={{ 'aria-label': 'Select all visible subscriptions' }}
+                  checked={allSelected}
+                  indeterminate={someSelected}
+                  disabled={isPending || isSelectingAll || total === 0}
+                  onChange={onToggleAllSelection}
+                  inputProps={{ 'aria-label': 'Select all subscriptions' }}
                 />
               </TableCell>
               <TableCell sortDirection={sortField === 'account' ? sortDirection : false}>
@@ -369,7 +372,7 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                           tone="ghost"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onDeleteSubscription(subscription.id);
+                            onDeleteSubscription(subscription);
                           }}
                         >
                           <DeleteIcon fontSize="small" />

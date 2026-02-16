@@ -1,18 +1,34 @@
 import CloseIcon from '@mui/icons-material/Close';
-import { Box, Stack, Typography } from '@mui/material';
-import type { SubscriptionBulkAction } from '../../../api';
+import { Box, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import type { SubscriptionStatus } from '../../../api';
 import { AppIconButton, GhostButton } from '../../../components/buttons';
 
 type SubscriptionsSelectionActionsProps = {
   selectedCount: number;
-  onOpenBulkDialog: (action: SubscriptionBulkAction) => void;
+  statusValue: SubscriptionStatus | '';
+  isStatusLoading: boolean;
+  isPending: boolean;
+  onSelectStatus: (status: SubscriptionStatus) => void;
+  onOpenManagePricings: () => void;
+  onOpenDeleteSubscriptions: () => void;
   onClearSelection: () => void;
 };
+
+const subscriptionStatusOptions: SubscriptionStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'CANCELED'];
 
 export function SubscriptionsSelectionActions(
   props: SubscriptionsSelectionActionsProps
 ): JSX.Element {
-  const { selectedCount, onOpenBulkDialog, onClearSelection } = props;
+  const {
+    selectedCount,
+    statusValue,
+    isStatusLoading,
+    isPending,
+    onSelectStatus,
+    onOpenManagePricings,
+    onOpenDeleteSubscriptions,
+    onClearSelection
+  } = props;
   const isVisible = selectedCount > 0;
   const selectedLabel = `${selectedCount} item${selectedCount === 1 ? '' : 's'} selected`;
 
@@ -62,27 +78,60 @@ export function SubscriptionsSelectionActions(
         <Typography sx={{ color: '#212934', fontSize: 13, fontWeight: 600 }}>{selectedLabel}</Typography>
       </Stack>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap">
+      <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+        <TextField
+          size="small"
+          select
+          value={statusValue}
+          disabled={!isVisible || isStatusLoading || isPending}
+          onChange={(event) => onSelectStatus(event.target.value as SubscriptionStatus)}
+          SelectProps={{
+            displayEmpty: true,
+            renderValue: (selected) => {
+              if (isStatusLoading) {
+                return (
+                  <Box component="span" sx={{ color: '#6F8298' }}>
+                    Loading statuses...
+                  </Box>
+                );
+              }
+
+              if (typeof selected !== 'string' || selected === '') {
+                return (
+                  <Box component="span" sx={{ color: '#6F8298' }}>
+                    Change status
+                  </Box>
+                );
+              }
+
+              return formatStatusLabel(selected as SubscriptionStatus);
+            }
+          }}
+          sx={{
+            minWidth: 170,
+            '& .MuiOutlinedInput-root': {
+              minHeight: 32,
+              backgroundColor: '#F8F9FA',
+              '&:hover': { backgroundColor: '#EEF2F6' }
+            }
+          }}
+        >
+          <MenuItem value="" disabled>
+            Change status
+          </MenuItem>
+          {subscriptionStatusOptions.map((status) => (
+            <MenuItem key={status} value={status}>
+              {formatStatusLabel(status)}
+            </MenuItem>
+          ))}
+        </TextField>
+
         <GhostButton
           size="small"
           sx={{ backgroundColor: '#F8F9FA', '&:hover': { backgroundColor: '#EEF2F6' } }}
-          onClick={() => onOpenBulkDialog('ADD_PRICING')}
+          onClick={onOpenManagePricings}
         >
-            New pricing
-        </GhostButton>
-        <GhostButton
-          size="small"
-          sx={{ backgroundColor: '#F8F9FA', '&:hover': { backgroundColor: '#EEF2F6' } }}
-          onClick={() => onOpenBulkDialog('REPLACE_PRICINGS')}
-        >
-            Replace pricings
-        </GhostButton>
-        <GhostButton
-          size="small"
-          sx={{ backgroundColor: '#F8F9FA', '&:hover': { backgroundColor: '#EEF2F6' } }}
-          onClick={() => onOpenBulkDialog('DELETE_PRICING')}
-        >
-            Delete pricing
+          Manage pricings
         </GhostButton>
         <GhostButton
           size="small"
@@ -91,11 +140,27 @@ export function SubscriptionsSelectionActions(
             backgroundColor: '#F8F9FA',
             '&:hover': { backgroundColor: '#FDECEC' }
           }}
-          onClick={() => onOpenBulkDialog('DELETE_SUBSCRIPTIONS')}
+          onClick={onOpenDeleteSubscriptions}
         >
           Delete subscriptions
         </GhostButton>
       </Stack>
     </Box>
   );
+}
+
+function formatStatusLabel(status: SubscriptionStatus): string {
+  if (status === 'DRAFT') {
+    return 'Draft';
+  }
+
+  if (status === 'ACTIVE') {
+    return 'Active';
+  }
+
+  if (status === 'PAUSED') {
+    return 'Paused';
+  }
+
+  return 'Canceled';
 }

@@ -131,20 +131,35 @@ export const subscriptionBulkActionSchema = z.enum([
   'DELETE_SUBSCRIPTIONS',
   'ADD_PRICING',
   'REPLACE_PRICINGS',
-  'DELETE_PRICING'
+  'DELETE_PRICING',
+  'MANAGE_PRICINGS',
+  'UPDATE_STATUS'
 ]);
+
+export const subscriptionManagePricingsPreviewBodySchema = z.object({
+  subscriptionIds: z.array(z.string().min(1)).min(1)
+});
+
+export const subscriptionStatusPreviewBodySchema = z.object({
+  subscriptionIds: z.array(z.string().min(1)).min(1)
+});
 
 export const subscriptionBulkBodySchema = z
   .object({
     action: subscriptionBulkActionSchema,
     subscriptionIds: z.array(z.string().min(1)).min(1),
-    pricingIds: z.array(z.string().min(1)).min(1).optional()
+    status: subscriptionStatusSchema.optional(),
+    pricingIds: z.array(z.string().min(1)).min(1).optional(),
+    addPricingIds: z.array(z.string().min(1)).min(1).optional(),
+    removePricingIds: z.array(z.string().min(1)).min(1).optional()
   })
   .superRefine((payload, ctx) => {
     const requiresPricingIds =
       payload.action === 'ADD_PRICING' ||
       payload.action === 'REPLACE_PRICINGS' ||
       payload.action === 'DELETE_PRICING';
+    const isManagePricings = payload.action === 'MANAGE_PRICINGS';
+    const isUpdateStatus = payload.action === 'UPDATE_STATUS';
 
     if (requiresPricingIds && (!payload.pricingIds || payload.pricingIds.length === 0)) {
       ctx.addIssue({
@@ -159,6 +174,62 @@ export const subscriptionBulkBodySchema = z
         code: z.ZodIssueCode.custom,
         message: 'pricingIds are not allowed for DELETE_SUBSCRIPTIONS',
         path: ['pricingIds']
+      });
+    }
+
+    if (payload.action === 'DELETE_SUBSCRIPTIONS' && payload.addPricingIds) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'addPricingIds are not allowed for DELETE_SUBSCRIPTIONS',
+        path: ['addPricingIds']
+      });
+    }
+
+    if (payload.action === 'DELETE_SUBSCRIPTIONS' && payload.removePricingIds) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'removePricingIds are not allowed for DELETE_SUBSCRIPTIONS',
+        path: ['removePricingIds']
+      });
+    }
+
+    if (requiresPricingIds && payload.addPricingIds) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'addPricingIds are only allowed for MANAGE_PRICINGS',
+        path: ['addPricingIds']
+      });
+    }
+
+    if (requiresPricingIds && payload.removePricingIds) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'removePricingIds are only allowed for MANAGE_PRICINGS',
+        path: ['removePricingIds']
+      });
+    }
+
+    if (isManagePricings && payload.pricingIds) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'pricingIds are not allowed for MANAGE_PRICINGS',
+        path: ['pricingIds']
+      });
+    }
+
+    if (isUpdateStatus && !payload.status) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'status is required for UPDATE_STATUS',
+        path: ['status']
+      });
+    }
+
+    if (!isUpdateStatus && payload.status) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'status is only allowed for UPDATE_STATUS',
+        path: ['status']
       });
     }
   });

@@ -12,24 +12,8 @@ import {
   validateExistingPricings,
   validateExistingSubscriptions
 } from './subscriptions.shared.js';
-import { applyManagePricingsBulkAction } from './subscriptions.manage-pricings.js';
 
-type SubscriptionBulkAction =
-  | 'DELETE_SUBSCRIPTIONS'
-  | 'ADD_PRICING'
-  | 'REPLACE_PRICINGS'
-  | 'DELETE_PRICING'
-  | 'MANAGE_PRICINGS'
-  | 'UPDATE_STATUS';
-
-export type SubscriptionBulkPayload = {
-  action: SubscriptionBulkAction;
-  subscriptionIds: string[];
-  status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
-  pricingIds?: string[];
-  addPricingIds?: string[];
-  removePricingIds?: string[];
-};
+const STATUS_PARTICIPATING_IN_CONFLICTS = new Set(['DRAFT', 'ACTIVE', 'PAUSED']);
 
 type BulkSubscriptionSnapshot = {
   id: string;
@@ -51,10 +35,52 @@ type PreparedBulkCandidate = {
   productLabelById: Map<string, string>;
 };
 
-const STATUS_PARTICIPATING_IN_CONFLICTS = new Set(['DRAFT', 'ACTIVE', 'PAUSED']);
+type ManagePricingsPreviewLink = {
+  subscriptionId: string;
+  pricing: {
+    id: string;
+    product: {
+      id: string;
+      code: string;
+      name: string;
+    };
+    internalName: string;
+    type: 'FIXED' | 'TIERED';
+    fixedAmountCents: number | null;
+    minimumPriceCents: number | null;
+    currency: string;
+    billingInterval: string;
+    isActive: boolean;
+    tiers: Array<{
+      id: string;
+      fromUnit: number;
+      toUnit: number | null;
+      unitAmountCents: number;
+    }>;
+  };
+};
 
-function actionNeedsPricingIds(action: SubscriptionBulkAction): boolean {
-  return action === 'ADD_PRICING' || action === 'REPLACE_PRICINGS' || action === 'DELETE_PRICING';
+type ManagePricingsPreviewItem = ManagePricingsPreviewLink['pricing'] & {
+  usageCount: number;
+};
+
+export type ManagePricingsPreviewPayload = {
+  subscriptionIds: string[];
+};
+
+export type ManagePricingsBulkPayload = {
+  action: 'MANAGE_PRICINGS';
+  subscriptionIds: string[];
+  addPricingIds?: string[];
+  removePricingIds?: string[];
+};
+
+function normalizeIdList(ids: string[]): string[] {
+  return uniqueIds(ids.map((id) => id.trim()).filter((id) => id !== ''));
+}
+
+function getValidationMessage(subscriptionId: string, error: string): string {
+  return `Bulk action would violate subscription rules for ${subscriptionId}: ${error}`;
 }
 
 function getSnapshotPropertyIds(snapshot: BulkSubscriptionSnapshot): string[] {
@@ -242,15 +268,89 @@ async function loadSubscriptionsByIds(
   return new Map(subscriptions.map((subscription) => [subscription.id, subscription]));
 }
 
-function getValidationMessage(subscriptionId: string, error: string): string {
-  return `Bulk action would violate subscription rules for ${subscriptionId}: ${error}`;
+export function applyManagePricingsDelta(
+  currentPricingIds: string[],
+  addPricingIds: string[],
+  removePricingIds: string[]
+): string[] {
+  const removeSet = new Set(normalizeIdList(removePricingIds));
+  const normalizedCurrent = normalizeIdList(currentPricingIds);
+  const normalizedAdditions = normalizeIdList(addPricingIds);
+
+  const next = normalizedCurrent.filter((pricingId) => !removeSet.has(pricingId));
+  const nextSet = new Set(next);
+
+  for (const pricingId of normalizedAdditions) {
+    if (nextSet.has(pricingId)) {
+      continue;
+    }
+
+    next.push(pricingId);
+    nextSet.add(pricingId);
+  }
+
+  return next;
 }
 
-export async function applySubscriptionBulkAction(
-  payload: SubscriptionBulkPayload,
+export function replaceCurrentPricingsForAddedProducts(
+  currentPricingIds: string[],
+  addPricingIds: string[],
+  pricingLookup: Map<string, PricingLookupItem>
+): string[] {
+  const addPricingIdSet = new Set(normalizeIdList(addPricingIds));
+  const addedProductIds = new Set(
+    normalizeIdList(addPricingIds)
+      .map((pricingId) => pricingLookup.get(pricingId)?.productId)
+      .filter((productId): productId is string => Boolean(productId))
+  );
+
+  if (addedProductIds.size === 0) {
+    return normalizeIdList(currentPricingIds);
+  }
+
+  return normalizeIdList(currentPricingIds).filter((pricingId) => {
+    if (addPricingIdSet.has(pricingId)) {
+      return true;
+    }
+
+    const productId = pricingLookup.get(pricingId)?.productId;
+    if (!productId) {
+      return true;
+    }
+
+    return !addedProductIds.has(productId);
+  });
+}
+
+export function buildManagePricingsPreviewItems(
+  links: ManagePricingsPreviewLink[]
+): ManagePricingsPreviewItem[] {
+  const usageByPricingId = new Map<string, Set<string>>();
+  const pricingById = new Map<string, ManagePricingsPreviewLink['pricing']>();
+
+  for (const link of links) {
+    const usage = usageByPricingId.get(link.pricing.id) ?? new Set<string>();
+    usage.add(link.subscriptionId);
+    usageByPricingId.set(link.pricing.id, usage);
+
+    if (!pricingById.has(link.pricing.id)) {
+      pricingById.set(link.pricing.id, link.pricing);
+    }
+  }
+
+  return Array.from(pricingById.values())
+    .map((pricing) => ({
+      ...pricing,
+      usageCount: usageByPricingId.get(pricing.id)?.size ?? 0
+    }))
+    .sort((left, right) => left.internalName.localeCompare(right.internalName));
+}
+
+export async function getManagePricingsPreview(
+  payload: ManagePricingsPreviewPayload,
   reply: FastifyReply
 ) {
-  const subscriptionIds = uniqueIds(payload.subscriptionIds);
+  const subscriptionIds = normalizeIdList(payload.subscriptionIds);
   const subscriptionsExist = await validateExistingSubscriptions(subscriptionIds);
 
   if (!subscriptionsExist) {
@@ -258,66 +358,69 @@ export async function applySubscriptionBulkAction(
     return null;
   }
 
-  if (payload.action === 'MANAGE_PRICINGS') {
-    return applyManagePricingsBulkAction(
-      {
-        action: 'MANAGE_PRICINGS',
-        subscriptionIds: payload.subscriptionIds,
-        addPricingIds: payload.addPricingIds,
-        removePricingIds: payload.removePricingIds
-      },
-      reply
-    );
+  const links = await prisma.subscriptionPricing.findMany({
+    where: {
+      subscriptionId: {
+        in: subscriptionIds
+      }
+    },
+    select: {
+      subscriptionId: true,
+      pricing: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              code: true,
+              name: true
+            }
+          },
+          tiers: {
+            orderBy: {
+              fromUnit: 'asc'
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return {
+    targetedSubscriptions: subscriptionIds.length,
+    items: buildManagePricingsPreviewItems(links)
+  };
+}
+
+export async function applyManagePricingsBulkAction(
+  payload: ManagePricingsBulkPayload,
+  reply: FastifyReply
+) {
+  const subscriptionIds = normalizeIdList(payload.subscriptionIds);
+  const subscriptionsExist = await validateExistingSubscriptions(subscriptionIds);
+
+  if (!subscriptionsExist) {
+    reply.status(400).send({ message: 'One or more subscriptionIds are invalid' });
+    return null;
   }
 
-  if (payload.action === 'UPDATE_STATUS') {
-    if (!payload.status) {
-      reply.status(400).send({ message: 'status is required for UPDATE_STATUS' });
-      return null;
-    }
+  const addPricingIds = normalizeIdList(payload.addPricingIds ?? []);
+  const removePricingIds = normalizeIdList(payload.removePricingIds ?? []);
+  const touchedPricingIds = uniqueIds([...addPricingIds, ...removePricingIds]);
 
-    const updated = await prisma.subscription.updateMany({
-      where: {
-        id: {
-          in: subscriptionIds
-        }
-      },
-      data: {
-        status: payload.status
-      }
-    });
-
+  if (touchedPricingIds.length === 0) {
     return {
       action: payload.action,
       targetedSubscriptions: subscriptionIds.length,
-      updatedSubscriptions: updated.count
+      targetedPricings: 0,
+      deletedLinks: 0,
+      createdLinks: 0
     };
   }
 
-  const pricingIds = uniqueIds(payload.pricingIds ?? []);
-  const needsPricingIds = actionNeedsPricingIds(payload.action);
-  if (needsPricingIds) {
-    const pricingsExist = await validateExistingPricings(pricingIds);
-    if (!pricingsExist) {
-      reply.status(400).send({ message: 'One or more pricingIds are invalid' });
-      return null;
-    }
-  }
-
-  if (payload.action === 'DELETE_SUBSCRIPTIONS') {
-    const deleted = await prisma.subscription.deleteMany({
-      where: {
-        id: {
-          in: subscriptionIds
-        }
-      }
-    });
-
-    return {
-      action: payload.action,
-      targetedSubscriptions: subscriptionIds.length,
-      deletedSubscriptions: deleted.count
-    };
+  const pricingsExist = await validateExistingPricings(touchedPricingIds);
+  if (!pricingsExist) {
+    reply.status(400).send({ message: 'One or more pricingIds are invalid' });
+    return null;
   }
 
   const targetSubscriptionsById = await loadSubscriptionsByIds(subscriptionIds);
@@ -327,50 +430,15 @@ export async function applySubscriptionBulkAction(
     return null;
   }
 
-  const existingLinks = await prisma.subscriptionPricing.findMany({
-    where: {
-      subscriptionId: {
-        in: subscriptionIds
-      }
-    },
-    select: {
-      subscriptionId: true,
-      pricingId: true
-    }
-  });
-  const currentPricingIdsBySubscription = new Map<string, string[]>();
-  for (const link of existingLinks) {
-    const current = currentPricingIdsBySubscription.get(link.subscriptionId) ?? [];
-    current.push(link.pricingId);
-    currentPricingIdsBySubscription.set(link.subscriptionId, current);
-  }
+  const currentPricingIds = Array.from(targetSubscriptionsById.values()).flatMap((subscription) =>
+    subscription.subscriptionItems.map((item) => item.pricingId)
+  );
+  const pricingLookup = await loadPricingLookupByIds(prisma, [
+    ...currentPricingIds,
+    ...addPricingIds
+  ]);
 
-  let pricingLookup = new Map<string, PricingLookupItem>();
-  let replacementPricingIds: string[] = [];
-
-  if (payload.action === 'REPLACE_PRICINGS') {
-    pricingLookup = await loadPricingLookupByIds(prisma, pricingIds);
-    const replacementValidation = validatePricingSelection({
-      pricingIds,
-      pricingLookup
-    });
-
-    if (replacementValidation.error) {
-      reply.status(400).send({ message: replacementValidation.error });
-      return null;
-    }
-
-    replacementPricingIds = replacementValidation.normalizedPricingIds;
-  } else {
-    pricingLookup = await loadPricingLookupByIds(prisma, [
-      ...existingLinks.map((link) => link.pricingId),
-      ...pricingIds
-    ]);
-  }
-
-  const pricingIdsToDelete = new Set(pricingIds);
   const preparedCandidates: PreparedBulkCandidate[] = [];
-  const requireAtLeastOnePricing = payload.action !== 'DELETE_PRICING';
 
   for (const subscriptionId of subscriptionIds) {
     const subscription = targetSubscriptionsById.get(subscriptionId);
@@ -379,21 +447,20 @@ export async function applySubscriptionBulkAction(
       return null;
     }
 
-    const currentPricingIds =
-      currentPricingIdsBySubscription.get(subscriptionId) ??
-      subscription.subscriptionItems.map((item) => item.pricingId);
-
-    const nextPricingIds =
-      payload.action === 'ADD_PRICING'
-        ? [...currentPricingIds, ...pricingIds]
-        : payload.action === 'REPLACE_PRICINGS'
-          ? replacementPricingIds
-          : currentPricingIds.filter((pricingId) => !pricingIdsToDelete.has(pricingId));
+    const nextPricingIds = applyManagePricingsDelta(
+      replaceCurrentPricingsForAddedProducts(
+        subscription.subscriptionItems.map((item) => item.pricingId),
+        addPricingIds,
+        pricingLookup
+      ),
+      addPricingIds,
+      removePricingIds
+    );
 
     const selectionValidation = validatePricingSelection({
       pricingIds: nextPricingIds,
       pricingLookup,
-      requireAtLeastOne: requireAtLeastOnePricing
+      requireAtLeastOne: false
     });
 
     if (selectionValidation.error) {
@@ -408,7 +475,7 @@ export async function applySubscriptionBulkAction(
       selectionValidation.normalizedPricingIds
     );
     const conflictError = await validateSubscriptionCandidate(prisma, candidate, {
-      requireAtLeastOnePricing
+      requireAtLeastOnePricing: false
     });
     if (conflictError) {
       reply.status(400).send({
@@ -430,79 +497,39 @@ export async function applySubscriptionBulkAction(
     return null;
   }
 
-  if (payload.action === 'ADD_PRICING') {
-    const existingSet = new Set(
-      existingLinks.map((link) => `${link.subscriptionId}:${link.pricingId}`)
-    );
+  const linksToCreate = preparedCandidates.flatMap(({ subscription, candidate }) =>
+    candidate.pricingIds.map((pricingId) => ({
+      subscriptionId: subscription.id,
+      pricingId,
+      quantity: 1
+    }))
+  );
 
-    const newLinks = subscriptionIds.flatMap((subscriptionId) =>
-      pricingIds
-        .filter((pricingId) => !existingSet.has(`${subscriptionId}:${pricingId}`))
-        .map((pricingId) => ({
-          subscriptionId,
-          pricingId,
-          quantity: 1
-        }))
-    );
-
-    if (newLinks.length > 0) {
-      await prisma.subscriptionPricing.createMany({
-        data: newLinks
-      });
-    }
-
-    return {
-      action: payload.action,
-      targetedSubscriptions: subscriptionIds.length,
-      targetedPricings: pricingIds.length,
-      createdLinks: newLinks.length
-    };
-  }
-
-  if (payload.action === 'REPLACE_PRICINGS') {
-    const [deletedLinks, createdLinks] = await prisma.$transaction([
-      prisma.subscriptionPricing.deleteMany({
-        where: {
-          subscriptionId: {
-            in: subscriptionIds
-          }
+  const [deletedLinks, createdLinks] = await prisma.$transaction(async (tx) => {
+    const deleted = await tx.subscriptionPricing.deleteMany({
+      where: {
+        subscriptionId: {
+          in: subscriptionIds
         }
-      }),
-      prisma.subscriptionPricing.createMany({
-        data: subscriptionIds.flatMap((subscriptionId) =>
-          replacementPricingIds.map((pricingId) => ({
-            subscriptionId,
-            pricingId,
-            quantity: 1
-          }))
-        )
-      })
-    ]);
-
-    return {
-      action: payload.action,
-      targetedSubscriptions: subscriptionIds.length,
-      targetedPricings: pricingIds.length,
-      deletedLinks: deletedLinks.count,
-      createdLinks: createdLinks.count
-    };
-  }
-
-  const deletedLinks = await prisma.subscriptionPricing.deleteMany({
-    where: {
-      subscriptionId: {
-        in: subscriptionIds
-      },
-      pricingId: {
-        in: pricingIds
       }
+    });
+
+    if (linksToCreate.length === 0) {
+      return [deleted.count, 0] as const;
     }
+
+    const created = await tx.subscriptionPricing.createMany({
+      data: linksToCreate
+    });
+
+    return [deleted.count, created.count] as const;
   });
 
   return {
     action: payload.action,
     targetedSubscriptions: subscriptionIds.length,
-    targetedPricings: pricingIds.length,
-    deletedLinks: deletedLinks.count
+    targetedPricings: touchedPricingIds.length,
+    deletedLinks,
+    createdLinks
   };
 }

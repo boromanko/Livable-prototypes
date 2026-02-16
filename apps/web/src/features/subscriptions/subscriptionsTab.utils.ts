@@ -34,6 +34,10 @@ export function getBulkActionLabel(action: SubscriptionBulkAction | null): strin
       return 'Replace pricings';
     case 'DELETE_PRICING':
       return 'Delete pricing';
+    case 'MANAGE_PRICINGS':
+      return 'Manage pricings';
+    case 'UPDATE_STATUS':
+      return 'Change status';
     default:
       return 'Apply action';
   }
@@ -157,39 +161,10 @@ function getSubscriptionUnitsCount(
   return subscription.properties.reduce((sum, property) => sum + property.billableUnits, 0);
 }
 
-export function filterSelectedIdsToVisible(selectedIds: string[], visibleIds: string[]): string[] {
-  if (visibleIds.length === 0) {
-    return [];
-  }
-
-  const visibleSet = new Set(visibleIds);
-  return selectedIds.filter((id) => visibleSet.has(id));
-}
-
 export function toggleSelectedId(selectedIds: string[], subscriptionId: string): string[] {
   if (selectedIds.includes(subscriptionId)) {
     return selectedIds.filter((id) => id !== subscriptionId);
   }
 
   return [...selectedIds, subscriptionId];
-}
-
-export function toggleVisibleSelectedIds(
-  selectedIds: string[],
-  visibleIds: string[],
-  allVisibleSelected: boolean
-): string[] {
-  if (allVisibleSelected) {
-    return selectedIds.filter((id) => !visibleIds.includes(id));
-  }
-
-  const next = new Set(selectedIds);
-  for (const id of visibleIds) {
-    next.add(id);
-  }
-  return Array.from(next);
-}
-
-export function requiresPricingSelection(action: SubscriptionBulkAction | null): boolean {
-  return action === 'ADD_PRICING' || action === 'REPLACE_PRICINGS' || action === 'DELETE_PRICING';
 }

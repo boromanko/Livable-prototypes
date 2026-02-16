@@ -36,18 +36,22 @@ export function PricingConfirmationDialogs(props: PricingConfirmationDialogsProp
 
   return (
     <>
-      <Dialog open={Boolean(deletingPricing)} onClose={onCloseDelete}>
-        <DialogTitle>Delete Pricing</DialogTitle>
+      <Dialog
+        open={Boolean(deletingPricing)}
+        onClose={onCloseDelete}
+        maxWidth={false}
+        PaperProps={{
+          sx: {
+            width: 600,
+            maxWidth: 600
+          }
+        }}
+      >
+        <DialogTitle>{`Delete ${deletingPricing?.internalName ?? 'pricing'}`}</DialogTitle>
         <DialogContent>
-          <Stack spacing={1.5} sx={{ minWidth: 320, pt: 1 }}>
-            <Typography variant="body2">
-              This action will remove pricing <strong>{deletingPricing?.internalName ?? ''}</strong>.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              If this pricing is attached to subscriptions, links will be removed automatically.
-            </Typography>
-            {actionError ? <Alert severity="error">{actionError}</Alert> : null}
-          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 320, pt: 1 }}>
+            This action is permanent and cannot be undone.
+          </Typography>
         </DialogContent>
         <DialogActions>
           <SecondaryButton onClick={onCloseDelete}>Cancel</SecondaryButton>
@@ -56,12 +60,22 @@ export function PricingConfirmationDialogs(props: PricingConfirmationDialogsProp
             onClick={onConfirmDelete}
             disabled={isDeletePending}
           >
-            Delete
+            Delete pricing
           </PrimaryButton>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(detachConfirmTarget)} onClose={onCloseDetach}>
+      <Dialog
+        open={Boolean(detachConfirmTarget)}
+        onClose={onCloseDetach}
+        maxWidth={false}
+        PaperProps={{
+          sx: {
+            width: 600,
+            maxWidth: 600
+          }
+        }}
+      >
         <DialogTitle>Detach Pricing</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ minWidth: 320, pt: 1 }}>

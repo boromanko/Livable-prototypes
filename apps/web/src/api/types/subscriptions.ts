@@ -107,12 +107,17 @@ export type SubscriptionBulkAction =
   | 'DELETE_SUBSCRIPTIONS'
   | 'ADD_PRICING'
   | 'REPLACE_PRICINGS'
-  | 'DELETE_PRICING';
+  | 'DELETE_PRICING'
+  | 'MANAGE_PRICINGS'
+  | 'UPDATE_STATUS';
 
 export type SubscriptionBulkPayload = {
   action: SubscriptionBulkAction;
   subscriptionIds: string[];
+  status?: SubscriptionStatus;
   pricingIds?: string[];
+  addPricingIds?: string[];
+  removePricingIds?: string[];
 };
 
 export type SubscriptionBulkResponse = {
@@ -120,6 +125,43 @@ export type SubscriptionBulkResponse = {
   targetedSubscriptions: number;
   targetedPricings?: number;
   deletedSubscriptions?: number;
+  updatedSubscriptions?: number;
   createdLinks?: number;
   deletedLinks?: number;
+};
+
+export type SubscriptionManagePricingsPreviewPayload = {
+  subscriptionIds: string[];
+};
+
+export type SubscriptionManagePricingsPreviewItem = {
+  id: string;
+  product: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  internalName: string;
+  type: PricingType;
+  fixedAmountCents: number | null;
+  minimumPriceCents: number | null;
+  currency: string;
+  billingInterval: string;
+  isActive: boolean;
+  tiers: PricingTier[];
+  usageCount: number;
+};
+
+export type SubscriptionManagePricingsPreviewResponse = {
+  targetedSubscriptions: number;
+  items: SubscriptionManagePricingsPreviewItem[];
+};
+
+export type SubscriptionStatusPreviewPayload = {
+  subscriptionIds: string[];
+};
+
+export type SubscriptionStatusPreviewResponse = {
+  targetedSubscriptions: number;
+  statusCounts: Record<SubscriptionStatus, number>;
 };

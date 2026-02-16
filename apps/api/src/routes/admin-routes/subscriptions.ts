@@ -4,6 +4,8 @@ import {
   createSubscriptionBodySchema,
   subscriptionBulkBodySchema,
   subscriptionListQuerySchema,
+  subscriptionManagePricingsPreviewBodySchema,
+  subscriptionStatusPreviewBodySchema,
   subscriptionParamsSchema,
   subscriptionTransferEligibilityBodySchema,
   updateSubscriptionBodySchema
@@ -20,6 +22,8 @@ import {
   subscriptionInclude,
   toSubscriptionResponse
 } from './subscriptions.shared.js';
+import { getManagePricingsPreview } from './subscriptions.manage-pricings.js';
+import { getSubscriptionStatusPreview } from './subscriptions.status-preview.js';
 
 export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/admin/subscriptions', async (request) => {
@@ -365,6 +369,28 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
   app.post('/api/admin/subscriptions/bulk', async (request, reply) => {
     const payload = subscriptionBulkBodySchema.parse(request.body);
     const result = await applySubscriptionBulkAction(payload, reply);
+
+    if (!result) {
+      return;
+    }
+
+    return result;
+  });
+
+  app.post('/api/admin/subscriptions/manage-pricings-preview', async (request, reply) => {
+    const payload = subscriptionManagePricingsPreviewBodySchema.parse(request.body);
+    const result = await getManagePricingsPreview(payload, reply);
+
+    if (!result) {
+      return;
+    }
+
+    return result;
+  });
+
+  app.post('/api/admin/subscriptions/status-preview', async (request, reply) => {
+    const payload = subscriptionStatusPreviewBodySchema.parse(request.body);
+    const result = await getSubscriptionStatusPreview(payload, reply);
 
     if (!result) {
       return;
