@@ -53,6 +53,7 @@ export type SubscriptionItem = {
 export type SubscriptionsQueryParams = PaginationParams & {
   accountId?: string;
   accountIds?: string[];
+  pricingIds?: string[];
   propertyId?: string;
   scope?: BillingScope;
   status?: SubscriptionStatus;

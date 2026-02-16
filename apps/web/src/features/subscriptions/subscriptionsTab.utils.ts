@@ -100,12 +100,21 @@ type BuildSubscriptionsQueryParamsInput = {
   scopeFilter: 'ALL' | BillingScope;
   statusFilter: 'ALL' | SubscriptionStatus;
   accountIdsFilter: string[];
+  pricingIdsFilter: string[];
 };
 
 export function buildSubscriptionsQueryParams(
   input: BuildSubscriptionsQueryParamsInput
 ): SubscriptionsQueryParams {
-  const { page, pageSize, search, scopeFilter, statusFilter, accountIdsFilter } = input;
+  const {
+    page,
+    pageSize,
+    search,
+    scopeFilter,
+    statusFilter,
+    accountIdsFilter,
+    pricingIdsFilter
+  } = input;
 
   return {
     page: page + 1,
@@ -113,7 +122,8 @@ export function buildSubscriptionsQueryParams(
     search: search || undefined,
     scope: scopeFilter === 'ALL' ? undefined : scopeFilter,
     status: statusFilter === 'ALL' ? undefined : statusFilter,
-    accountIds: accountIdsFilter.length > 0 ? accountIdsFilter : undefined
+    accountIds: accountIdsFilter.length > 0 ? accountIdsFilter : undefined,
+    pricingIds: pricingIdsFilter.length > 0 ? pricingIdsFilter : undefined
   };
 }
 

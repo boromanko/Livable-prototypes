@@ -2,7 +2,7 @@ import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { Autocomplete, Box, Checkbox, MenuItem, Popover, Stack, TextField, Typography } from '@mui/material';
 import { useState } from 'react';
-import type { AccountItem, BillingScope, SubscriptionStatus } from '../../../api';
+import type { AccountItem, BillingScope, PricingItem, SubscriptionStatus } from '../../../api';
 import { BorderedButton, GhostButton, PrimaryButton } from '../../../components/buttons';
 import { FiltersToolbar } from '../../../components/layout';
 
@@ -24,11 +24,14 @@ type SubscriptionsFiltersProps = {
   scopeFilter: 'ALL' | BillingScope;
   statusFilter: 'ALL' | SubscriptionStatus;
   accountIdsFilter: string[];
+  pricingIdsFilter: string[];
   accounts: AccountItem[];
+  pricings: PricingItem[];
   onSearchChange: (value: string) => void;
   onScopeFilterChange: (value: 'ALL' | BillingScope) => void;
   onStatusFilterChange: (value: 'ALL' | SubscriptionStatus) => void;
   onAccountFilterChange: (value: string[]) => void;
+  onPricingFilterChange: (value: string[]) => void;
   onCreateSubscription: () => void;
 };
 
@@ -38,24 +41,30 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
     scopeFilter,
     statusFilter,
     accountIdsFilter,
+    pricingIdsFilter,
     accounts,
+    pricings,
     onSearchChange,
     onScopeFilterChange,
     onStatusFilterChange,
     onAccountFilterChange,
+    onPricingFilterChange,
     onCreateSubscription
   } = props;
   const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
   const selectedAccountOptions = accounts.filter((account) => accountIdsFilter.includes(account.id));
+  const selectedPricingOptions = pricings.filter((pricing) => pricingIdsFilter.includes(pricing.id));
   const activeFiltersCount =
     (scopeFilter !== 'ALL' ? 1 : 0) +
     (statusFilter !== 'ALL' ? 1 : 0) +
-    (accountIdsFilter.length > 0 ? 1 : 0);
+    (accountIdsFilter.length > 0 ? 1 : 0) +
+    (pricingIdsFilter.length > 0 ? 1 : 0);
 
   function clearFilters(): void {
     onScopeFilterChange('ALL');
     onStatusFilterChange('ALL');
     onAccountFilterChange([]);
+    onPricingFilterChange([]);
   }
 
   return (
@@ -191,6 +200,39 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
                 size="small"
                 label="Account"
                 placeholder={selectedAccountOptions.length === 0 ? 'Search accounts' : ''}
+              />
+            )}
+          />
+
+          <Autocomplete
+            multiple
+            disableCloseOnSelect
+            options={pricings}
+            value={selectedPricingOptions}
+            onChange={(_event, nextValue) => onPricingFilterChange(nextValue.map((item) => item.id))}
+            getOptionLabel={(option) => option.internalName}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            noOptionsText="No pricings"
+            fullWidth
+            renderOption={(autocompleteProps, option, { selected }) => (
+              <li {...autocompleteProps}>
+                <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
+                <Stack spacing={0}>
+                  <Typography variant="body2" sx={{ color: '#212934' }}>
+                    {option.internalName}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#6B7F99' }}>
+                    {option.product.code}
+                  </Typography>
+                </Stack>
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                size="small"
+                label="Pricing"
+                placeholder={selectedPricingOptions.length === 0 ? 'Search pricing' : ''}
               />
             )}
           />

@@ -27,18 +27,31 @@ export function SubscriptionsTab(): JSX.Element {
           scopeFilter={controller.filters.scopeFilter}
           statusFilter={controller.filters.statusFilter}
           accountIdsFilter={controller.filters.accountIdsFilter}
+          pricingIdsFilter={controller.filters.pricingIdsFilter}
           accounts={controller.filters.accounts}
+          pricings={controller.filters.pricings}
           onSearchChange={controller.filters.onSearchChange}
           onScopeFilterChange={controller.filters.onScopeFilterChange}
           onStatusFilterChange={controller.filters.onStatusFilterChange}
           onAccountFilterChange={controller.filters.onAccountFilterChange}
+          onPricingFilterChange={controller.filters.onPricingFilterChange}
           onCreateSubscription={controller.drawer.openCreateDrawer}
         />
 
-        <Stack spacing={2} sx={{ p: { xs: 1.5, sm: 2 }, flex: 1, minHeight: 0 }}>
+        <Stack
+          spacing={2}
+          sx={{
+            px: { xs: 1.5, sm: 2 },
+            pt: { xs: 1.5, sm: 2 },
+            pb: controller.bulk.selectedCount > 0 ? { xs: 18, sm: 14 } : 0,
+            flex: 1,
+            minHeight: 0
+          }}
+        >
           <SubscriptionsSelectionActions
             selectedCount={controller.bulk.selectedCount}
             onOpenBulkDialog={controller.bulk.openBulkDialog}
+            onClearSelection={controller.bulk.clearSelection}
           />
 
           {controller.table.isError ? (

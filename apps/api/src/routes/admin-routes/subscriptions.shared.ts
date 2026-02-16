@@ -99,6 +99,7 @@ export function toSubscriptionResponse(subscription: SubscriptionWithRelations) 
 export type SubscriptionListQuery = {
   accountId?: string;
   accountIds?: string[];
+  pricingIds?: string[];
   propertyId?: string;
   scope?: 'ACCOUNT' | 'PROPERTY';
   status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
@@ -124,6 +125,18 @@ export function buildSubscriptionsWhere(query: SubscriptionListQuery): Prisma.Su
       targetProperties: {
         some: {
           propertyId: query.propertyId
+        }
+      }
+    });
+  }
+
+  if (query.pricingIds && query.pricingIds.length > 0) {
+    andFilters.push({
+      subscriptionItems: {
+        some: {
+          pricingId: {
+            in: query.pricingIds
+          }
         }
       }
     });

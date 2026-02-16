@@ -34,6 +34,7 @@ export function useSubscriptionsTabController() {
   const [scopeFilter, setScopeFilter] = useState<'ALL' | BillingScope>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SubscriptionStatus>('ALL');
   const [accountIdsFilter, setAccountIdsFilter] = useState<string[]>([]);
+  const [pricingIdsFilter, setPricingIdsFilter] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
@@ -60,9 +61,10 @@ export function useSubscriptionsTabController() {
         search,
         scopeFilter,
         statusFilter,
-        accountIdsFilter
+        accountIdsFilter,
+        pricingIdsFilter
       }),
-    [accountIdsFilter, page, pageSize, scopeFilter, search, statusFilter]
+    [accountIdsFilter, page, pageSize, pricingIdsFilter, scopeFilter, search, statusFilter]
   );
 
   const subscriptionsQuery = useSubscriptionsQuery(queryParams);
@@ -120,6 +122,11 @@ export function useSubscriptionsTabController() {
     setPage(0);
   }
 
+  function onPricingFilterChange(value: string[]): void {
+    setPricingIdsFilter(value);
+    setPage(0);
+  }
+
   function openCreateDrawer(): void {
     setDrawerMode('create');
     setEditingSubscription(null);
@@ -164,6 +171,13 @@ export function useSubscriptionsTabController() {
   }
 
   function closeBulkDialog(): void {
+    setBulkDialogState({ open: false, action: null });
+    setBulkPricingIds([]);
+    setBulkError(null);
+  }
+
+  function clearSelection(): void {
+    setSelectedIds([]);
     setBulkDialogState({ open: false, action: null });
     setBulkPricingIds([]);
     setBulkError(null);
@@ -235,11 +249,14 @@ export function useSubscriptionsTabController() {
       scopeFilter,
       statusFilter,
       accountIdsFilter,
+      pricingIdsFilter,
       accounts: accountsQuery.data?.items ?? [],
+      pricings: pricingsQuery.data?.items ?? [],
       onSearchChange,
       onScopeFilterChange,
       onStatusFilterChange,
-      onAccountFilterChange
+      onAccountFilterChange,
+      onPricingFilterChange
     },
     drawer: {
       drawerOpen,
@@ -292,6 +309,7 @@ export function useSubscriptionsTabController() {
       isPending: bulkMutation.isPending,
       openBulkDialog,
       closeBulkDialog,
+      clearSelection,
       setPricingIds: setBulkPricingIds,
       applyBulkAction
     },
