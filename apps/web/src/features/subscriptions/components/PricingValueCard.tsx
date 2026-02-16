@@ -7,6 +7,7 @@ type PricingValueCardProps = {
   title: string;
   subtitle?: string;
   usageLabel?: string;
+  errorLabel?: string;
   amountLabel: string;
   variant: PricingValueCardVariant;
   onTitleClick?: () => void;
@@ -31,8 +32,9 @@ const VARIANT_SX = {
 } as const;
 
 export function PricingValueCard(props: PricingValueCardProps): JSX.Element {
-  const { title, subtitle, usageLabel, amountLabel, variant, onTitleClick, action } = props;
+  const { title, subtitle, usageLabel, errorLabel, amountLabel, variant, onTitleClick, action } = props;
   const styles = VARIANT_SX[variant];
+  const hasError = Boolean(errorLabel);
 
   return (
     <Stack
@@ -42,8 +44,8 @@ export function PricingValueCard(props: PricingValueCardProps): JSX.Element {
       sx={{
         px: styles.px,
         py: styles.py,
-        border: '1px solid #E1E7EC',
-        backgroundColor: '#F8F9FA',
+        border: hasError ? '1px solid #E7B5B5' : '1px solid #E1E7EC',
+        backgroundColor: hasError ? '#FFF6F6' : '#F8F9FA',
         borderRadius: '2px'
       }}
     >
@@ -89,6 +91,11 @@ export function PricingValueCard(props: PricingValueCardProps): JSX.Element {
         {usageLabel ? (
           <Typography variant="caption" sx={{ color: '#6F8298' }}>
             {usageLabel}
+          </Typography>
+        ) : null}
+        {errorLabel ? (
+          <Typography variant="caption" sx={{ color: '#B42318' }}>
+            {errorLabel}
           </Typography>
         ) : null}
       </Stack>

@@ -127,6 +127,39 @@ export const subscriptionTransferEligibilityBodySchema = z
     }
   });
 
+export const subscriptionAvailabilityPreviewBodySchema = z
+  .object({
+    accountId: z.string().min(1),
+    scope: billingScopeSchema,
+    propertyIds: z.array(z.string().min(1)).optional(),
+    pricingIds: z.array(z.string().min(1)).optional(),
+    propertyOptionIds: z.array(z.string().min(1)).optional(),
+    pricingOptionIds: z.array(z.string().min(1)).optional(),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date().nullable().optional(),
+    status: subscriptionStatusSchema.optional(),
+    excludeSubscriptionId: z.string().min(1).optional()
+  })
+  .superRefine((payload, ctx) => {
+    const propertySelections = payload.propertyIds ?? [];
+
+    if (payload.scope === 'ACCOUNT' && propertySelections.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'propertyIds must be empty for ACCOUNT scope',
+        path: ['propertyIds']
+      });
+    }
+
+    if (payload.endDate && payload.endDate < payload.startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'endDate must be greater than or equal to startDate',
+        path: ['endDate']
+      });
+    }
+  });
+
 export const subscriptionBulkActionSchema = z.enum([
   'DELETE_SUBSCRIPTIONS',
   'ADD_PRICING',

@@ -3,6 +3,7 @@ import type {
   PaymentMethodsQueryParams,
   PricingsQueryParams,
   PropertiesQueryParams,
+  SubscriptionAvailabilityPreviewPayload,
   SubscriptionTransferEligibilityPayload,
   SubscriptionsQueryParams
 } from './types';
@@ -33,6 +34,8 @@ export const queryKeys = {
     subscriptionTransferEligibility: (
       subscriptionId: string,
       payload: SubscriptionTransferEligibilityPayload
-    ) => [...adminBaseKey, 'subscriptions', subscriptionId, 'transferEligibility', payload] as const
+    ) => [...adminBaseKey, 'subscriptions', subscriptionId, 'transferEligibility', payload] as const,
+    subscriptionAvailabilityPreview: (payload: SubscriptionAvailabilityPreviewPayload) =>
+      [...adminBaseKey, 'subscriptions', 'availabilityPreview', payload] as const
   }
 };

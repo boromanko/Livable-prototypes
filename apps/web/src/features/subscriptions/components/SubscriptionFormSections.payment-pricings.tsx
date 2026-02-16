@@ -74,6 +74,15 @@ type SubscriptionFormPricingsSectionProps = {
   value: string[];
   pricings: PricingItem[];
   error: boolean;
+  pricingAvailabilityById?: Record<
+    string,
+    {
+      available: boolean;
+      reason: string | null;
+    }
+  >;
+  invalidSelectedPricingIds?: string[];
+  availabilityLoading?: boolean;
   usageCountByPricingId?: Record<string, number>;
   showPricingUsage?: boolean;
   onCreatePricing: () => void;
@@ -88,18 +97,33 @@ export function SubscriptionFormPricingsSection(
     value,
     pricings,
     error,
+    pricingAvailabilityById,
+    invalidSelectedPricingIds = [],
+    availabilityLoading = false,
     usageCountByPricingId,
     showPricingUsage = false,
     onCreatePricing,
     onEditPricing,
     onChange
   } = props;
+  const invalidSelectedPricingIdSet = new Set(invalidSelectedPricingIds);
   const pricingById = new Map(pricings.map((pricing) => [pricing.id, pricing]));
   const selectedPricings = value
     .map((pricingId) => pricingById.get(pricingId))
     .filter((pricing): pricing is PricingItem => Boolean(pricing));
   const missingSelectedPricingIds = value.filter((pricingId) => !pricingById.has(pricingId));
-  const availablePricings = pricings.filter((pricing) => !value.includes(pricing.id));
+  const availablePricings = pricings.filter((pricing) => {
+    if (value.includes(pricing.id)) {
+      return false;
+    }
+
+    const availability = pricingAvailabilityById?.[pricing.id];
+    if (!availability) {
+      return true;
+    }
+
+    return availability.available;
+  });
   const pickerFieldSx = {
     ...getFormFieldSx(error),
     '& .MuiAutocomplete-inputRoot': {
@@ -132,13 +156,16 @@ export function SubscriptionFormPricingsSection(
         openOnFocus
         options={availablePricings}
         value={selectedPricings}
+        disabled={availabilityLoading}
         onChange={(_event, selected) =>
           onChange([...missingSelectedPricingIds, ...selected.map((pricing) => pricing.id)])
         }
         getOptionLabel={(option) => option.internalName}
         isOptionEqualToValue={(option, selected) => option.id === selected.id}
         noOptionsText={
-          availablePricings.length === 0 ? 'No more pricings to add' : 'No pricings found'
+          availablePricings.length === 0
+            ? 'No compatible pricings for current selection'
+            : 'No pricings found'
         }
         PaperComponent={(paperProps: PaperProps) => (
           <Paper
@@ -221,6 +248,11 @@ export function SubscriptionFormPricingsSection(
           Add at least one pricing.
         </Typography>
       ) : null}
+      {availabilityLoading ? (
+        <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
+          Checking pricing compatibility...
+        </Typography>
+      ) : null}
 
       {value.length > 0 ? (
         <Stack spacing={1}>
@@ -238,6 +270,11 @@ export function SubscriptionFormPricingsSection(
                     ? `Used in ${usageCountByPricingId?.[pricingId] ?? 0} subscription${
                         (usageCountByPricingId?.[pricingId] ?? 0) === 1 ? '' : 's'
                       }`
+                    : undefined
+                }
+                errorLabel={
+                  invalidSelectedPricingIdSet.has(pricingId)
+                    ? (pricingAvailabilityById?.[pricingId]?.reason ?? 'Pricing is not available')
                     : undefined
                 }
                 amountLabel={pricing ? getPricingAmountLabel(pricing) : '—'}

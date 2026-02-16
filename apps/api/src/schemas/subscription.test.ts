@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  subscriptionAvailabilityPreviewBodySchema,
   subscriptionBulkBodySchema,
   subscriptionManagePricingsPreviewBodySchema
 } from './subscription.js';
@@ -98,6 +99,48 @@ describe('subscriptionManagePricingsPreviewBodySchema', () => {
           subscriptionIds: []
         }),
       /Array must contain at least 1 element/
+    );
+  });
+});
+
+describe('subscriptionAvailabilityPreviewBodySchema', () => {
+  it('accepts ACCOUNT scope payload without propertyIds', () => {
+    const parsed = subscriptionAvailabilityPreviewBodySchema.parse({
+      accountId: 'acct-1',
+      scope: 'ACCOUNT',
+      startDate: '2026-02-16',
+      endDate: null,
+      pricingIds: ['price-1']
+    });
+
+    assert.equal(parsed.accountId, 'acct-1');
+    assert.equal(parsed.scope, 'ACCOUNT');
+    assert.deepEqual(parsed.propertyIds, undefined);
+  });
+
+  it('rejects ACCOUNT scope payload with propertyIds', () => {
+    assert.throws(
+      () =>
+        subscriptionAvailabilityPreviewBodySchema.parse({
+          accountId: 'acct-1',
+          scope: 'ACCOUNT',
+          startDate: '2026-02-16',
+          propertyIds: ['prop-1']
+        }),
+      /propertyIds must be empty for ACCOUNT scope/
+    );
+  });
+
+  it('rejects endDate before startDate', () => {
+    assert.throws(
+      () =>
+        subscriptionAvailabilityPreviewBodySchema.parse({
+          accountId: 'acct-1',
+          scope: 'PROPERTY',
+          startDate: '2026-02-16',
+          endDate: '2026-02-15'
+        }),
+      /endDate must be greater than or equal to startDate/
     );
   });
 });

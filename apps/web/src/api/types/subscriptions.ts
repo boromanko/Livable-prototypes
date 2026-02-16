@@ -103,6 +103,33 @@ export type SubscriptionTransferEligibilityResponse = {
   items: SubscriptionTransferEligibilityItem[];
 };
 
+export type SubscriptionAvailabilityPreviewPayload = {
+  accountId: string;
+  scope: BillingScope;
+  propertyIds?: string[];
+  pricingIds?: string[];
+  propertyOptionIds?: string[];
+  pricingOptionIds?: string[];
+  startDate: string;
+  endDate?: string | null;
+  status?: SubscriptionStatus;
+  excludeSubscriptionId?: string;
+};
+
+export type SubscriptionAvailabilityItem = {
+  id: string;
+  available: boolean;
+  reason: string | null;
+};
+
+export type SubscriptionAvailabilityPreviewResponse = {
+  canSave: boolean;
+  invalidSelectedPricingIds: string[];
+  invalidSelectedPropertyIds: string[];
+  pricingAvailability: SubscriptionAvailabilityItem[];
+  propertyAvailability: SubscriptionAvailabilityItem[];
+};
+
 export type SubscriptionBulkAction =
   | 'DELETE_SUBSCRIPTIONS'
   | 'ADD_PRICING'

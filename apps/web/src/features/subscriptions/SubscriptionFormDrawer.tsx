@@ -137,6 +137,29 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             }}
           >
             {controller.formError ? <Alert severity="error">{controller.formError}</Alert> : null}
+            {controller.autoPruneNotice ? (
+              <Alert
+                severity="info"
+                onClose={controller.actions.dismissAutoPruneNotice}
+                action={
+                  <Button color="inherit" size="small" onClick={controller.actions.undoAutoPrune}>
+                    Undo
+                  </Button>
+                }
+              >
+                {getAutoPruneMessage(
+                  controller.autoPruneNotice.removedPricingIds.length,
+                  controller.autoPruneNotice.removedPropertyIds.length
+                )}
+              </Alert>
+            ) : null}
+            {!controller.formError &&
+            !controller.availabilityLoading &&
+            !controller.autoPruneNotice &&
+            controller.hasAvailabilityConflicts &&
+            controller.availabilityConflictMessage ? (
+              <Alert severity="error">{controller.availabilityConflictMessage}</Alert>
+            ) : null}
 
             <SubscriptionFormAccountSection
               value={controller.formState.accountId}
@@ -151,8 +174,16 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
               accountId={controller.formState.accountId}
               value={controller.formState.propertyIds}
               properties={controller.properties}
+              propertyAvailabilityById={controller.propertyAvailabilityById}
+              invalidSelectedPropertyIds={controller.invalidSelectedPropertyIds}
               loading={controller.propertiesLoading}
-              error={controller.showValidation && controller.validation.propertyError}
+              availabilityLoading={controller.availabilityLoading}
+              error={
+                !controller.availabilityLoading &&
+                !controller.autoPruneNotice &&
+                controller.showValidation &&
+                controller.validation.propertyError
+              }
               onToggleApplyAllProperties={controller.actions.setApplyAllProperties}
               onChange={controller.actions.setPropertyIds}
             />
@@ -176,7 +207,15 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             <SubscriptionFormPricingsSection
               value={controller.formState.pricingIds}
               pricings={controller.pricings}
-              error={controller.showValidation && controller.validation.pricingsError}
+              error={
+                !controller.availabilityLoading &&
+                !controller.autoPruneNotice &&
+                controller.showValidation &&
+                controller.validation.pricingsError
+              }
+              pricingAvailabilityById={controller.pricingAvailabilityById}
+              invalidSelectedPricingIds={controller.invalidSelectedPricingIds}
+              availabilityLoading={controller.availabilityLoading}
               onCreatePricing={openCreatePricing}
               onEditPricing={openEditPricing}
               onChange={controller.actions.setPricingIds}
@@ -206,7 +245,7 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             </SecondaryButton>
             <PrimaryButton
               onClick={controller.actions.onSubmit}
-              disabled={controller.isSaving}
+              disabled={controller.isSaving || controller.availabilityLoading}
             >
               {controller.isEdit ? 'Save changes' : 'Create subscription'}
             </PrimaryButton>
@@ -310,4 +349,26 @@ function getStatusButtonSx(
       backgroundColor: '#E2E8EF'
     }
   };
+}
+
+function getAutoPruneMessage(removedPricingCount: number, removedPropertyCount: number): string {
+  const parts: string[] = [];
+
+  if (removedPricingCount > 0) {
+    parts.push(
+      `${removedPricingCount} incompatible pricing${removedPricingCount === 1 ? '' : 's'}`
+    );
+  }
+
+  if (removedPropertyCount > 0) {
+    parts.push(
+      `${removedPropertyCount} incompatible propert${removedPropertyCount === 1 ? 'y' : 'ies'}`
+    );
+  }
+
+  if (parts.length === 0) {
+    return 'Selection was adjusted to keep only compatible items.';
+  }
+
+  return `Removed ${parts.join(' and ')} from selection to prevent conflicts.`;
 }

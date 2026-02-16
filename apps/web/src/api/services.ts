@@ -16,6 +16,8 @@ import type {
   PropertiesResponse,
   SubscriptionBulkPayload,
   SubscriptionBulkResponse,
+  SubscriptionAvailabilityPreviewPayload,
+  SubscriptionAvailabilityPreviewResponse,
   SubscriptionManagePricingsPreviewPayload,
   SubscriptionManagePricingsPreviewResponse,
   SubscriptionStatusPreviewPayload,
@@ -108,6 +110,14 @@ export const api = {
     payload: SubscriptionTransferEligibilityPayload
   ): Promise<SubscriptionTransferEligibilityResponse> =>
     apiRequest(`/api/admin/subscriptions/${subscriptionId}/transfer-eligibility`, {
+      method: 'POST',
+      body: payload
+    }),
+
+  getSubscriptionAvailabilityPreview: (
+    payload: SubscriptionAvailabilityPreviewPayload
+  ): Promise<SubscriptionAvailabilityPreviewResponse> =>
+    apiRequest('/api/admin/subscriptions/availability-preview', {
       method: 'POST',
       body: payload
     }),

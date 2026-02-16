@@ -139,7 +139,16 @@ type SubscriptionFormPropertySectionProps = {
   accountId: string;
   value: string[];
   properties: PropertyItem[];
+  propertyAvailabilityById?: Record<
+    string,
+    {
+      available: boolean;
+      reason: string | null;
+    }
+  >;
+  invalidSelectedPropertyIds?: string[];
   loading: boolean;
+  availabilityLoading?: boolean;
   error: boolean;
   onToggleApplyAllProperties: (checked: boolean) => void;
   onChange: (propertyIds: string[]) => void;
@@ -153,17 +162,33 @@ export function SubscriptionFormPropertySection(
     accountId,
     value,
     properties,
+    propertyAvailabilityById,
+    invalidSelectedPropertyIds = [],
     loading,
+    availabilityLoading = false,
     error,
     onToggleApplyAllProperties,
     onChange
   } = props;
+  const invalidSelectedPropertyIdSet = new Set(invalidSelectedPropertyIds);
   const propertyById = new Map(properties.map((property) => [property.id, property]));
   const selectedProperties = value
     .map((propertyId) => propertyById.get(propertyId))
     .filter((property): property is PropertyItem => Boolean(property));
-  const availableProperties = properties.filter((property) => !value.includes(property.id));
-  const isPickerDisabled = isApplyAllPropertiesEnabled || !accountId || loading;
+  const availableProperties = properties.filter((property) => {
+    if (value.includes(property.id)) {
+      return false;
+    }
+
+    const availability = propertyAvailabilityById?.[property.id];
+    if (!availability) {
+      return true;
+    }
+
+    return availability.available;
+  });
+  const isPickerDisabled =
+    isApplyAllPropertiesEnabled || !accountId || loading || availabilityLoading;
   const propertyRequiredError = !isApplyAllPropertiesEnabled && error;
   const pickerFieldSx = {
     ...getFormFieldSx(propertyRequiredError),
@@ -217,7 +242,7 @@ export function SubscriptionFormPropertySection(
               loading
                 ? 'Loading properties...'
                 : availableProperties.length === 0
-                  ? 'No more properties to add'
+                  ? 'No compatible properties for current selection'
                   : 'No properties found'
             }
             PaperComponent={(paperProps: PaperProps) => (
@@ -296,6 +321,11 @@ export function SubscriptionFormPropertySection(
               No properties available for selected account.
             </Typography>
           ) : null}
+          {availabilityLoading && !loading ? (
+            <Typography variant="caption" sx={{ color: '#6F8298', lineHeight: 1.4 }}>
+              Checking property compatibility...
+            </Typography>
+          ) : null}
 
           {value.length > 0 ? (
             <Stack spacing={1}>
@@ -311,8 +341,12 @@ export function SubscriptionFormPropertySection(
                     sx={{
                       px: 1.5,
                       py: 1.25,
-                      border: '1px solid #E1E7EC',
-                      backgroundColor: '#F8F9FA',
+                      border: invalidSelectedPropertyIdSet.has(propertyId)
+                        ? '1px solid #E7B5B5'
+                        : '1px solid #E1E7EC',
+                      backgroundColor: invalidSelectedPropertyIdSet.has(propertyId)
+                        ? '#FFF6F6'
+                        : '#F8F9FA',
                       borderRadius: '2px'
                     }}
                   >
@@ -323,6 +357,11 @@ export function SubscriptionFormPropertySection(
                       {property ? (
                         <Typography variant="caption" sx={{ color: '#6F8298' }}>
                           {property.billableUnits} units
+                        </Typography>
+                      ) : null}
+                      {invalidSelectedPropertyIdSet.has(propertyId) ? (
+                        <Typography variant="caption" sx={{ color: '#B42318' }}>
+                          {propertyAvailabilityById?.[propertyId]?.reason ?? 'Property is not available'}
                         </Typography>
                       ) : null}
                     </Stack>

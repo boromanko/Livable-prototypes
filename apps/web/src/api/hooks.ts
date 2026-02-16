@@ -24,6 +24,8 @@ import type {
   PropertiesResponse,
   SubscriptionBulkPayload,
   SubscriptionBulkResponse,
+  SubscriptionAvailabilityPreviewPayload,
+  SubscriptionAvailabilityPreviewResponse,
   SubscriptionTransferEligibilityPayload,
   SubscriptionTransferEligibilityResponse,
   SubscriptionsQueryParams,
@@ -114,6 +116,17 @@ export function useSubscriptionTransferEligibilityQuery(
   return useQuery({
     queryKey: queryKeys.admin.subscriptionTransferEligibility(subscriptionId, payload),
     queryFn: () => api.getSubscriptionTransferEligibility(subscriptionId, payload),
+    enabled: options?.enabled ?? true
+  });
+}
+
+export function useSubscriptionAvailabilityPreviewQuery(
+  payload: SubscriptionAvailabilityPreviewPayload,
+  options?: { enabled?: boolean }
+): UseQueryResult<SubscriptionAvailabilityPreviewResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.admin.subscriptionAvailabilityPreview(payload),
+    queryFn: () => api.getSubscriptionAvailabilityPreview(payload),
     enabled: options?.enabled ?? true
   });
 }

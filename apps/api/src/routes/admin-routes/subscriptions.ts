@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '@stripe-integration/db';
 import {
+  subscriptionAvailabilityPreviewBodySchema,
   createSubscriptionBodySchema,
   subscriptionBulkBodySchema,
   subscriptionListQuerySchema,
@@ -24,6 +25,7 @@ import {
 } from './subscriptions.shared.js';
 import { getManagePricingsPreview } from './subscriptions.manage-pricings.js';
 import { getSubscriptionStatusPreview } from './subscriptions.status-preview.js';
+import { getSubscriptionAvailabilityPreview } from './subscriptions.availability-preview.js';
 
 export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/admin/subscriptions', async (request) => {
@@ -364,6 +366,17 @@ export async function registerAdminSubscriptionsRoutes(app: FastifyInstance): Pr
     return {
       items
     };
+  });
+
+  app.post('/api/admin/subscriptions/availability-preview', async (request, reply) => {
+    const payload = subscriptionAvailabilityPreviewBodySchema.parse(request.body);
+    const result = await getSubscriptionAvailabilityPreview(payload, reply);
+
+    if (!result) {
+      return;
+    }
+
+    return result;
   });
 
   app.post('/api/admin/subscriptions/bulk', async (request, reply) => {
