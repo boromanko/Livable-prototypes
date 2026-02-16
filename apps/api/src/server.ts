@@ -7,6 +7,7 @@ import { ensureDbInvariants } from './services/db-invariants.js';
 
 const app = Fastify({ logger: true });
 const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+const demoAccessPassword = process.env.DEMO_ACCESS_PASSWORD?.trim() ?? '';
 const REQUIRED_TABLES = [
   'accounts',
   'properties',
@@ -41,11 +42,32 @@ async function assertDatabaseIsInitialized(): Promise<void> {
 }
 
 await app.register(cors, {
-  origin: corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)
+  origin: corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+  allowedHeaders: ['content-type', 'x-demo-password']
 });
 
 app.get('/health', async () => ({ status: 'ok' }));
 app.get('/api/health', async () => ({ status: 'ok' }));
+app.get('/api/auth/validate', async () => ({ status: 'ok' }));
+
+app.addHook('preHandler', async (request, reply) => {
+  if (!demoAccessPassword || request.method === 'OPTIONS') {
+    return;
+  }
+
+  if (request.url === '/health' || request.url === '/api/health') {
+    return;
+  }
+
+  const rawHeader = request.headers['x-demo-password'];
+  const requestPassword = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+
+  if (requestPassword === demoAccessPassword) {
+    return;
+  }
+
+  reply.status(401).send({ message: 'Unauthorized' });
+});
 
 await registerAdminRoutes(app);
 

@@ -1,3 +1,5 @@
+import { clearDemoAccessPassword, getDemoAccessPassword } from '../lib/demoAccess';
+
 export class ApiError extends Error {
   status: number;
   payload: unknown;
@@ -58,16 +60,21 @@ export async function apiRequest<TResponse>(
   }
 ): Promise<TResponse> {
   const url = withBaseUrl(buildUrl(path, options?.query));
+  const demoAccessPassword = getDemoAccessPassword();
   const hasBody = options?.body !== undefined;
-  const headers = hasBody
-    ? {
-        'content-type': 'application/json'
-      }
-    : undefined;
+  const headers: Record<string, string> = {};
+
+  if (hasBody) {
+    headers['content-type'] = 'application/json';
+  }
+
+  if (demoAccessPassword) {
+    headers['x-demo-password'] = demoAccessPassword;
+  }
 
   const response = await fetch(url, {
     method: options?.method ?? 'GET',
-    headers,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: hasBody ? JSON.stringify(options.body) : undefined
   });
 
@@ -83,8 +90,24 @@ export async function apiRequest<TResponse>(
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearDemoAccessPassword();
+    }
     throw new ApiError(response.status, payload);
   }
 
   return payload as TResponse;
+}
+
+export async function validateDemoAccessPassword(password: string): Promise<void> {
+  const response = await fetch(withBaseUrl('/api/auth/validate'), {
+    method: 'GET',
+    headers: {
+      'x-demo-password': password
+    }
+  });
+
+  if (!response.ok) {
+    throw new ApiError(response.status, null);
+  }
 }
