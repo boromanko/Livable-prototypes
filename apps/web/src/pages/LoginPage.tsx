@@ -32,7 +32,7 @@ export function LoginPage(): JSX.Element {
       setDemoAccessPassword(normalizedPassword);
       setPassword('');
     } catch {
-      setErrorMessage('Невірний пароль. Спробуйте ще раз.');
+      setErrorMessage('Incorrect password. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -65,13 +65,13 @@ export function LoginPage(): JSX.Element {
               Demo Access
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Введіть пароль, щоб відкрити демо.
+              Enter the password to open the demo.
             </Typography>
           </Stack>
 
           <TextField
             autoFocus
-            label="Пароль"
+            label="Password"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -82,7 +82,7 @@ export function LoginPage(): JSX.Element {
           {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
 
           <Button type="submit" variant="contained" disabled={isSubmitDisabled}>
-            {isSubmitting ? <CircularProgress size={20} color="inherit" /> : 'Увійти'}
+            {isSubmitting ? <CircularProgress size={20} color="inherit" /> : 'Sign in'}
           </Button>
         </Stack>
       </Paper>
