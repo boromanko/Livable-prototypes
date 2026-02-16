@@ -1,5 +1,6 @@
 import { Alert, Snackbar, Stack } from '@mui/material';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
+import { canManagePricings, canManageSubscriptions, useDemoRole } from '../../demoRole';
 import { ManagePricingsDialog } from './components/ManagePricingsDialog';
 import { SubscriptionDeleteDialog } from './components/SubscriptionDeleteDialog';
 import { SubscriptionsBulkDialog } from './components/SubscriptionsBulkDialog';
@@ -21,6 +22,23 @@ const PricingFormDrawer = lazy(async () => {
 
 export function SubscriptionsTab(): JSX.Element {
   const controller = useSubscriptionsTabController();
+  const { role } = useDemoRole();
+  const canEditSubscriptions = canManageSubscriptions(role);
+  const canEditPricings = canManagePricings(role);
+
+  useEffect(() => {
+    if (canEditSubscriptions) {
+      return;
+    }
+
+    controller.bulk.clearSelection();
+    controller.bulk.closeDeleteDialog();
+    controller.bulk.manageDialog.close();
+    controller.bulk.statusDialog.close();
+    controller.singleDeleteDialog.close();
+    controller.drawer.closeDrawer();
+    controller.pricingDrawer.closePricingDrawer();
+  }, [canEditSubscriptions]);
 
   return (
     <>
@@ -39,6 +57,7 @@ export function SubscriptionsTab(): JSX.Element {
           onAccountFilterChange={controller.filters.onAccountFilterChange}
           onPricingFilterChange={controller.filters.onPricingFilterChange}
           onCreateSubscription={controller.drawer.openCreateDrawer}
+          canCreateSubscription={canEditSubscriptions}
         />
 
         <Stack
@@ -46,13 +65,14 @@ export function SubscriptionsTab(): JSX.Element {
           sx={{
             px: 0,
             pt: 0,
-            pb: controller.bulk.selectedCount > 0 ? '64px' : 0,
+            pb: canEditSubscriptions && controller.bulk.selectedCount > 0 ? '64px' : 0,
             flex: 1,
             minHeight: 0
           }}
         >
           <SubscriptionsSelectionActions
-            selectedCount={controller.bulk.selectedCount}
+            selectedCount={canEditSubscriptions ? controller.bulk.selectedCount : 0}
+            canManageSubscriptions={canEditSubscriptions}
             statusValue={controller.bulk.statusValue}
             isStatusLoading={controller.bulk.isStatusLoading}
             isPending={controller.bulk.isPending}
@@ -73,9 +93,9 @@ export function SubscriptionsTab(): JSX.Element {
             rows={controller.table.rows}
             sortField={controller.table.sortField}
             sortDirection={controller.table.sortDirection}
-            selectedIds={controller.table.selectedIds}
-            allSelected={controller.table.allSelected}
-            someSelected={controller.table.someSelected}
+            selectedIds={canEditSubscriptions ? controller.table.selectedIds : []}
+            allSelected={canEditSubscriptions ? controller.table.allSelected : false}
+            someSelected={canEditSubscriptions ? controller.table.someSelected : false}
             total={controller.table.total}
             isSelectingAll={controller.table.isSelectingAll}
             accountPropertiesCountById={controller.table.accountPropertiesCountById}
@@ -84,21 +104,29 @@ export function SubscriptionsTab(): JSX.Element {
             page={controller.table.page}
             pageSize={controller.table.pageSize}
             onToggleAllSelection={() => {
-              void controller.table.onToggleAllSelection();
+              if (canEditSubscriptions) {
+                void controller.table.onToggleAllSelection();
+              }
             }}
             onSort={controller.table.onSort}
-            onToggleRowSelection={controller.table.onToggleRowSelection}
+            onToggleRowSelection={(subscriptionId) => {
+              if (canEditSubscriptions) {
+                controller.table.onToggleRowSelection(subscriptionId);
+              }
+            }}
             onEditSubscription={controller.drawer.openEditDrawer}
-            onEditPricing={controller.pricingDrawer.openEditPricing}
+            onEditPricing={canEditSubscriptions ? controller.pricingDrawer.openEditPricing : undefined}
             onDeleteSubscription={controller.table.onDeleteSubscription}
             onCreateSubscription={controller.drawer.openCreateDrawer}
             onPageChange={controller.table.onPageChange}
             onPageSizeChange={controller.table.onPageSizeChange}
+            canManageSubscriptions={canEditSubscriptions}
+            canOpenPricingEditor={canEditSubscriptions}
           />
         </Stack>
       </Stack>
 
-      {controller.drawer.drawerOpen ? (
+      {canEditSubscriptions && controller.drawer.drawerOpen ? (
         <Suspense fallback={null}>
           <SubscriptionFormDrawer
             open={controller.drawer.drawerOpen}
@@ -110,7 +138,7 @@ export function SubscriptionsTab(): JSX.Element {
         </Suspense>
       ) : null}
 
-      {controller.pricingDrawer.pricingDrawerOpen && controller.pricingDrawer.editingPricing ? (
+      {canEditSubscriptions && controller.pricingDrawer.pricingDrawerOpen && controller.pricingDrawer.editingPricing ? (
         <Suspense fallback={null}>
           <PricingFormDrawer
             open={controller.pricingDrawer.pricingDrawerOpen}
@@ -121,55 +149,60 @@ export function SubscriptionsTab(): JSX.Element {
         </Suspense>
       ) : null}
 
-      <SubscriptionsBulkDialog
-        open={controller.bulk.deleteDialogOpen}
-        selectedCount={controller.bulk.selectedCount}
-        error={controller.bulk.error}
-        isPending={controller.bulk.isPending}
-        onClose={controller.bulk.closeDeleteDialog}
-        onConfirm={() => {
-          void controller.bulk.applyDeleteSubscriptions();
-        }}
-      />
+      {canEditSubscriptions ? (
+        <>
+          <SubscriptionsBulkDialog
+            open={controller.bulk.deleteDialogOpen}
+            selectedCount={controller.bulk.selectedCount}
+            error={controller.bulk.error}
+            isPending={controller.bulk.isPending}
+            onClose={controller.bulk.closeDeleteDialog}
+            onConfirm={() => {
+              void controller.bulk.applyDeleteSubscriptions();
+            }}
+          />
 
-      <SubscriptionDeleteDialog
-        open={controller.singleDeleteDialog.open}
-        subscriptionName={controller.singleDeleteDialog.subscriptionName}
-        isPending={controller.bulk.isPending}
-        onClose={controller.singleDeleteDialog.close}
-        onConfirm={() => {
-          void controller.singleDeleteDialog.confirm();
-        }}
-      />
+          <SubscriptionDeleteDialog
+            open={controller.singleDeleteDialog.open}
+            subscriptionName={controller.singleDeleteDialog.subscriptionName}
+            isPending={controller.bulk.isPending}
+            onClose={controller.singleDeleteDialog.close}
+            onConfirm={() => {
+              void controller.singleDeleteDialog.confirm();
+            }}
+          />
 
-      <ManagePricingsDialog
-        open={controller.bulk.manageDialog.open}
-        selectedCount={controller.bulk.manageDialog.selectedCount}
-        pricingIds={controller.bulk.manageDialog.pricingIds}
-        usageCountByPricingId={controller.bulk.manageDialog.usageCountByPricingId}
-        pricings={controller.bulk.manageDialog.pricings}
-        isLoading={controller.bulk.manageDialog.isLoading}
-        isPending={controller.bulk.isPending}
-        hasChanges={controller.bulk.manageDialog.hasChanges}
-        error={controller.bulk.error}
-        onPricingIdsChange={controller.bulk.manageDialog.setPricingIds}
-        onAppendPricingId={controller.bulk.manageDialog.appendPricingId}
-        onClose={controller.bulk.manageDialog.close}
-        onConfirm={() => {
-          void controller.bulk.manageDialog.confirm();
-        }}
-      />
+          <ManagePricingsDialog
+            open={controller.bulk.manageDialog.open}
+            selectedCount={controller.bulk.manageDialog.selectedCount}
+            pricingIds={controller.bulk.manageDialog.pricingIds}
+            usageCountByPricingId={controller.bulk.manageDialog.usageCountByPricingId}
+            pricings={controller.bulk.manageDialog.pricings}
+            isLoading={controller.bulk.manageDialog.isLoading}
+            isPending={controller.bulk.isPending}
+            hasChanges={controller.bulk.manageDialog.hasChanges}
+            error={controller.bulk.error}
+            canCreatePricing={canEditPricings}
+            onPricingIdsChange={controller.bulk.manageDialog.setPricingIds}
+            onAppendPricingId={controller.bulk.manageDialog.appendPricingId}
+            onClose={controller.bulk.manageDialog.close}
+            onConfirm={() => {
+              void controller.bulk.manageDialog.confirm();
+            }}
+          />
 
-      <SubscriptionsStatusDialog
-        open={controller.bulk.statusDialog.open}
-        selectedCount={controller.bulk.statusDialog.selectedCount}
-        nextStatus={controller.bulk.statusDialog.nextStatus}
-        isPending={controller.bulk.isPending}
-        onClose={controller.bulk.statusDialog.close}
-        onConfirm={() => {
-          void controller.bulk.statusDialog.confirm();
-        }}
-      />
+          <SubscriptionsStatusDialog
+            open={controller.bulk.statusDialog.open}
+            selectedCount={controller.bulk.statusDialog.selectedCount}
+            nextStatus={controller.bulk.statusDialog.nextStatus}
+            isPending={controller.bulk.isPending}
+            onClose={controller.bulk.statusDialog.close}
+            onConfirm={() => {
+              void controller.bulk.statusDialog.confirm();
+            }}
+          />
+        </>
+      ) : null}
 
       <Snackbar
         open={Boolean(controller.feedback.bulkSuccess)}

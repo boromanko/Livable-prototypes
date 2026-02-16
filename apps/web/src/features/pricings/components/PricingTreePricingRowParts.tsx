@@ -2,7 +2,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Box, Link, Stack, Typography } from '@mui/material';
+import { Box, Checkbox, Link, Stack, Typography } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
 import { formatMoneyCents } from '../../../lib/format/money';
@@ -13,6 +13,7 @@ import {
   TIER_COLUMN_MIN_WIDTH,
   TREE_INDENT_STEP,
   TREE_LABEL_GAP,
+  TREE_SELECTION_SLOT_WIDTH,
   TREE_TOGGLE_SLOT_WIDTH,
   getTierForColumn,
   getTierRangeLabel
@@ -26,6 +27,9 @@ type PricingTreePricingLeftContentProps = {
   subscriptionsCount: number;
   togglePricingFromCaret: (pricingId: string) => void;
   togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
+  selected: boolean;
+  onToggleSelection: () => void;
+  canManagePricings: boolean;
 };
 
 export function PricingTreePricingLeftContent(
@@ -38,11 +42,28 @@ export function PricingTreePricingLeftContent(
     hasSubscriptions,
     subscriptionsCount,
     togglePricingFromCaret,
-    togglePricingSectionLink
+    togglePricingSectionLink,
+    selected,
+    onToggleSelection,
+    canManagePricings
   } = props;
 
   return (
     <Stack direction="row" alignItems="center" spacing={0} sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}>
+      {canManagePricings ? (
+        <Box sx={{ width: TREE_SELECTION_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+          <Checkbox
+            checked={selected}
+            size="small"
+            sx={{ p: 0.5 }}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+            onChange={() => onToggleSelection()}
+            inputProps={{ 'aria-label': `Select pricing ${pricing.internalName}` }}
+          />
+        </Box>
+      ) : null}
       <Box sx={{ width: groupByProduct ? TREE_INDENT_STEP : 0 }} />
       <Box sx={{ width: TREE_TOGGLE_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
         <AppIconButton
@@ -208,10 +229,15 @@ type PricingTreePricingActionsProps = {
   pricing: PricingTreeItem;
   openEditPricing: OpenEditPricing;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
+  canManagePricings: boolean;
 };
 
-export function PricingTreePricingActions(props: PricingTreePricingActionsProps): JSX.Element {
-  const { pricing, openEditPricing, setDeletingPricing } = props;
+export function PricingTreePricingActions(props: PricingTreePricingActionsProps): JSX.Element | null {
+  const { pricing, openEditPricing, setDeletingPricing, canManagePricings } = props;
+
+  if (!canManagePricings) {
+    return null;
+  }
 
   return (
     <Stack

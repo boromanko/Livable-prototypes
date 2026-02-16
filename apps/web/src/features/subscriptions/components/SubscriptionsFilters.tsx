@@ -27,6 +27,7 @@ type SubscriptionsFiltersProps = {
   onAccountFilterChange: (value: string[]) => void;
   onPricingFilterChange: (value: string[]) => void;
   onCreateSubscription: () => void;
+  canCreateSubscription: boolean;
 };
 
 export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Element {
@@ -43,7 +44,8 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
     onStatusFilterChange,
     onAccountFilterChange,
     onPricingFilterChange,
-    onCreateSubscription
+    onCreateSubscription,
+    canCreateSubscription
   } = props;
   const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
   const selectedStatusOptions = statusOptions.filter((status) => statusFilter.includes(status));
@@ -108,9 +110,11 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
           </>
         }
         right={
-          <PrimaryButton startIcon={<AddIcon />} onClick={onCreateSubscription}>
-            New subscription
-          </PrimaryButton>
+          canCreateSubscription ? (
+            <PrimaryButton startIcon={<AddIcon />} onClick={onCreateSubscription}>
+              New subscription
+            </PrimaryButton>
+          ) : null
         }
       />
 

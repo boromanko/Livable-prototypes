@@ -22,6 +22,9 @@ type PricingTreePricingRowProps = {
   togglePricingSectionLink: (pricingId: string, section: 'subscriptions') => void;
   openEditPricing: OpenEditPricing;
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
+  selected: boolean;
+  onToggleSelection: () => void;
+  canManagePricings: boolean;
 };
 
 export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.Element {
@@ -35,7 +38,10 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
     togglePricingFromCaret,
     togglePricingSectionLink,
     openEditPricing,
-    setDeletingPricing
+    setDeletingPricing,
+    selected,
+    onToggleSelection,
+    canManagePricings
   } = props;
 
   return (
@@ -43,7 +49,11 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
       direction="row"
       alignItems="stretch"
       spacing={0}
-      onClick={() => openEditPricing(pricing)}
+      onClick={() => {
+        if (canManagePricings) {
+          openEditPricing(pricing);
+        }
+      }}
       sx={{
         minHeight: 44,
         px: 1.5,
@@ -52,10 +62,14 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
         borderBottom: '1px solid #E1E7EC',
         backgroundColor: '#FFFFFF',
         transition: 'background-color 120ms ease',
-        cursor: 'pointer',
-        '&:hover': {
-          backgroundColor: '#F8FBFD'
-        },
+        cursor: canManagePricings ? 'pointer' : 'default',
+        ...(canManagePricings
+          ? {
+              '&:hover': {
+                backgroundColor: '#F8FBFD'
+              }
+            }
+          : {}),
         '& .pricing-row-cell': {
           backgroundColor: 'inherit',
           transition: 'background-color 120ms ease'
@@ -73,6 +87,9 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
         subscriptionsCount={subscriptionsCount}
         togglePricingFromCaret={togglePricingFromCaret}
         togglePricingSectionLink={togglePricingSectionLink}
+        selected={selected}
+        onToggleSelection={onToggleSelection}
+        canManagePricings={canManagePricings}
       />
 
       <PricingTreePricingValueGrid
@@ -84,6 +101,7 @@ export function PricingTreePricingRow(props: PricingTreePricingRowProps): JSX.El
         pricing={pricing}
         openEditPricing={openEditPricing}
         setDeletingPricing={setDeletingPricing}
+        canManagePricings={canManagePricings}
       />
     </Stack>
   );

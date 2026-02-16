@@ -23,6 +23,7 @@ type PricingsToolbarProps = {
   groupByProduct: boolean;
   onGroupByProductChange: (checked: boolean) => void;
   onAddPricing: () => void;
+  canManagePricings: boolean;
 };
 
 export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
@@ -40,7 +41,8 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
     expandAllDisabled = false,
     groupByProduct,
     onGroupByProductChange,
-    onAddPricing
+    onAddPricing,
+    canManagePricings
   } = props;
 
   return (
@@ -136,9 +138,11 @@ export function PricingsToolbar(props: PricingsToolbarProps): JSX.Element {
           </>
         }
         right={
-          <PrimaryButton startIcon={<AddIcon />} onClick={onAddPricing}>
-            New pricing
-          </PrimaryButton>
+          canManagePricings ? (
+            <PrimaryButton startIcon={<AddIcon />} onClick={onAddPricing}>
+              New pricing
+            </PrimaryButton>
+          ) : null
         }
       />
     </Box>

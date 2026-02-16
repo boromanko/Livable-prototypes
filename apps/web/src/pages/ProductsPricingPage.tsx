@@ -1,5 +1,6 @@
 import { Box, Tab, Tabs, Typography } from '@mui/material';
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { canViewPricings, useDemoRole } from '../demoRole';
 import { prototypeTokens } from '../theme/tokens';
 
 type ProductsPricingTab = 'subscriptions' | 'pricings';
@@ -15,7 +16,15 @@ const PricingsTab = lazy(async () => {
 });
 
 export function ProductsPricingPage(): JSX.Element {
+  const { role } = useDemoRole();
+  const canOpenPricingsTab = canViewPricings(role);
   const [activeTab, setActiveTab] = useState<ProductsPricingTab>('subscriptions');
+
+  useEffect(() => {
+    if (!canOpenPricingsTab && activeTab === 'pricings') {
+      setActiveTab('subscriptions');
+    }
+  }, [activeTab, canOpenPricingsTab]);
 
   return (
     <Box sx={{ minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -54,7 +63,7 @@ export function ProductsPricingPage(): JSX.Element {
             }}
           >
             <Tab value="subscriptions" label="Subscriptions" />
-            <Tab value="pricings" label="Pricings" />
+            {canOpenPricingsTab ? <Tab value="pricings" label="Pricings" /> : null}
           </Tabs>
         </Box>
       </Box>

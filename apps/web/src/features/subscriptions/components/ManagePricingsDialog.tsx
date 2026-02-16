@@ -16,6 +16,7 @@ type ManagePricingsDialogProps = {
   isPending: boolean;
   hasChanges: boolean;
   error: string | null;
+  canCreatePricing: boolean;
   onPricingIdsChange: (pricingIds: string[]) => void;
   onAppendPricingId: (pricingId: string) => void;
   onClose: () => void;
@@ -33,6 +34,7 @@ export function ManagePricingsDialog(props: ManagePricingsDialogProps): JSX.Elem
     isPending,
     hasChanges,
     error,
+    canCreatePricing,
     onPricingIdsChange,
     onAppendPricingId,
     onClose,
@@ -131,7 +133,7 @@ export function ManagePricingsDialog(props: ManagePricingsDialogProps): JSX.Elem
                   error={false}
                   usageCountByPricingId={usageCountByPricingId}
                   showPricingUsage
-                  onCreatePricing={() => setIsCreatePricingOpen(true)}
+                  onCreatePricing={canCreatePricing ? () => setIsCreatePricingOpen(true) : undefined}
                   onChange={onPricingIdsChange}
                 />
               </>
@@ -164,22 +166,24 @@ export function ManagePricingsDialog(props: ManagePricingsDialogProps): JSX.Elem
         </Stack>
       </Dialog>
 
-      <PricingFormDrawer
-        open={isCreatePricingOpen}
-        mode="create"
-        initialPricing={null}
-        onSaved={(pricing) => {
-          setCreatedPricings((previous) => {
-            if (previous.some((item) => item.id === pricing.id)) {
-              return previous;
-            }
+      {canCreatePricing ? (
+        <PricingFormDrawer
+          open={isCreatePricingOpen}
+          mode="create"
+          initialPricing={null}
+          onSaved={(pricing) => {
+            setCreatedPricings((previous) => {
+              if (previous.some((item) => item.id === pricing.id)) {
+                return previous;
+              }
 
-            return [...previous, pricing];
-          });
-          onAppendPricingId(pricing.id);
-        }}
-        onClose={() => setIsCreatePricingOpen(false)}
-      />
+              return [...previous, pricing];
+            });
+            onAppendPricingId(pricing.id);
+          }}
+          onClose={() => setIsCreatePricingOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

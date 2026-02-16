@@ -10,6 +10,7 @@ import {
   type SubscriptionItem
 } from '../../api';
 import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
+import { canManagePricings, useDemoRole } from '../../demoRole';
 import {
   PricingFormFixedPriceSection,
   PricingFormMinimumPriceSection,
@@ -39,6 +40,9 @@ const NestedSubscriptionFormDrawer = lazy(async () => {
 
 export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
   const controller = usePricingFormController(props);
+  const { role } = useDemoRole();
+  const canEditPricingDetails = canManagePricings(role);
+  const isSubscriptionsOnlyEdit = controller.isEdit && !canEditPricingDetails;
   const queryClient = useQueryClient();
   const [nestedSubscriptionModal, setNestedSubscriptionModal] = useState<{
     open: boolean;
@@ -137,6 +141,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
               fieldRef={controller.refs.internalNameFieldRef}
               value={controller.formState.internalName}
               error={controller.validation.pricingNameError}
+              disabled={isSubscriptionsOnlyEdit}
               onChange={controller.actions.setInternalName}
             />
 
@@ -146,11 +151,13 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
               productItems={controller.productItems}
               productsLoading={controller.productsLoading}
               error={controller.validation.productError}
+              disabled={isSubscriptionsOnlyEdit}
               onChange={controller.actions.setProductId}
             />
 
             <PricingFormTypeSection
               value={controller.formState.type}
+              disabled={isSubscriptionsOnlyEdit}
               onChange={controller.actions.setPricingType}
             />
 
@@ -159,6 +166,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                 fieldRef={controller.refs.fixedAmountFieldRef}
                 value={controller.formState.fixedAmountUsd}
                 error={controller.validation.fixedAmountError}
+                disabled={isSubscriptionsOnlyEdit}
                 onChange={controller.actions.setFixedAmount}
                 onBlur={controller.actions.onNormalizeFixedAmountOnBlur}
               />
@@ -170,6 +178,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                 tierValidationErrors={controller.validation.tierValidation.errors}
                 showValidation={controller.showValidation}
                 hasTierErrors={controller.validation.hasTierErrors}
+                disabled={isSubscriptionsOnlyEdit}
                 onAddTier={controller.actions.onAddTier}
                 onRemoveTier={controller.actions.onRemoveTier}
                 onUpdateTierMaxUnits={controller.actions.onUpdateTierMaxUnits}
@@ -184,6 +193,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
                 fieldRef={controller.refs.minimumPriceFieldRef}
                 value={controller.formState.minimumPriceUsd}
                 error={controller.validation.minimumPriceError}
+                disabled={isSubscriptionsOnlyEdit}
                 onChange={controller.actions.setMinimumPrice}
                 onBlur={controller.actions.onNormalizeMinimumPriceOnBlur}
               />

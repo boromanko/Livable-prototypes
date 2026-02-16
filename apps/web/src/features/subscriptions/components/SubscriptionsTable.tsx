@@ -46,11 +46,13 @@ type SubscriptionsTableProps = {
   onSort: (field: SubscriptionsSortField) => void;
   onToggleRowSelection: (subscriptionId: string) => void;
   onEditSubscription: (subscription: SubscriptionItem) => void;
-  onEditPricing: (pricing: SubscriptionItem['pricings'][number]) => void;
+  onEditPricing?: (pricing: SubscriptionItem['pricings'][number]) => void;
   onDeleteSubscription: (subscription: SubscriptionItem) => void;
   onCreateSubscription: () => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  canManageSubscriptions: boolean;
+  canOpenPricingEditor: boolean;
 };
 
 export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element {
@@ -77,7 +79,9 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
     onDeleteSubscription,
     onCreateSubscription,
     onPageChange,
-    onPageSizeChange
+    onPageSizeChange,
+    canManageSubscriptions,
+    canOpenPricingEditor
   } = props;
 
   return (
@@ -105,8 +109,10 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                 <Checkbox
                   checked={allSelected}
                   indeterminate={someSelected}
-                  disabled={isPending || isSelectingAll || total === 0}
+                  disabled={isPending || isSelectingAll || total === 0 || !canManageSubscriptions}
                   onChange={onToggleAllSelection}
+                  size="small"
+                  sx={{ p: 0.5 }}
                   inputProps={{ 'aria-label': 'Select all subscriptions' }}
                 />
               </TableCell>
@@ -203,14 +209,18 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                 const subscriptionProperties = getSubscriptionProperties(subscription);
 
 	                return (
-	                  <TableRow
-	                    key={subscription.id}
-	                    hover
-	                    onClick={() => onEditSubscription(subscription)}
-	                    sx={{
-	                      cursor: 'pointer'
-	                    }}
-	                  >
+                  <TableRow
+                    key={subscription.id}
+                    hover={canManageSubscriptions}
+                    onClick={() => {
+                      if (canManageSubscriptions) {
+                        onEditSubscription(subscription);
+                      }
+                    }}
+                    sx={{
+                      cursor: canManageSubscriptions ? 'pointer' : 'default'
+                    }}
+                  >
                   <TableCell
                     padding="checkbox"
                     onClick={(event) => {
@@ -219,7 +229,10 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   >
                     <Checkbox
                       checked={selectedIds.includes(subscription.id)}
+                      disabled={!canManageSubscriptions}
                       onChange={() => onToggleRowSelection(subscription.id)}
+                      size="small"
+                      sx={{ p: 0.5 }}
                     />
                   </TableCell>
 
@@ -291,7 +304,9 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                             amountLabel={getSubscriptionPricingAmountLabel(pricing)}
                             variant="table"
                             onTitleClick={() => {
-                              onEditPricing(pricing);
+                              if (canOpenPricingEditor) {
+                                onEditPricing?.(pricing);
+                              }
                             }}
                           />
                         ))}
@@ -303,30 +318,34 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                     )}
                   </TableCell>
 
-	                  <TableCell align="right">
-	                    <Stack direction="row" justifyContent="flex-end" alignItems="flex-start" spacing={0.25}>
-                      <Tooltip title="Edit subscription">
-                        <AppIconButton
-                          tone="ghost"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onEditSubscription(subscription);
-                          }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </AppIconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete subscription">
-                        <AppIconButton
-                          tone="ghost"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onDeleteSubscription(subscription);
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </AppIconButton>
-                      </Tooltip>
+                  <TableCell align="right">
+                    <Stack direction="row" justifyContent="flex-end" alignItems="flex-start" spacing={0.25}>
+                      {canManageSubscriptions ? (
+                        <>
+                          <Tooltip title="Edit subscription">
+                            <AppIconButton
+                              tone="ghost"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onEditSubscription(subscription);
+                              }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </AppIconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete subscription">
+                            <AppIconButton
+                              tone="ghost"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onDeleteSubscription(subscription);
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </AppIconButton>
+                          </Tooltip>
+                        </>
+                      ) : null}
                     </Stack>
                   </TableCell>
                   </TableRow>
@@ -338,8 +357,8 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   <EmptyState
                     title="No subscriptions found"
                     description="Adjust filters or create your first subscription."
-                    actionLabel="New subscription"
-                    onActionClick={onCreateSubscription}
+                    actionLabel={canManageSubscriptions ? 'New subscription' : undefined}
+                    onActionClick={canManageSubscriptions ? onCreateSubscription : undefined}
                   />
                 </TableCell>
               </TableRow>

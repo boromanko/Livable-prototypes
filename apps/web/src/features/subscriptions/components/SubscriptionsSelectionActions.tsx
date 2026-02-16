@@ -9,6 +9,7 @@ import { AppIconButton, BorderedButton } from '../../../components/buttons';
 
 type SubscriptionsSelectionActionsProps = {
   selectedCount: number;
+  canManageSubscriptions: boolean;
   statusValue: SubscriptionStatus | '';
   isStatusLoading: boolean;
   isPending: boolean;
@@ -25,6 +26,7 @@ export function SubscriptionsSelectionActions(
 ): JSX.Element {
   const {
     selectedCount,
+    canManageSubscriptions,
     statusValue,
     isStatusLoading,
     isPending,
@@ -33,7 +35,7 @@ export function SubscriptionsSelectionActions(
     onOpenDeleteSubscriptions,
     onClearSelection
   } = props;
-  const isVisible = selectedCount > 0;
+  const isVisible = canManageSubscriptions && selectedCount > 0;
   const selectedLabel = `${selectedCount} item${selectedCount === 1 ? '' : 's'} selected`;
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<HTMLElement | null>(null);
   const statusLabel = isStatusLoading

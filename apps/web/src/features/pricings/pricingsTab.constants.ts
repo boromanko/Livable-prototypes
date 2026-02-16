@@ -22,9 +22,10 @@ export const LEFT_CONTENT_MIN_WIDTH = 340;
 export const ROW_HORIZONTAL_PADDING_PX = 24;
 export const TREE_INDENT_STEP = 24;
 export const TREE_TOGGLE_SLOT_WIDTH = 24;
+export const TREE_SELECTION_SLOT_WIDTH = 34;
 export const TREE_LABEL_GAP = 8;
-export const PRODUCT_ROW_STICKY_TOP = 0;
-export const PRICING_ROW_STICKY_TOP = 40;
+export const PRODUCT_ROW_STICKY_TOP = 40;
+export const PRICING_ROW_STICKY_TOP = 80;
 
 export const TABLE_GHOST_BUTTON_SX = {
   width: 'fit-content',

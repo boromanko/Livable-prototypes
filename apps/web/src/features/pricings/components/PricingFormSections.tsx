@@ -54,11 +54,12 @@ type PricingFormNameSectionProps = {
   fieldRef: React.RefObject<HTMLDivElement>;
   value: string;
   error: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
 };
 
 export function PricingFormNameSection(props: PricingFormNameSectionProps): JSX.Element {
-  const { fieldRef, value, error, onChange } = props;
+  const { fieldRef, value, error, disabled = false, onChange } = props;
 
   return (
     <Stack spacing={2} ref={fieldRef}>
@@ -67,6 +68,7 @@ export function PricingFormNameSection(props: PricingFormNameSectionProps): JSX.
         placeholder="Add pricing name"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
         error={error}
         helperText={error ? 'Pricing name is required.' : undefined}
         sx={getFormFieldSx(error)}
@@ -81,11 +83,12 @@ type PricingFormProductSectionProps = {
   productItems: ProductItem[];
   productsLoading: boolean;
   error: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
 };
 
 export function PricingFormProductSection(props: PricingFormProductSectionProps): JSX.Element {
-  const { fieldRef, value, productItems, productsLoading, error, onChange } = props;
+  const { fieldRef, value, productItems, productsLoading, error, disabled = false, onChange } = props;
 
   return (
     <Stack spacing={2} ref={fieldRef}>
@@ -94,7 +97,7 @@ export function PricingFormProductSection(props: PricingFormProductSectionProps)
         select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        disabled={productsLoading}
+        disabled={productsLoading || disabled}
         error={error}
         SelectProps={{
           displayEmpty: true,
@@ -399,11 +402,12 @@ export function PricingFormSubscriptionsSection(
 
 type PricingFormTypeSectionProps = {
   value: PricingType;
+  disabled?: boolean;
   onChange: (type: PricingType) => void;
 };
 
 export function PricingFormTypeSection(props: PricingFormTypeSectionProps): JSX.Element {
-  const { value, onChange } = props;
+  const { value, disabled = false, onChange } = props;
 
   return (
     <Stack spacing={2}>
@@ -419,6 +423,7 @@ export function PricingFormTypeSection(props: PricingFormTypeSectionProps): JSX.
       >
         <PrimaryButton
           onClick={() => onChange('FIXED')}
+          disabled={disabled}
           variant={value === 'FIXED' ? 'contained' : 'text'}
           sx={{
             borderRadius: 0,
@@ -435,6 +440,7 @@ export function PricingFormTypeSection(props: PricingFormTypeSectionProps): JSX.
         </PrimaryButton>
         <PrimaryButton
           onClick={() => onChange('TIERED')}
+          disabled={disabled}
           variant={value === 'TIERED' ? 'contained' : 'text'}
           sx={{
             borderRadius: 0,
@@ -458,12 +464,13 @@ type PricingFormFixedPriceSectionProps = {
   fieldRef: React.RefObject<HTMLDivElement>;
   value: string;
   error: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
   onBlur: () => void;
 };
 
 export function PricingFormFixedPriceSection(props: PricingFormFixedPriceSectionProps): JSX.Element {
-  const { fieldRef, value, error, onChange, onBlur } = props;
+  const { fieldRef, value, error, disabled = false, onChange, onBlur } = props;
 
   return (
     <Stack spacing={2} ref={fieldRef}>
@@ -473,6 +480,7 @@ export function PricingFormFixedPriceSection(props: PricingFormFixedPriceSection
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}
+        disabled={disabled}
         error={error}
         helperText={error ? 'Fixed amount is required (USD).' : undefined}
         inputProps={{ inputMode: 'decimal' }}
@@ -492,6 +500,7 @@ type PricingFormTieredSectionProps = {
   tierValidationErrors: TierDraftErrors[];
   showValidation: boolean;
   hasTierErrors: boolean;
+  disabled?: boolean;
   onAddTier: () => void;
   onRemoveTier: (tierId: string) => void;
   onUpdateTierMaxUnits: (tierId: string, value: string) => void;
@@ -508,6 +517,7 @@ export function PricingFormTieredSection(props: PricingFormTieredSectionProps): 
     tierValidationErrors,
     showValidation,
     hasTierErrors,
+    disabled = false,
     onAddTier,
     onRemoveTier,
     onUpdateTierMaxUnits,
@@ -525,6 +535,7 @@ export function PricingFormTieredSection(props: PricingFormTieredSectionProps): 
         tierValidationErrors={tierValidationErrors}
         showValidation={showValidation}
         hasTierErrors={hasTierErrors}
+        disabled={disabled}
         onAddTier={onAddTier}
         onRemoveTier={onRemoveTier}
         onUpdateTierMaxUnits={onUpdateTierMaxUnits}
@@ -540,6 +551,7 @@ type PricingFormMinimumPriceSectionProps = {
   fieldRef: React.RefObject<HTMLDivElement>;
   value: string;
   error: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
   onBlur: () => void;
 };
@@ -547,7 +559,7 @@ type PricingFormMinimumPriceSectionProps = {
 export function PricingFormMinimumPriceSection(
   props: PricingFormMinimumPriceSectionProps
 ): JSX.Element {
-  const { fieldRef, value, error, onChange, onBlur } = props;
+  const { fieldRef, value, error, disabled = false, onChange, onBlur } = props;
 
   return (
     <Stack spacing={2} ref={fieldRef}>
@@ -560,6 +572,7 @@ export function PricingFormMinimumPriceSection(
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}
+        disabled={disabled}
         error={error}
         helperText={error ? 'Enter a valid USD amount.' : undefined}
         inputProps={{ inputMode: 'decimal' }}

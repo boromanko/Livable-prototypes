@@ -21,7 +21,6 @@ import {
 
 type PricingProductSectionProps = {
   product: VisibleProduct;
-  productIndex: number;
   groupByProduct: boolean;
   productPricings: PricingTreeItem[];
   productTierColumnCount: number;
@@ -36,12 +35,14 @@ type PricingProductSectionProps = {
   setDetachConfirmTarget: React.Dispatch<React.SetStateAction<DetachConfirmTarget | null>>;
   openEditSubscription: OpenEditSubscription;
   openCreatePricing: (productId?: string) => void;
+  selectedPricingIds: string[];
+  onTogglePricingSelection: (pricingId: string) => void;
+  canManagePricings: boolean;
 };
 
 export function PricingProductSection(props: PricingProductSectionProps): JSX.Element {
   const {
     product,
-    productIndex,
     groupByProduct,
     productPricings,
     productTierColumnCount,
@@ -55,7 +56,10 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
     setDeletingPricing,
     setDetachConfirmTarget,
     openEditSubscription,
-    openCreatePricing
+    openCreatePricing,
+    selectedPricingIds,
+    onTogglePricingSelection,
+    canManagePricings
   } = props;
 
   return (
@@ -79,7 +83,6 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
             px: 1.5,
             py: 0.5,
             backgroundColor: '#EEF2F6',
-            borderTop: productIndex === 0 ? 'none' : '1px solid #E1E7EC',
             cursor: 'pointer',
             position: 'sticky',
             top: PRODUCT_ROW_STICKY_TOP,
@@ -118,25 +121,29 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
             <Typography sx={{ fontWeight: 600, fontSize: 14, color: '#98A4B3' }}>
               {productPricings.length} pricings
             </Typography>
-            <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
-              |
-            </Typography>
-            <Tooltip title="Create new pricing for this product">
-              <AppIconButton
-                tone="plain"
-                aria-label="New pricing"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openCreatePricing(product.id);
-                }}
-                onKeyDown={(event) => {
-                  event.stopPropagation();
-                }}
-                sx={{ width: 24, height: 24, p: 0 }}
-              >
-                <AddIcon sx={{ fontSize: 18 }} />
-              </AppIconButton>
-            </Tooltip>
+            {canManagePricings ? (
+              <>
+                <Typography sx={{ fontWeight: 600, fontSize: 16, lineHeight: 1, color: '#B8C4CE' }}>
+                  |
+                </Typography>
+                <Tooltip title="Create new pricing for this product">
+                  <AppIconButton
+                    tone="plain"
+                    aria-label="New pricing"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openCreatePricing(product.id);
+                    }}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                    }}
+                    sx={{ width: 24, height: 24, p: 0 }}
+                  >
+                    <AddIcon sx={{ fontSize: 18 }} />
+                  </AppIconButton>
+                </Tooltip>
+              </>
+            ) : null}
           </Stack>
         </Stack>
       ) : null}
@@ -163,6 +170,9 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
                   togglePricingSectionLink={togglePricingSectionLink}
                   openEditPricing={openEditPricing}
                   setDeletingPricing={setDeletingPricing}
+                  selected={selectedPricingIds.includes(pricing.id)}
+                  onToggleSelection={() => onTogglePricingSelection(pricing.id)}
+                  canManagePricings={canManagePricings}
                 />
 
                 {isPricingExpanded ? (
@@ -173,6 +183,7 @@ export function PricingProductSection(props: PricingProductSectionProps): JSX.El
                     subscriptions={subscriptions}
                     openEditSubscription={openEditSubscription}
                     setDetachConfirmTarget={setDetachConfirmTarget}
+                    canManagePricings={canManagePricings}
                   />
                 ) : null}
               </Box>

@@ -12,7 +12,8 @@ import {
   ACTIONS_COLUMN_WIDTH,
   LEFT_CONTENT_MIN_WIDTH,
   TREE_INDENT_STEP,
-  TREE_LABEL_GAP
+  TREE_LABEL_GAP,
+  TREE_SELECTION_SLOT_WIDTH
 } from '../pricingsTab.utils';
 
 type PricingTreeSubscriptionUsageRowProps = {
@@ -23,6 +24,7 @@ type PricingTreeSubscriptionUsageRowProps = {
   isLast: boolean;
   onEditSubscription: OpenEditSubscription;
   setDetachConfirmTarget: React.Dispatch<React.SetStateAction<DetachConfirmTarget | null>>;
+  canManagePricings: boolean;
 };
 
 const SCOPE_COLUMN_WIDTH = 108;
@@ -39,7 +41,8 @@ export function PricingTreeSubscriptionUsageRow(
     subscription,
     isLast,
     onEditSubscription,
-    setDetachConfirmTarget
+    setDetachConfirmTarget,
+    canManagePricings
   } = props;
 
   const scopeLabel = subscription.scope === 'ACCOUNT' ? 'Acct. Level' : 'Prop. Level';
@@ -73,6 +76,7 @@ export function PricingTreeSubscriptionUsageRow(
       }}
     >
       <Stack direction="row" alignItems="center" spacing={0} sx={{ flex: 1, minWidth: LEFT_CONTENT_MIN_WIDTH }}>
+        {canManagePricings ? <Box sx={{ width: TREE_SELECTION_SLOT_WIDTH }} /> : null}
         <Box sx={{ width: TREE_INDENT_STEP * (groupByProduct ? 3 : 2) }} />
         <Box sx={{ width: TREE_LABEL_GAP }} />
         <Stack spacing={0.25} sx={{ py: 0.5 }}>
@@ -154,34 +158,36 @@ export function PricingTreeSubscriptionUsageRow(
         showColumnDividers={false}
       />
 
-      <Box
-        sx={{
-          width: ACTIONS_COLUMN_WIDTH,
-          pl: 0.75,
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          borderLeft: 'none'
-        }}
-      >
-        <Tooltip title="Detach pricing from subscription">
-          <AppIconButton
-            tone="ghost"
-            aria-label={`Detach pricing from ${subscription.account.companyName}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              setDetachConfirmTarget({
-                pricingId: pricing.id,
-                subscriptionId: subscription.id,
-                title: `Detach pricing from ${scopeLabel.toLowerCase()} subscription (${subscription.account.companyName})`
-              });
-            }}
-          >
-            <CancelOutlinedIcon fontSize="small" />
-          </AppIconButton>
-        </Tooltip>
-      </Box>
+      {canManagePricings ? (
+        <Box
+          sx={{
+            width: ACTIONS_COLUMN_WIDTH,
+            pl: 0.75,
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            borderLeft: 'none'
+          }}
+        >
+          <Tooltip title="Detach pricing from subscription">
+            <AppIconButton
+              tone="ghost"
+              aria-label={`Detach pricing from ${subscription.account.companyName}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setDetachConfirmTarget({
+                  pricingId: pricing.id,
+                  subscriptionId: subscription.id,
+                  title: `Detach pricing from ${scopeLabel.toLowerCase()} subscription (${subscription.account.companyName})`
+                });
+              }}
+            >
+              <CancelOutlinedIcon fontSize="small" />
+            </AppIconButton>
+          </Tooltip>
+        </Box>
+      ) : null}
     </Stack>
   );
 }

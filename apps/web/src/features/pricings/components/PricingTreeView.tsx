@@ -1,6 +1,6 @@
-import { Box, Stack } from '@mui/material';
+import { Box, Checkbox, Stack } from '@mui/material';
 import type { PricingTreeItem } from '../../../api';
-import { getProductTierColumnCount } from '../pricingsTab.utils';
+import { TREE_SELECTION_SLOT_WIDTH, getProductTierColumnCount } from '../pricingsTab.utils';
 import { PricingProductSection } from './PricingProductSection';
 import type {
   DetachConfirmTarget,
@@ -29,6 +29,12 @@ type PricingTreeViewProps = {
   setDeletingPricing: React.Dispatch<React.SetStateAction<PricingTreeItem | null>>;
   setDetachConfirmTarget: React.Dispatch<React.SetStateAction<DetachConfirmTarget | null>>;
   openCreatePricing: (productId?: string) => void;
+  allSelected: boolean;
+  someSelected: boolean;
+  onToggleAllSelection: () => void;
+  selectedPricingIds: string[];
+  onTogglePricingSelection: (pricingId: string) => void;
+  canManagePricings: boolean;
 };
 
 const flatProductPlaceholder: VisibleProduct = {
@@ -56,7 +62,13 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
     openEditSubscription,
     setDeletingPricing,
     setDetachConfirmTarget,
-    openCreatePricing
+    openCreatePricing,
+    allSelected,
+    someSelected,
+    onToggleAllSelection,
+    selectedPricingIds,
+    onTogglePricingSelection,
+    canManagePricings
   } = props;
 
   const products = groupByProduct ? visibleProducts : [flatProductPlaceholder];
@@ -69,12 +81,55 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
       <Stack
         spacing={0}
         sx={{
-          minWidth: minTreeWidthPx,
-          border: '1px solid #E1E7EC',
-          borderRadius: 1
+          minWidth: minTreeWidthPx
         }}
       >
-        {products.map((product, productIndex) => {
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1}
+          sx={{
+            minHeight: 40,
+            px: 1.5,
+            py: 0.5,
+            borderBottom: '1px solid #E1E7EC',
+            backgroundColor: '#FFFFFF',
+            position: 'sticky',
+            top: 0,
+            zIndex: 40
+          }}
+        >
+          {canManagePricings ? (
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={0}
+              sx={{ cursor: 'pointer' }}
+              onClick={onToggleAllSelection}
+            >
+              <Box sx={{ width: TREE_SELECTION_SLOT_WIDTH, display: 'flex', justifyContent: 'center' }}>
+                <Checkbox
+                  checked={allSelected}
+                  indeterminate={someSelected}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onChange={onToggleAllSelection}
+                  size="small"
+                  sx={{ p: 0.5 }}
+                  aria-label="Select all pricings"
+                />
+              </Box>
+              <Box sx={{ pl: 1.5, fontWeight: 500, fontSize: 14, color: '#212934' }}>
+                Select all pricings
+              </Box>
+            </Stack>
+          ) : (
+            <Box sx={{ px: 0.75, fontWeight: 600, fontSize: 14, color: '#212934' }}>Pricings</Box>
+          )}
+        </Stack>
+
+        {products.map((product) => {
           const productPricings = groupByProduct
             ? (pricingsByProductId.get(product.id) ?? [])
             : flatPricings;
@@ -87,7 +142,6 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
             <PricingProductSection
               key={product.id}
               product={product}
-              productIndex={productIndex}
               groupByProduct={groupByProduct}
               productPricings={productPricings}
               productTierColumnCount={productTierColumnCount}
@@ -102,6 +156,9 @@ export function PricingTreeView(props: PricingTreeViewProps): JSX.Element {
               setDeletingPricing={setDeletingPricing}
               setDetachConfirmTarget={setDetachConfirmTarget}
               openCreatePricing={openCreatePricing}
+              selectedPricingIds={selectedPricingIds}
+              onTogglePricingSelection={onTogglePricingSelection}
+              canManagePricings={canManagePricings}
             />
           );
         })}

@@ -14,6 +14,7 @@ import {
   SubscriptionFormPropertySection
 } from './components/SubscriptionFormSections';
 import { useSubscriptionFormController } from './subscriptionForm.hooks';
+import { canManagePricings, useDemoRole } from '../../demoRole';
 
 type SubscriptionFormDrawerProps = {
   open: boolean;
@@ -28,6 +29,8 @@ type SubscriptionFormDrawerProps = {
 
 export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.Element {
   const controller = useSubscriptionFormController(props);
+  const { role } = useDemoRole();
+  const canEditPricings = canManagePricings(role);
   const [statusMenuAnchor, setStatusMenuAnchor] = useState<HTMLElement | null>(null);
   const [nestedPricingModal, setNestedPricingModal] = useState<{
     open: boolean;
@@ -216,8 +219,8 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
               pricingAvailabilityById={controller.pricingAvailabilityById}
               invalidSelectedPricingIds={controller.invalidSelectedPricingIds}
               availabilityLoading={controller.availabilityLoading}
-              onCreatePricing={openCreatePricing}
-              onEditPricing={openEditPricing}
+              onCreatePricing={canEditPricings ? openCreatePricing : undefined}
+              onEditPricing={canEditPricings ? openEditPricing : undefined}
               onChange={controller.actions.setPricingIds}
             />
 
@@ -253,17 +256,19 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
         </Stack>
       </Dialog>
 
-      <NestedPricingFormDrawer
-        open={nestedPricingModal.open}
-        mode={nestedPricingModal.mode}
-        initialPricing={nestedPricingModal.initialPricing}
-        onSaved={(pricing) => {
-          if (nestedPricingModal.mode === 'create') {
-            controller.actions.appendPricingId(pricing.id);
-          }
-        }}
-        onClose={closeCreatePricing}
-      />
+      {canEditPricings ? (
+        <NestedPricingFormDrawer
+          open={nestedPricingModal.open}
+          mode={nestedPricingModal.mode}
+          initialPricing={nestedPricingModal.initialPricing}
+          onSaved={(pricing) => {
+            if (nestedPricingModal.mode === 'create') {
+              controller.actions.appendPricingId(pricing.id);
+            }
+          }}
+          onClose={closeCreatePricing}
+        />
+      ) : null}
 
       <Menu
         anchorEl={statusMenuAnchor}

@@ -10,6 +10,7 @@ type PricingTreeUsageRowsProps = {
   subscriptions: PricingTreeSubscriptionSummary[];
   openEditSubscription: OpenEditSubscription;
   setDetachConfirmTarget: React.Dispatch<React.SetStateAction<DetachConfirmTarget | null>>;
+  canManagePricings: boolean;
 };
 
 export function PricingTreeUsageRows(props: PricingTreeUsageRowsProps): JSX.Element {
@@ -19,7 +20,8 @@ export function PricingTreeUsageRows(props: PricingTreeUsageRowsProps): JSX.Elem
     productTierColumnCount,
     subscriptions,
     openEditSubscription,
-    setDetachConfirmTarget
+    setDetachConfirmTarget,
+    canManagePricings
   } = props;
 
   return (
@@ -34,6 +36,7 @@ export function PricingTreeUsageRows(props: PricingTreeUsageRowsProps): JSX.Elem
           isLast={index === subscriptions.length - 1}
           onEditSubscription={openEditSubscription}
           setDetachConfirmTarget={setDetachConfirmTarget}
+          canManagePricings={canManagePricings}
         />
       ))}
     </Stack>

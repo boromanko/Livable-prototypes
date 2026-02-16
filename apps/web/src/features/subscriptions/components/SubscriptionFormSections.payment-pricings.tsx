@@ -85,7 +85,7 @@ type SubscriptionFormPricingsSectionProps = {
   availabilityLoading?: boolean;
   usageCountByPricingId?: Record<string, number>;
   showPricingUsage?: boolean;
-  onCreatePricing: () => void;
+  onCreatePricing?: () => void;
   onEditPricing?: (pricing: PricingItem) => void;
   onChange: (pricingIds: string[]) => void;
 };
@@ -190,16 +190,20 @@ export function SubscriptionFormPricingsSection(
             }}
           >
             {paperProps.children}
-            <Divider />
-            <MenuItem
-              sx={{ minHeight: 48, fontWeight: 500 }}
-              onMouseDown={(event) => {
-                event.preventDefault();
-              }}
-              onClick={onCreatePricing}
-            >
-              + Add new pricing
-            </MenuItem>
+            {onCreatePricing ? (
+              <>
+                <Divider />
+                <MenuItem
+                  sx={{ minHeight: 48, fontWeight: 500 }}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                  }}
+                  onClick={onCreatePricing}
+                >
+                  + Add new pricing
+                </MenuItem>
+              </>
+            ) : null}
           </Paper>
         )}
         slotProps={{

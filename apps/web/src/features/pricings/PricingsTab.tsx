@@ -1,10 +1,14 @@
 import { Alert, Box, Snackbar, Stack, Typography } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
-import { Suspense, lazy, useMemo } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { api, queryKeys } from '../../api';
 import { EmptyState } from '../../components/layout';
+import { canManagePricings as canManagePricingsByRole, canViewPricings, useDemoRole } from '../../demoRole';
+import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
 import { PricingConfirmationDialogs } from './components/PricingConfirmationDialogs';
 import { PricingFiltersPopover } from './components/PricingFiltersPopover';
+import { PricingsBulkDeleteDialog } from './components/PricingsBulkDeleteDialog';
+import { PricingsSelectionActions } from './components/PricingsSelectionActions';
 import { PricingSortMenu } from './components/PricingSortMenu';
 import { PricingTreeView } from './components/PricingTreeView';
 import { PricingsToolbar } from './components/PricingsToolbar';
@@ -23,9 +27,15 @@ const SubscriptionFormDrawer = lazy(async () => {
 });
 
 export function PricingsTab(): JSX.Element {
+  const { role } = useDemoRole();
+  const canManagePricings = canManagePricingsByRole(role);
+  const canReadPricings = canViewPricings(role);
   const state = usePricingsTabState();
   const tree = usePricingTreeInteractions();
   const queryClient = useQueryClient();
+  const [selectedPricingIds, setSelectedPricingIds] = useState<string[]>([]);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
 
   const data = usePricingsTabData({
     search: state.filters.search,
@@ -53,32 +63,103 @@ export function PricingsTab(): JSX.Element {
     () => data.flatPricings.map((pricing) => `pricing:${pricing.id}`),
     [data.flatPricings]
   );
-  const allProductIds = useMemo(
-    () => data.visibleProducts.map((product) => product.id),
-    [data.visibleProducts]
-  );
   const allPricingRowsExpanded =
     allPricingRowKeys.length > 0 &&
     allPricingRowKeys.every((pricingKey) => tree.expandedPricings.has(pricingKey));
-  const allProductsExpanded =
-    !state.view.groupByProduct ||
-    allProductIds.every((productId) => !tree.collapsedProducts.has(productId));
-  const allRowsExpanded = allPricingRowsExpanded && allProductsExpanded;
+  const allRowsExpanded = allPricingRowsExpanded;
   const expandAllDisabled = allPricingRowKeys.length === 0;
+  const visiblePricingIds = useMemo(
+    () => data.flatPricings.map((pricing) => pricing.id),
+    [data.flatPricings]
+  );
+  const selectedPricingIdSet = useMemo(() => new Set(selectedPricingIds), [selectedPricingIds]);
+  const allVisibleSelected =
+    visiblePricingIds.length > 0 &&
+    visiblePricingIds.every((pricingId) => selectedPricingIdSet.has(pricingId));
+  const someVisibleSelected =
+    visiblePricingIds.some((pricingId) => selectedPricingIdSet.has(pricingId)) && !allVisibleSelected;
+
+  useEffect(() => {
+    const visibleSet = new Set(visiblePricingIds);
+
+    setSelectedPricingIds((previous) => {
+      const next = previous.filter((pricingId) => visibleSet.has(pricingId));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [visiblePricingIds]);
+
+  useEffect(() => {
+    if (selectedPricingIds.length === 0) {
+      setIsBulkDeleteDialogOpen(false);
+      setBulkDeleteError(null);
+    }
+  }, [selectedPricingIds.length]);
+
+  useEffect(() => {
+    if (canManagePricings) {
+      return;
+    }
+
+    setSelectedPricingIds([]);
+    setBulkDeleteError(null);
+    setIsBulkDeleteDialogOpen(false);
+    state.pricingModal.closePricingModal();
+    state.confirmations.setDeletingPricing(null);
+  }, [canManagePricings]);
 
   function toggleExpandAllRows(): void {
     if (allRowsExpanded) {
       tree.setExpandedPricings(new Set());
-      if (state.view.groupByProduct) {
-        tree.setCollapsedProducts(new Set(allProductIds));
-      }
       return;
     }
 
-    if (state.view.groupByProduct) {
-      tree.setCollapsedProducts(new Set());
-    }
     tree.setExpandedPricings(new Set(allPricingRowKeys));
+  }
+
+  function togglePricingSelection(pricingId: string): void {
+    setSelectedPricingIds((previous) => {
+      if (previous.includes(pricingId)) {
+        return previous.filter((id) => id !== pricingId);
+      }
+
+      return [...previous, pricingId];
+    });
+  }
+
+  function toggleAllVisibleSelection(): void {
+    if (allVisibleSelected) {
+      setSelectedPricingIds([]);
+      return;
+    }
+
+    setSelectedPricingIds(visiblePricingIds);
+  }
+
+  async function confirmBulkDeletePricings(): Promise<void> {
+    if (selectedPricingIds.length === 0 || data.isDeletePending) {
+      return;
+    }
+
+    setBulkDeleteError(null);
+    const targetPricingIds = [...selectedPricingIds];
+    let deletedCount = 0;
+
+    for (const pricingId of targetPricingIds) {
+      try {
+        await data.deletePricing(pricingId);
+        deletedCount += 1;
+        setSelectedPricingIds((previous) => previous.filter((id) => id !== pricingId));
+      } catch (error) {
+        setBulkDeleteError(getApiErrorMessage(error));
+        return;
+      }
+    }
+
+    setIsBulkDeleteDialogOpen(false);
+    setSelectedPricingIds([]);
+    state.feedback.setSuccessMessage(
+      deletedCount === 1 ? '1 pricing deleted.' : `${deletedCount} pricings deleted.`
+    );
   }
 
   function openEditSubscription(subscriptionId: string): void {
@@ -95,9 +176,27 @@ export function PricingsTab(): JSX.Element {
       });
   }
 
+  if (!canReadPricings) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="info">Pricings are not available for Account role in this demo.</Alert>
+      </Box>
+    );
+  }
+
+  const selectedCount = canManagePricings ? selectedPricingIds.length : 0;
+
   return (
     <>
-      <Stack spacing={0} sx={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+      <Stack
+        spacing={0}
+        sx={{
+          height: '100%',
+          minHeight: 0,
+          overflow: 'hidden',
+          pb: selectedCount > 0 ? '64px' : 0
+        }}
+      >
         <PricingsToolbar
           search={state.filters.search}
           onSearchChange={state.filters.setSearch}
@@ -113,6 +212,7 @@ export function PricingsTab(): JSX.Element {
           groupByProduct={state.view.groupByProduct}
           onGroupByProductChange={state.view.setGroupByProduct}
           onAddPricing={() => state.pricingModal.openCreatePricing()}
+          canManagePricings={canManagePricings}
         />
 
         <PricingFiltersPopover
@@ -143,7 +243,7 @@ export function PricingsTab(): JSX.Element {
 
         <Box
           sx={{
-            p: { xs: 1.5, sm: 2 },
+            p: 0,
             flex: 1,
             minHeight: 0,
             overflow: 'hidden',
@@ -162,9 +262,13 @@ export function PricingsTab(): JSX.Element {
           ) : data.isTreeEmpty ? (
             <EmptyState
               title="No pricings found"
-              description="Create your first pricing or adjust filters."
-              actionLabel="New pricing"
-              onActionClick={() => state.pricingModal.openCreatePricing()}
+              description={
+                canManagePricings
+                  ? 'Create your first pricing or adjust filters.'
+                  : 'No pricings match the current filters.'
+              }
+              actionLabel={canManagePricings ? 'New pricing' : undefined}
+              onActionClick={canManagePricings ? () => state.pricingModal.openCreatePricing() : undefined}
             />
           ) : (
             <PricingTreeView
@@ -186,12 +290,34 @@ export function PricingsTab(): JSX.Element {
               setDeletingPricing={state.confirmations.setDeletingPricing}
               setDetachConfirmTarget={state.confirmations.setDetachConfirmTarget}
               openCreatePricing={state.pricingModal.openCreatePricing}
+              allSelected={canManagePricings ? allVisibleSelected : false}
+              someSelected={canManagePricings ? someVisibleSelected : false}
+              onToggleAllSelection={canManagePricings ? toggleAllVisibleSelection : () => undefined}
+              selectedPricingIds={canManagePricings ? selectedPricingIds : []}
+              onTogglePricingSelection={canManagePricings ? togglePricingSelection : () => undefined}
+              canManagePricings={canManagePricings}
             />
           )}
         </Box>
       </Stack>
 
-      {state.pricingModal.pricingModalOpen ? (
+      {canManagePricings ? (
+        <PricingsSelectionActions
+          selectedCount={selectedCount}
+          isPending={data.isDeletePending}
+          onOpenDeletePricings={() => {
+            setBulkDeleteError(null);
+            setIsBulkDeleteDialogOpen(true);
+          }}
+          onClearSelection={() => {
+            setSelectedPricingIds([]);
+            setBulkDeleteError(null);
+            setIsBulkDeleteDialogOpen(false);
+          }}
+        />
+      ) : null}
+
+      {canManagePricings && state.pricingModal.pricingModalOpen ? (
         <Suspense fallback={null}>
           <PricingFormDrawer
             open={state.pricingModal.pricingModalOpen}
@@ -242,7 +368,7 @@ export function PricingsTab(): JSX.Element {
       ) : null}
 
       <PricingConfirmationDialogs
-        deletingPricing={state.confirmations.deletingPricing}
+        deletingPricing={canManagePricings ? state.confirmations.deletingPricing : null}
         detachConfirmTarget={state.confirmations.detachConfirmTarget}
         actionError={state.feedback.actionError}
         isDeletePending={data.isDeletePending}
@@ -255,6 +381,22 @@ export function PricingsTab(): JSX.Element {
           void confirmDetach();
         }}
       />
+
+      {canManagePricings ? (
+        <PricingsBulkDeleteDialog
+          open={isBulkDeleteDialogOpen}
+          selectedCount={selectedCount}
+          error={bulkDeleteError}
+          isPending={data.isDeletePending}
+          onClose={() => {
+            setBulkDeleteError(null);
+            setIsBulkDeleteDialogOpen(false);
+          }}
+          onConfirm={() => {
+            void confirmBulkDeletePricings();
+          }}
+        />
+      ) : null}
 
       <Snackbar
         open={Boolean(state.feedback.successMessage)}

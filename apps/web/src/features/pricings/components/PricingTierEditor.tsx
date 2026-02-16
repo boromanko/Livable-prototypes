@@ -10,6 +10,7 @@ type PricingTierEditorProps = {
   tierValidationErrors: TierDraftErrors[];
   showValidation: boolean;
   hasTierErrors: boolean;
+  disabled?: boolean;
   onAddTier: () => void;
   onRemoveTier: (tierId: string) => void;
   onUpdateTierMaxUnits: (tierId: string, value: string) => void;
@@ -29,6 +30,7 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
     tierValidationErrors,
     showValidation,
     hasTierErrors,
+    disabled = false,
     onAddTier,
     onRemoveTier,
     onUpdateTierMaxUnits,
@@ -111,6 +113,7 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                 >
                   <InputBase
                     value={tier.maxUnits}
+                    disabled={disabled}
                     onChange={(event) => onUpdateTierMaxUnits(tier.id, event.target.value)}
                     onBlur={() => onNormalizeTierMaxUnitsOnBlur(tier.id)}
                     placeholder={isLastTier ? `> ${Math.max(0, start - 1)}` : `${start}`}
@@ -151,6 +154,7 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                     <Typography sx={{ color: '#8895A7', fontSize: 18 }}>$</Typography>
                     <InputBase
                       value={tier.unitAmountUsd}
+                      disabled={disabled}
                       onChange={(event) => onUpdateTierUnitPrice(tier.id, event.target.value)}
                       onBlur={() => onNormalizeTierUnitPriceOnBlur(tier.id)}
                       placeholder="0.00"
@@ -172,6 +176,7 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
                   {!isLastTier ? (
                     <AppIconButton
                       aria-label={`Remove tier ${index + 1}`}
+                      disabled={disabled}
                       onClick={() => onRemoveTier(tier.id)}
                       tone="ghost"
                     >
@@ -187,6 +192,7 @@ export function PricingTierEditor(props: PricingTierEditorProps): JSX.Element {
 
       <SecondaryButton
         startIcon={<AddIcon />}
+        disabled={disabled}
         onClick={onAddTier}
         sx={{
           width: 'fit-content',
