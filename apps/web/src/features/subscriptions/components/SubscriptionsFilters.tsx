@@ -114,7 +114,7 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
         }
         right={
           <PrimaryButton startIcon={<AddIcon />} onClick={onCreateSubscription}>
-            Create Subscription
+            New subscription
           </PrimaryButton>
         }
       />

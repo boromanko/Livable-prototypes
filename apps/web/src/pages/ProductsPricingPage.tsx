@@ -1,4 +1,4 @@
-import { Box, Divider, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Tab, Tabs, Typography } from '@mui/material';
 import { Suspense, lazy, useState } from 'react';
 import { prototypeTokens } from '../theme/tokens';
 
@@ -21,46 +21,54 @@ export function ProductsPricingPage(): JSX.Element {
     <Box sx={{ minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box
         sx={{
-          px: 2,
-          py: 1.5,
-          borderBottom: `1px solid ${prototypeTokens.color.border.default}`
+          pt: 1.5,
+          borderBottom: `1px solid ${prototypeTokens.color.border.default}`,
+          display: 'flex',
+          justifyContent: 'flex-start',
+          alignItems: 'flex-end'
         }}
       >
-        <Typography
-          variant="h4"
-          sx={{
-            fontFamily: prototypeTokens.typography.title.family,
-            fontWeight: prototypeTokens.typography.title.weight,
-            fontSize: `${prototypeTokens.typography.title.sizePx}px`,
-            color: prototypeTokens.color.text.primary
-          }}
-        >
-          Products & Pricing
-        </Typography>
-      </Box>
-
-      <Box sx={{ minHeight: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ px: { xs: 1.5, sm: 2 } }}>
+        <Box sx={{ pl: 2, pr: 2, display: 'flex', alignItems: 'flex-start' }}>
           <Tabs
             value={activeTab}
             onChange={(_event, value: ProductsPricingTab) => setActiveTab(value)}
+            sx={{
+              minHeight: 60,
+              '& .MuiTabs-indicator': {
+                height: 3,
+                backgroundColor: prototypeTokens.color.brand.teal500
+              },
+              '& .MuiTab-root': {
+                minHeight: 60,
+                px: 2,
+                minWidth: 'auto',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: 17,
+                lineHeight: '24px',
+                color: '#4B617C'
+              },
+              '& .MuiTab-root.Mui-selected': {
+                color: prototypeTokens.color.text.primary
+              }
+            }}
           >
             <Tab value="subscriptions" label="Subscriptions" />
             <Tab value="pricings" label="Pricings" />
           </Tabs>
         </Box>
-        <Divider />
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <Suspense
-            fallback={
-              <Typography variant="body2" color="text.secondary">
-                Loading section...
-              </Typography>
-            }
-          >
-            {activeTab === 'subscriptions' ? <SubscriptionsTab /> : <PricingsTab />}
-          </Suspense>
-        </Box>
+      </Box>
+
+      <Box sx={{ minHeight: 0, flex: 1, overflow: 'hidden' }}>
+        <Suspense
+          fallback={
+            <Typography variant="body2" color="text.secondary">
+              Loading section...
+            </Typography>
+          }
+        >
+          {activeTab === 'subscriptions' ? <SubscriptionsTab /> : <PricingsTab />}
+        </Suspense>
       </Box>
     </Box>
   );

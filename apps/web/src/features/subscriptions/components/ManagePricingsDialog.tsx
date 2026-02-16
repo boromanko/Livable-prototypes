@@ -82,7 +82,7 @@ export function ManagePricingsDialog(props: ManagePricingsDialogProps): JSX.Elem
         <Stack sx={{ height: '100%' }}>
           <Stack
             direction="row"
-            alignItems="center"
+            alignItems="flex-start"
             justifyContent="space-between"
             sx={{
               px: { xs: 2.5, sm: 5 },
@@ -92,9 +92,14 @@ export function ManagePricingsDialog(props: ManagePricingsDialogProps): JSX.Elem
               flexShrink: 0
             }}
           >
-            <Typography sx={{ color: '#212934', fontSize: 20, fontWeight: 600 }}>
-              Manage pricings
-            </Typography>
+            <Stack spacing={0.75}>
+              <Typography sx={{ color: '#212934', fontSize: 20, fontWeight: 600 }}>
+                Manage pricings
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#4B617C' }}>
+                {`Selected ${selectedCount} subscription${selectedCount === 1 ? '' : 's'}`}
+              </Typography>
+            </Stack>
             <AppIconButton
               tone="plain"
               onClick={onClose}
@@ -114,10 +119,6 @@ export function ManagePricingsDialog(props: ManagePricingsDialogProps): JSX.Elem
               overflowY: 'auto'
             }}
           >
-            <Typography variant="body2" sx={{ color: '#4B617C' }}>
-              Selected subscriptions: {selectedCount}
-            </Typography>
-
             {isLoading ? (
               <Typography variant="body2" color="text.secondary">
                 Loading pricings...
@@ -128,27 +129,11 @@ export function ManagePricingsDialog(props: ManagePricingsDialogProps): JSX.Elem
                   value={pricingIds}
                   pricings={mergedPricings}
                   error={false}
+                  usageCountByPricingId={usageCountByPricingId}
+                  showPricingUsage
                   onCreatePricing={() => setIsCreatePricingOpen(true)}
                   onChange={onPricingIdsChange}
                 />
-
-                {pricingIds.length > 0 ? (
-                  <Stack spacing={0.5}>
-                    {pricingIds.map((pricingId) => {
-                      const usageCount = usageCountByPricingId[pricingId] ?? 0;
-
-                      const pricingName =
-                        mergedPricings.find((pricing) => pricing.id === pricingId)?.internalName ??
-                        pricingId;
-
-                      return (
-                        <Typography key={pricingId} variant="caption" sx={{ color: '#6F8298' }}>
-                          {pricingName}: used in {usageCount} of {selectedCount} selected subscriptions
-                        </Typography>
-                      );
-                    })}
-                  </Stack>
-                ) : null}
               </>
             )}
 

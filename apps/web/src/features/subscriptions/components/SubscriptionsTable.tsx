@@ -20,6 +20,7 @@ import { AppIconButton } from '../../../components/buttons';
 import { EmptyState } from '../../../components/layout';
 import { formatDateLabel } from '../../../lib/format/date';
 import { formatMoneyCents } from '../../../lib/format/money';
+import { PricingValueCard } from './PricingValueCard';
 import type {
   SubscriptionsSortDirection,
   SubscriptionsSortField
@@ -93,7 +94,8 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
             },
             '& .MuiTableBody-root .MuiTableCell-root': {
               borderBottom: '1px solid #E1E7EC',
-              verticalAlign: 'top'
+              verticalAlign: 'top',
+              pt: 1
             }
           }}
         >
@@ -206,11 +208,7 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
 	                    hover
 	                    onClick={() => onEditSubscription(subscription)}
 	                    sx={{
-	                      cursor: 'pointer',
-	                      '& > .MuiTableCell-root': {
-	                        verticalAlign: 'top',
-	                        py: 0.75
-	                      }
+	                      cursor: 'pointer'
 	                    }}
 	                  >
                   <TableCell
@@ -286,65 +284,16 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                     {subscription.pricings.length > 0 ? (
                       <Stack spacing={0.5}>
                         {subscription.pricings.map((pricing) => (
-                          <Stack
+                          <PricingValueCard
                             key={pricing.id}
-                            direction="row"
-                            alignItems="center"
-                            justifyContent="space-between"
-                            role="button"
-                            tabIndex={0}
-                            onClick={(event) => {
-                              event.stopPropagation();
+                            title={pricing.internalName}
+                            subtitle={`${pricing.product.code} - ${pricing.type}`}
+                            amountLabel={getSubscriptionPricingAmountLabel(pricing)}
+                            variant="table"
+                            onTitleClick={() => {
                               onEditPricing(pricing);
                             }}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                onEditPricing(pricing);
-                              }
-                            }}
-                            sx={{
-                              px: 1,
-                              py: 0.75,
-                              border: '1px solid #E1E7EC',
-                              backgroundColor: '#F8F9FA',
-                              borderRadius: '2px',
-                              cursor: 'pointer',
-                              transition: 'background-color 120ms ease, border-color 120ms ease',
-                              '&:hover': {
-                                backgroundColor: '#EEF4FA',
-                                borderColor: '#C9D4DF'
-                              }
-                            }}
-                          >
-                            <Stack spacing={0.125} sx={{ minWidth: 0, pr: 1 }}>
-                              <Typography
-                                variant="body2"
-                                sx={{ color: '#212934', fontWeight: 500, lineHeight: 1.25 }}
-                              >
-                                {pricing.internalName}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                sx={{ color: '#6F8298', lineHeight: 1.2 }}
-                              >
-                                {pricing.product.code} - {pricing.type}
-                              </Typography>
-                            </Stack>
-                            <Typography
-                              sx={{
-                                color: '#212934',
-                                fontWeight: 700,
-                                fontSize: 14,
-                                lineHeight: 1.1,
-                                fontVariantNumeric: 'tabular-nums',
-                                flexShrink: 0
-                              }}
-                            >
-                              {getSubscriptionPricingAmountLabel(pricing)}
-                            </Typography>
-                          </Stack>
+                          />
                         ))}
                       </Stack>
                     ) : (
@@ -389,7 +338,7 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   <EmptyState
                     title="No subscriptions found"
                     description="Adjust filters or create your first subscription."
-                    actionLabel="Create Subscription"
+                    actionLabel="New subscription"
                     onActionClick={onCreateSubscription}
                   />
                 </TableCell>

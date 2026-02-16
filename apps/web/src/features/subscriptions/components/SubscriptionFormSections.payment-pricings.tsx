@@ -13,6 +13,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import type { PaymentMethodItem, PricingItem } from '../../../api';
 import { formatMoneyCents } from '../../../lib/format/money';
+import { PricingValueCard } from './PricingValueCard';
 import { getFormFieldSx, sectionTitle } from './SubscriptionFormSections.shared';
 
 type SubscriptionFormPaymentMethodSectionProps = {
@@ -73,6 +74,8 @@ type SubscriptionFormPricingsSectionProps = {
   value: string[];
   pricings: PricingItem[];
   error: boolean;
+  usageCountByPricingId?: Record<string, number>;
+  showPricingUsage?: boolean;
   onCreatePricing: () => void;
   onEditPricing?: (pricing: PricingItem) => void;
   onChange: (pricingIds: string[]) => void;
@@ -81,7 +84,16 @@ type SubscriptionFormPricingsSectionProps = {
 export function SubscriptionFormPricingsSection(
   props: SubscriptionFormPricingsSectionProps
 ): JSX.Element {
-  const { value, pricings, error, onCreatePricing, onEditPricing, onChange } = props;
+  const {
+    value,
+    pricings,
+    error,
+    usageCountByPricingId,
+    showPricingUsage = false,
+    onCreatePricing,
+    onEditPricing,
+    onChange
+  } = props;
   const pricingById = new Map(pricings.map((pricing) => [pricing.id, pricing]));
   const selectedPricings = value
     .map((pricingId) => pricingById.get(pricingId))
@@ -217,69 +229,27 @@ export function SubscriptionFormPricingsSection(
             const isEditable = Boolean(pricing && onEditPricing);
 
             return (
-              <Stack
+              <PricingValueCard
                 key={pricingId}
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                onClick={
+                title={pricing?.internalName ?? pricingId}
+                subtitle={pricing ? `${pricing.product.code} - ${pricing.type}` : undefined}
+                usageLabel={
+                  showPricingUsage
+                    ? `Used in ${usageCountByPricingId?.[pricingId] ?? 0} subscription${
+                        (usageCountByPricingId?.[pricingId] ?? 0) === 1 ? '' : 's'
+                      }`
+                    : undefined
+                }
+                amountLabel={pricing ? getPricingAmountLabel(pricing) : '—'}
+                variant="form"
+                onTitleClick={
                   isEditable && pricing
                     ? () => {
                         onEditPricing?.(pricing);
                       }
                     : undefined
                 }
-                onKeyDown={
-                  isEditable && pricing
-                    ? (event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          onEditPricing?.(pricing);
-                        }
-                      }
-                    : undefined
-                }
-                role={isEditable ? 'button' : undefined}
-                tabIndex={isEditable ? 0 : undefined}
-                sx={{
-                  px: 1.5,
-                  py: 1.25,
-                  border: '1px solid #E1E7EC',
-                  backgroundColor: '#F8F9FA',
-                  borderRadius: '2px',
-                  cursor: isEditable ? 'pointer' : 'default',
-                  transition: 'background-color 120ms ease, border-color 120ms ease',
-                  '&:hover': isEditable
-                    ? {
-                        backgroundColor: '#F1F5F9',
-                        borderColor: '#C7D2DE'
-                      }
-                    : undefined
-                }}
-              >
-                <Stack spacing={0.25}>
-                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
-                    {pricing?.internalName ?? pricingId}
-                  </Typography>
-                  {pricing ? (
-                    <Typography variant="caption" sx={{ color: '#6F8298' }}>
-                      {pricing.product.code} - {pricing.type}
-                    </Typography>
-                  ) : null}
-                </Stack>
-
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <Typography
-                    sx={{
-                      color: '#212934',
-                      fontWeight: 700,
-                      fontSize: 18,
-                      lineHeight: 1.1,
-                      fontVariantNumeric: 'tabular-nums'
-                    }}
-                  >
-                    {pricing ? getPricingAmountLabel(pricing) : '—'}
-                  </Typography>
+                action={
                   <IconButton
                     size="small"
                     onClick={(event) => {
@@ -290,8 +260,8 @@ export function SubscriptionFormPricingsSection(
                   >
                     <CloseIcon fontSize="small" />
                   </IconButton>
-                </Stack>
-              </Stack>
+                }
+              />
             );
           })}
         </Stack>

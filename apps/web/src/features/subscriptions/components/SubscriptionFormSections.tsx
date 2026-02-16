@@ -11,6 +11,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { createFilterOptions } from '@mui/material/Autocomplete';
 import CloseIcon from '@mui/icons-material/Close';
 import type {
   AccountItem,
@@ -32,56 +33,103 @@ export function SubscriptionFormAccountSection(
   props: SubscriptionFormAccountSectionProps
 ): JSX.Element {
   const { value, loading, error, accounts, onChange } = props;
+  const selectedAccount = accounts.find((account) => account.id === value) ?? null;
+  const accountFilterOptions = createFilterOptions<AccountItem>({
+    stringify: (option) => `${option.companyName} ${option.email}`
+  });
+  const pickerFieldSx = {
+    ...getFormFieldSx(error),
+    '& .MuiAutocomplete-inputRoot': {
+      p: '0 40px 0 14px !important'
+    },
+    '& .MuiOutlinedInput-root': {
+      height: 48,
+      minHeight: 48,
+      alignItems: 'center',
+      pr: 5
+    },
+    '& .MuiAutocomplete-input': {
+      p: '0 !important'
+    },
+    '& .MuiInputBase-input::placeholder': {
+      color: '#4B617C',
+      opacity: 1
+    },
+    '& .MuiAutocomplete-popupIndicator': {
+      color: '#4B617C'
+    }
+  };
 
   return (
     <Stack spacing={2}>
       {sectionTitle('Account')}
-      <TextField
-        select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={loading}
-        error={error}
-        helperText={error ? 'Account is required.' : undefined}
-        SelectProps={{
-          displayEmpty: true,
-          renderValue: (selected) => {
-            if (typeof selected !== 'string' || selected === '') {
-              return (
-                <Box component="span" sx={{ color: '#4B617C' }}>
-                  Select account
-                </Box>
-              );
+      <Autocomplete<AccountItem, false, false, false>
+        disablePortal
+        openOnFocus
+        options={accounts}
+        value={selectedAccount}
+        loading={loading}
+        onChange={(_event, selected) => {
+          onChange(selected?.id ?? '');
+        }}
+        getOptionLabel={(option) => option.companyName}
+        isOptionEqualToValue={(option, selected) => option.id === selected.id}
+        filterOptions={accountFilterOptions}
+        noOptionsText={loading ? 'Loading accounts...' : 'No accounts found'}
+        PaperComponent={(paperProps: PaperProps) => (
+          <Paper
+            {...paperProps}
+            sx={{
+              mt: 0.5,
+              border: '1px solid #E1E7EC',
+              borderRadius: '2px',
+              boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.12)'
+            }}
+          />
+        )}
+        slotProps={{
+          listbox: {
+            sx: {
+              py: 0,
+              '& .MuiAutocomplete-option': {
+                minHeight: 52,
+                alignItems: 'center'
+              }
             }
-
-            const selectedAccount = accounts.find((account) => account.id === selected);
-            if (!selectedAccount) {
-              return (
-                <Box component="span" sx={{ color: '#4B617C' }}>
-                  Select account
-                </Box>
-              );
-            }
-
-            return `${selectedAccount.companyName} (${selectedAccount.email}) - ${selectedAccount.totalBillableUnits} units`;
           }
         }}
-        sx={getFormFieldSx(error)}
-      >
-        <MenuItem value="" disabled>
-          Select account
-        </MenuItem>
-        {accounts.length === 0 ? (
-          <MenuItem value="__empty__" disabled>
-            No available accounts
-          </MenuItem>
-        ) : null}
-        {accounts.map((account) => (
-          <MenuItem key={account.id} value={account.id}>
-            {account.companyName} ({account.email}) - {account.totalBillableUnits} units
-          </MenuItem>
-        ))}
-      </TextField>
+        renderOption={(optionProps, option) => (
+          <Box
+            component="li"
+            {...optionProps}
+            key={option.id}
+            sx={{
+              minHeight: 52,
+              px: 1.5,
+              py: 0.75,
+              alignItems: 'center'
+            }}
+          >
+            <Stack spacing={0.25} sx={{ py: 0.25 }}>
+              <Typography variant="body2" sx={{ color: '#212934', fontWeight: 600 }}>
+                {option.companyName}
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#6F8298' }}>
+                {option.email} - {option.totalBillableUnits} units
+              </Typography>
+            </Stack>
+          </Box>
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            placeholder="Select account"
+            error={error}
+            helperText={error ? 'Account is required.' : undefined}
+            sx={pickerFieldSx}
+          />
+        )}
+      />
     </Stack>
   );
 }

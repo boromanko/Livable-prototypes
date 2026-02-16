@@ -326,25 +326,6 @@ export function PricingFormSubscriptionsSection(
                 direction="row"
                 alignItems="center"
                 justifyContent="space-between"
-                onClick={
-                  isEditable
-                    ? () => {
-                        onEditSubscription?.(subscriptionId);
-                      }
-                    : undefined
-                }
-                onKeyDown={
-                  isEditable
-                    ? (event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          onEditSubscription?.(subscriptionId);
-                        }
-                      }
-                    : undefined
-                }
-                role={isEditable ? 'button' : undefined}
-                tabIndex={isEditable ? 0 : undefined}
                 sx={{
                   px: 1.5,
                   py: 1.25,
@@ -354,25 +335,36 @@ export function PricingFormSubscriptionsSection(
                   backgroundColor: selectedConflictIdSet.has(subscriptionId)
                     ? '#FFF7F7'
                     : '#F8F9FA',
-                  borderRadius: '2px',
-                  cursor: isEditable ? 'pointer' : 'default',
-                  transition: 'background-color 120ms ease, border-color 120ms ease',
-                  '&:hover': isEditable
-                    ? {
-                        backgroundColor: selectedConflictIdSet.has(subscriptionId)
-                          ? '#FFEDED'
-                          : '#F1F5F9',
-                        borderColor: selectedConflictIdSet.has(subscriptionId)
-                          ? '#D14343'
-                          : '#C7D2DE'
-                      }
-                    : undefined
+                  borderRadius: '2px'
                 }}
               >
                 <Stack spacing={0.25}>
-                  <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
-                    {subscription?.accountName ?? subscriptionId}
-                  </Typography>
+                  {isEditable ? (
+                    <Typography
+                      component="button"
+                      type="button"
+                      onClick={() => {
+                        onEditSubscription?.(subscriptionId);
+                      }}
+                      variant="body2"
+                      sx={{
+                        all: 'unset',
+                        color: '#212934',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        '&:hover': {
+                          color: '#1A4E80',
+                          textDecoration: 'underline'
+                        }
+                      }}
+                    >
+                      {subscription?.accountName ?? subscriptionId}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#212934', fontWeight: 500 }}>
+                      {subscription?.accountName ?? subscriptionId}
+                    </Typography>
+                  )}
                   {subscription ? (
                     <Typography variant="caption" sx={{ color: '#6F8298' }}>
                       {getPricingSubscriptionScopeLabel(subscription.scope)} -{' '}

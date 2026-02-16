@@ -1,7 +1,11 @@
 import CloseIcon from '@mui/icons-material/Close';
-import { Box, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import SellOutlinedIcon from '@mui/icons-material/SellOutlined';
+import { Box, Menu, MenuItem, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
 import type { SubscriptionStatus } from '../../../api';
-import { AppIconButton, GhostButton } from '../../../components/buttons';
+import { AppIconButton, BorderedButton } from '../../../components/buttons';
 
 type SubscriptionsSelectionActionsProps = {
   selectedCount: number;
@@ -31,6 +35,12 @@ export function SubscriptionsSelectionActions(
   } = props;
   const isVisible = selectedCount > 0;
   const selectedLabel = `${selectedCount} item${selectedCount === 1 ? '' : 's'} selected`;
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState<HTMLElement | null>(null);
+  const statusLabel = isStatusLoading
+    ? 'Loading statuses...'
+    : statusValue === ''
+      ? 'Change status'
+      : formatStatusLabel(statusValue);
 
   return (
     <Box
@@ -79,72 +89,63 @@ export function SubscriptionsSelectionActions(
       </Stack>
 
       <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
-        <TextField
-          size="small"
-          select
-          value={statusValue}
-          disabled={!isVisible || isStatusLoading || isPending}
-          onChange={(event) => onSelectStatus(event.target.value as SubscriptionStatus)}
-          SelectProps={{
-            displayEmpty: true,
-            renderValue: (selected) => {
-              if (isStatusLoading) {
-                return (
-                  <Box component="span" sx={{ color: '#6F8298' }}>
-                    Loading statuses...
-                  </Box>
-                );
-              }
-
-              if (typeof selected !== 'string' || selected === '') {
-                return (
-                  <Box component="span" sx={{ color: '#6F8298' }}>
-                    Change status
-                  </Box>
-                );
-              }
-
-              return formatStatusLabel(selected as SubscriptionStatus);
-            }
+        <BorderedButton
+          type="button"
+          onClick={(event) => {
+            setStatusMenuAnchor(event.currentTarget);
           }}
+          disabled={!isVisible || isStatusLoading || isPending}
+          endIcon={<KeyboardArrowDownIcon />}
           sx={{
-            minWidth: 170,
-            '& .MuiOutlinedInput-root': {
-              minHeight: 32,
-              backgroundColor: '#F8F9FA',
-              '&:hover': { backgroundColor: '#EEF2F6' }
+            ...getStatusButtonSx(statusValue),
+            '& .MuiButton-endIcon': {
+              ml: 0.5,
+              mr: -0.25
+            },
+            '& .MuiSvgIcon-root': {
+              color: 'inherit'
             }
           }}
         >
-          <MenuItem value="" disabled>
-            Change status
-          </MenuItem>
-          {subscriptionStatusOptions.map((status) => (
-            <MenuItem key={status} value={status}>
-              {formatStatusLabel(status)}
-            </MenuItem>
-          ))}
-        </TextField>
+          {statusLabel}
+        </BorderedButton>
 
-        <GhostButton
-          size="small"
-          sx={{ backgroundColor: '#F8F9FA', '&:hover': { backgroundColor: '#EEF2F6' } }}
+        <BorderedButton
+          startIcon={<SellOutlinedIcon fontSize="small" />}
           onClick={onOpenManagePricings}
         >
           Manage pricings
-        </GhostButton>
-        <GhostButton
-          size="small"
-          sx={{
-            color: '#B3261E',
-            backgroundColor: '#F8F9FA',
-            '&:hover': { backgroundColor: '#FDECEC' }
-          }}
+        </BorderedButton>
+        <BorderedButton
+          startIcon={<DeleteOutlineIcon fontSize="small" />}
           onClick={onOpenDeleteSubscriptions}
         >
           Delete subscriptions
-        </GhostButton>
+        </BorderedButton>
       </Stack>
+
+      <Menu
+        anchorEl={statusMenuAnchor}
+        open={Boolean(statusMenuAnchor)}
+        onClose={() => {
+          setStatusMenuAnchor(null);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        {subscriptionStatusOptions.map((status) => (
+          <MenuItem
+            key={status}
+            selected={statusValue === status}
+            onClick={() => {
+              onSelectStatus(status);
+              setStatusMenuAnchor(null);
+            }}
+          >
+            {formatStatusLabel(status)}
+          </MenuItem>
+        ))}
+      </Menu>
     </Box>
   );
 }
@@ -163,4 +164,54 @@ function formatStatusLabel(status: SubscriptionStatus): string {
   }
 
   return 'Canceled';
+}
+
+function getStatusButtonSx(status: SubscriptionStatus | ''): Record<string, unknown> {
+  if (status === 'ACTIVE') {
+    return {
+      color: '#1F9D55',
+      backgroundColor: '#E8F7EF',
+      '&:hover': {
+        backgroundColor: '#D8F0E2'
+      }
+    };
+  }
+
+  if (status === 'DRAFT') {
+    return {
+      color: '#2B6CB0',
+      backgroundColor: '#E9F2FC',
+      '&:hover': {
+        backgroundColor: '#D9EAFB'
+      }
+    };
+  }
+
+  if (status === 'PAUSED') {
+    return {
+      color: '#B7791F',
+      backgroundColor: '#FFF5E5',
+      '&:hover': {
+        backgroundColor: '#FDECCF'
+      }
+    };
+  }
+
+  if (status === 'CANCELED') {
+    return {
+      color: '#4B617C',
+      backgroundColor: '#EEF2F6',
+      '&:hover': {
+        backgroundColor: '#E2E8EF'
+      }
+    };
+  }
+
+  return {
+    color: '#212934',
+    backgroundColor: '#F8F9FA',
+    '&:hover': {
+      backgroundColor: '#EEF2F6'
+    }
+  };
 }

@@ -1,7 +1,8 @@
 import CloseIcon from '@mui/icons-material/Close';
-import { Alert, Dialog, Stack, Typography } from '@mui/material';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { Alert, Button, Dialog, Menu, MenuItem, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
-import type { BillingScope, PricingItem, SubscriptionItem } from '../../api';
+import type { BillingScope, PricingItem, SubscriptionItem, SubscriptionStatus } from '../../api';
 import { AppIconButton, PrimaryButton, SecondaryButton } from '../../components/buttons';
 import { PricingFormDrawer as NestedPricingFormDrawer } from '../pricings/PricingFormDrawer';
 import {
@@ -10,7 +11,6 @@ import {
   SubscriptionFormDatesSection,
   SubscriptionFormPaymentMethodSection,
   SubscriptionFormPricingsSection,
-  SubscriptionFormStatusSection,
   SubscriptionFormPropertySection
 } from './components/SubscriptionFormSections';
 import { useSubscriptionFormController } from './subscriptionForm.hooks';
@@ -28,6 +28,7 @@ type SubscriptionFormDrawerProps = {
 
 export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.Element {
   const controller = useSubscriptionFormController(props);
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState<HTMLElement | null>(null);
   const [nestedPricingModal, setNestedPricingModal] = useState<{
     open: boolean;
     mode: 'create' | 'edit';
@@ -93,9 +94,37 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
             <Typography sx={{ color: '#212934', fontSize: 20, fontWeight: 600 }}>
               {controller.title}
             </Typography>
-            <AppIconButton tone="plain" onClick={controller.actions.onClose} aria-label="Close dialog">
-              <CloseIcon sx={{ color: '#4B617C' }} />
-            </AppIconButton>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              {controller.isEdit ? (
+                <Button
+                  type="button"
+                  onClick={(event) => {
+                    setStatusMenuAnchor(event.currentTarget);
+                  }}
+                  endIcon={<KeyboardArrowDownIcon />}
+                  sx={{
+                    ...getStatusButtonSx(controller.formState.status),
+                    textTransform: 'none',
+                    minHeight: 32,
+                    px: 1.25,
+                    py: 0.5,
+                    borderRadius: '2px',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    lineHeight: 1.1,
+                    '& .MuiButton-endIcon': {
+                      ml: 0.5,
+                      mr: -0.25
+                    }
+                  }}
+                >
+                  {formatStatusLabel(controller.formState.status)}
+                </Button>
+              ) : null}
+              <AppIconButton tone="plain" onClick={controller.actions.onClose} aria-label="Close dialog">
+                <CloseIcon sx={{ color: '#4B617C' }} />
+              </AppIconButton>
+            </Stack>
           </Stack>
 
           <Stack
@@ -135,13 +164,6 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
               onStartDateChange={controller.actions.setStartDate}
               onEndDateChange={controller.actions.setEndDate}
             />
-
-            {controller.isEdit ? (
-              <SubscriptionFormStatusSection
-                status={controller.formState.status}
-                onStatusChange={controller.actions.setStatus}
-              />
-            ) : null}
 
             <SubscriptionFormPaymentMethodSection
               accountId={controller.formState.accountId}
@@ -203,6 +225,89 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
         }}
         onClose={closeCreatePricing}
       />
+
+      <Menu
+        anchorEl={statusMenuAnchor}
+        open={Boolean(statusMenuAnchor)}
+        onClose={() => {
+          setStatusMenuAnchor(null);
+        }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        {STATUS_OPTIONS.map((status) => (
+          <MenuItem
+            key={status}
+            selected={controller.formState.status === status}
+            onClick={() => {
+              controller.actions.setStatus(status);
+              setStatusMenuAnchor(null);
+            }}
+          >
+            {formatStatusLabel(status)}
+          </MenuItem>
+        ))}
+      </Menu>
     </>
   );
+}
+
+const STATUS_OPTIONS: SubscriptionStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'CANCELED'];
+
+function formatStatusLabel(status: SubscriptionStatus): string {
+  if (status === 'ACTIVE') {
+    return 'Active';
+  }
+
+  if (status === 'DRAFT') {
+    return 'Draft';
+  }
+
+  if (status === 'PAUSED') {
+    return 'Paused';
+  }
+
+  return 'Canceled';
+}
+
+function getStatusButtonSx(
+  status: SubscriptionStatus
+): Record<string, unknown> {
+  if (status === 'ACTIVE') {
+    return {
+      color: '#1F9D55',
+      backgroundColor: '#E8F7EF',
+      '&:hover': {
+        backgroundColor: '#D8F0E2'
+      }
+    };
+  }
+
+  if (status === 'DRAFT') {
+    return {
+      color: '#2B6CB0',
+      backgroundColor: '#E9F2FC',
+      '&:hover': {
+        backgroundColor: '#D9EAFB'
+      }
+    };
+  }
+
+  if (status === 'PAUSED') {
+    return {
+      color: '#B7791F',
+      backgroundColor: '#FFF5E5',
+      '&:hover': {
+        backgroundColor: '#FDECCF'
+      }
+    };
+  }
+
+  return {
+    color: '#4B617C',
+    backgroundColor: '#EEF2F6',
+    '&:hover': {
+      backgroundColor: '#E2E8EF'
+    }
+  };
 }

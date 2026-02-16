@@ -42,10 +42,10 @@ export function SubscriptionsTab(): JSX.Element {
         />
 
         <Stack
-          spacing={2}
+          spacing={0}
           sx={{
-            px: { xs: 1.5, sm: 2 },
-            pt: { xs: 1.5, sm: 2 },
+            px: 0,
+            pt: 0,
             pb: controller.bulk.selectedCount > 0 ? '64px' : 0,
             flex: 1,
             minHeight: 0
