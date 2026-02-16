@@ -11,25 +11,19 @@ const scopeOptions: Array<{ value: 'ALL' | BillingScope; label: string }> = [
   { value: 'ACCOUNT', label: 'Account level' },
   { value: 'PROPERTY', label: 'Property level' }
 ];
-const statusOptions: Array<'ALL' | SubscriptionStatus> = [
-  'ALL',
-  'DRAFT',
-  'ACTIVE',
-  'PAUSED',
-  'CANCELED'
-];
+const statusOptions: SubscriptionStatus[] = ['DRAFT', 'ACTIVE', 'PAUSED', 'CANCELED'];
 
 type SubscriptionsFiltersProps = {
   search: string;
   scopeFilter: 'ALL' | BillingScope;
-  statusFilter: 'ALL' | SubscriptionStatus;
+  statusFilter: SubscriptionStatus[];
   accountIdsFilter: string[];
   pricingIdsFilter: string[];
   accounts: AccountItem[];
   pricings: PricingItem[];
   onSearchChange: (value: string) => void;
   onScopeFilterChange: (value: 'ALL' | BillingScope) => void;
-  onStatusFilterChange: (value: 'ALL' | SubscriptionStatus) => void;
+  onStatusFilterChange: (value: SubscriptionStatus[]) => void;
   onAccountFilterChange: (value: string[]) => void;
   onPricingFilterChange: (value: string[]) => void;
   onCreateSubscription: () => void;
@@ -52,17 +46,18 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
     onCreateSubscription
   } = props;
   const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
+  const selectedStatusOptions = statusOptions.filter((status) => statusFilter.includes(status));
   const selectedAccountOptions = accounts.filter((account) => accountIdsFilter.includes(account.id));
   const selectedPricingOptions = pricings.filter((pricing) => pricingIdsFilter.includes(pricing.id));
   const activeFiltersCount =
     (scopeFilter !== 'ALL' ? 1 : 0) +
-    (statusFilter !== 'ALL' ? 1 : 0) +
+    (statusFilter.length > 0 ? 1 : 0) +
     (accountIdsFilter.length > 0 ? 1 : 0) +
     (pricingIdsFilter.length > 0 ? 1 : 0);
 
   function clearFilters(): void {
     onScopeFilterChange('ALL');
-    onStatusFilterChange('ALL');
+    onStatusFilterChange([]);
     onAccountFilterChange([]);
     onPricingFilterChange([]);
   }
@@ -156,20 +151,33 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
             ))}
           </TextField>
 
-          <TextField
-            size="small"
-            select
-            label="Status"
-            value={statusFilter}
-            onChange={(event) => onStatusFilterChange(event.target.value as 'ALL' | SubscriptionStatus)}
+          <Autocomplete
+            multiple
+            disableCloseOnSelect
+            options={statusOptions}
+            value={selectedStatusOptions}
+            onChange={(_event, nextValue) => onStatusFilterChange(nextValue)}
+            getOptionLabel={(option) => formatStatusLabel(option)}
+            isOptionEqualToValue={(option, value) => option === value}
+            noOptionsText="No statuses"
             fullWidth
-          >
-            {statusOptions.map((status) => (
-              <MenuItem key={status} value={status}>
-                {status}
-              </MenuItem>
-            ))}
-          </TextField>
+            renderOption={(autocompleteProps, option, { selected }) => (
+              <li {...autocompleteProps}>
+                <Checkbox size="small" checked={selected} sx={{ mr: 1 }} />
+                <Typography variant="body2" sx={{ color: '#212934' }}>
+                  {formatStatusLabel(option)}
+                </Typography>
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                size="small"
+                label="Status"
+                placeholder={selectedStatusOptions.length === 0 ? 'Select statuses' : ''}
+              />
+            )}
+          />
 
           <Autocomplete
             multiple
@@ -250,4 +258,20 @@ export function SubscriptionsFilters(props: SubscriptionsFiltersProps): JSX.Elem
       </Popover>
     </Box>
   );
+}
+
+function formatStatusLabel(status: SubscriptionStatus): string {
+  if (status === 'DRAFT') {
+    return 'Draft';
+  }
+
+  if (status === 'ACTIVE') {
+    return 'Active';
+  }
+
+  if (status === 'PAUSED') {
+    return 'Paused';
+  }
+
+  return 'Canceled';
 }

@@ -24,6 +24,17 @@ const listQueryPricingIdsSchema = z.preprocess((value) => {
 
   return [value];
 }, z.array(z.string().trim().min(1)).min(1).optional());
+const listQueryStatusesSchema = z.preprocess((value) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return [value];
+}, z.array(subscriptionStatusSchema).min(1).optional());
 
 export const subscriptionListQuerySchema = z.object({
   page: z.coerce.number().int().positive().optional(),
@@ -34,6 +45,7 @@ export const subscriptionListQuerySchema = z.object({
   propertyId: z.string().min(1).optional(),
   scope: billingScopeSchema.optional(),
   status: subscriptionStatusSchema.optional(),
+  statuses: listQueryStatusesSchema,
   search: z.string().trim().min(1).optional(),
   startFrom: z.coerce.date().optional(),
   startTo: z.coerce.date().optional()

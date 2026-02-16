@@ -103,6 +103,7 @@ export type SubscriptionListQuery = {
   propertyId?: string;
   scope?: 'ACCOUNT' | 'PROPERTY';
   status?: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED';
+  statuses?: Array<'DRAFT' | 'ACTIVE' | 'PAUSED' | 'CANCELED'>;
   search?: string;
   startFrom?: Date;
   startTo?: Date;
@@ -146,8 +147,16 @@ export function buildSubscriptionsWhere(query: SubscriptionListQuery): Prisma.Su
     where.scope = query.scope;
   }
 
-  if (query.status) {
-    where.status = query.status;
+  const statuses =
+    query.statuses && query.statuses.length > 0
+      ? query.statuses
+      : query.status
+        ? [query.status]
+        : undefined;
+  if (statuses && statuses.length > 0) {
+    where.status = {
+      in: statuses
+    };
   }
 
   if (query.startFrom || query.startTo) {

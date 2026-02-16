@@ -26,7 +26,7 @@ const subscriptionStatusOptions: SubscriptionStatus[] = ['DRAFT', 'ACTIVE', 'PAU
 export function useSubscriptionsTabController() {
   const [search, setSearch] = useState('');
   const [scopeFilter, setScopeFilter] = useState<'ALL' | BillingScope>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | SubscriptionStatus>('ALL');
+  const [statusFilter, setStatusFilter] = useState<SubscriptionStatus[]>([]);
   const [accountIdsFilter, setAccountIdsFilter] = useState<string[]>([]);
   const [pricingIdsFilter, setPricingIdsFilter] = useState<string[]>([]);
   const [page, setPage] = useState(0);
@@ -116,7 +116,7 @@ export function useSubscriptionsTabController() {
       JSON.stringify({
         search,
         scopeFilter,
-        statusFilter,
+        statusFilter: [...statusFilter].sort(),
         accountIdsFilter: [...accountIdsFilter].sort(),
         pricingIdsFilter: [...pricingIdsFilter].sort()
       }),
@@ -205,8 +205,8 @@ export function useSubscriptionsTabController() {
     setPage(0);
   }
 
-  function onStatusFilterChange(value: 'ALL' | SubscriptionStatus): void {
-    setStatusFilter(value);
+  function onStatusFilterChange(value: SubscriptionStatus[]): void {
+    setStatusFilter(Array.from(new Set(value)));
     setPage(0);
   }
 

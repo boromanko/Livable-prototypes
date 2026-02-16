@@ -57,6 +57,7 @@ export type SubscriptionsQueryParams = PaginationParams & {
   propertyId?: string;
   scope?: BillingScope;
   status?: SubscriptionStatus;
+  statuses?: SubscriptionStatus[];
   search?: string;
   startFrom?: string;
   startTo?: string;
