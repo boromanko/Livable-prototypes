@@ -113,6 +113,12 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           onChange={controller.actions.setInternalName}
         />
 
+        <PricingFormTypeSection
+          value={controller.formState.type}
+          disabled={isSubscriptionsOnlyEdit}
+          onChange={controller.actions.setPricingType}
+        />
+
         <PricingFormProductSection
           fieldRef={controller.refs.productFieldRef}
           value={controller.formState.productId}
@@ -124,12 +130,6 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           disabled={isSubscriptionsOnlyEdit}
           onCreateProduct={controller.actions.createProduct}
           onChange={controller.actions.setProductId}
-        />
-
-        <PricingFormTypeSection
-          value={controller.formState.type}
-          disabled={isSubscriptionsOnlyEdit}
-          onChange={controller.actions.setPricingType}
         />
 
         {controller.formState.type === 'FIXED' ? (
