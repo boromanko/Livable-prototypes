@@ -45,7 +45,7 @@ type ManagePricingsPreviewLink = {
       name: string;
     };
     internalName: string;
-    type: 'FIXED' | 'TIERED';
+    type: 'FIXED' | 'METERED';
     fixedAmountCents: number | null;
     minimumPriceCents: number | null;
     currency: string;

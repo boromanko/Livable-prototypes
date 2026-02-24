@@ -18,7 +18,7 @@ import {
 import { loadResolvedPricingTreeItems } from './pricings.tree.js';
 
 function getTierValidationMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Invalid tiered pricing structure';
+  return error instanceof Error ? error.message : 'Invalid metered pricing structure';
 }
 
 export async function registerAdminPricingsRoutes(app: FastifyInstance): Promise<void> {
@@ -42,9 +42,9 @@ export async function registerAdminPricingsRoutes(app: FastifyInstance): Promise
 
   app.post('/api/admin/pricings', async (request, reply) => {
     const payload = createPricingBodySchema.parse(request.body);
-    const normalizedTiers = payload.type === 'TIERED' ? normalizeTiers(payload.tiers ?? []) : [];
+    const normalizedTiers = payload.type === 'METERED' ? normalizeTiers(payload.tiers ?? []) : [];
 
-    if (payload.type === 'TIERED') {
+    if (payload.type === 'METERED') {
       try {
         validateTierStructure(normalizedTiers);
       } catch (error) {
@@ -131,9 +131,9 @@ export async function registerAdminPricingsRoutes(app: FastifyInstance): Promise
     };
 
     const validated = createPricingBodySchema.parse(candidatePayload);
-    const normalizedTiers = validated.type === 'TIERED' ? normalizeTiers(validated.tiers ?? []) : [];
+    const normalizedTiers = validated.type === 'METERED' ? normalizeTiers(validated.tiers ?? []) : [];
 
-    if (validated.type === 'TIERED') {
+    if (validated.type === 'METERED') {
       try {
         validateTierStructure(normalizedTiers);
       } catch (error) {

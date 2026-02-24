@@ -17,7 +17,7 @@ import {
   PricingFormNameSection,
   PricingFormProductSection,
   PricingFormSubscriptionsSection,
-  PricingFormTieredSection,
+  PricingFormMeteredSection,
   PricingFormTypeSection
 } from './components/PricingFormSections';
 import { usePricingFormController } from './pricingForm.hooks';
@@ -142,7 +142,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
             onBlur={controller.actions.onNormalizeFixedAmountOnBlur}
           />
         ) : (
-          <PricingFormTieredSection
+          <PricingFormMeteredSection
             fieldRef={controller.refs.tierSectionRef}
             tiers={controller.formState.tiers}
             tierStartUnits={controller.validation.tierStartUnits}
@@ -159,7 +159,7 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
           />
         )}
 
-        {controller.formState.type === 'TIERED' ? (
+        {controller.formState.type === 'METERED' ? (
           <PricingFormMinimumPriceSection
             fieldRef={controller.refs.minimumPriceFieldRef}
             value={controller.formState.minimumPriceUsd}

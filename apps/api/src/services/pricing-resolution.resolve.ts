@@ -174,7 +174,7 @@ export function resolvePricingTree(
             resolvedBySubscriptionId: preferredPropertyCandidate.subscriptionId,
             excludedFromAccountPool: true,
             tierScope: 'PROPERTY',
-            currentTier: pricing.type === PricingType.TIERED ? propertyTier : null,
+            currentTier: pricing.type === PricingType.METERED ? propertyTier : null,
             currentUnitAmountCents: propertyUnitAmountCents
           });
           continue;
@@ -195,7 +195,7 @@ export function resolvePricingTree(
           resolvedBySubscriptionId: preferredAccountCandidate?.subscriptionId ?? null,
           excludedFromAccountPool: false,
           tierScope: 'ACCOUNT_POOL',
-          currentTier: pricing.type === PricingType.TIERED ? accountTier : null,
+          currentTier: pricing.type === PricingType.METERED ? accountTier : null,
           currentUnitAmountCents: accountUnitAmountCents
         });
       }
@@ -219,7 +219,7 @@ export function resolvePricingTree(
           : propertyRows.reduce((sum, property) => sum + property.property.billableUnits, 0);
 
       const currentTier =
-        source === 'ACCOUNT' && pricing.type === PricingType.TIERED ? accountTier : null;
+        source === 'ACCOUNT' && pricing.type === PricingType.METERED ? accountTier : null;
       const currentUnitAmountCents =
         source === 'ACCOUNT'
           ? accountUnitAmountCents

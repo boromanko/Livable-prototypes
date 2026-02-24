@@ -22,13 +22,13 @@ function normalizeTiers(tiers: TierInput[]): TierInput[] {
 
 export function validateTierStructure(tiers: TierInput[]): TierInput[] {
   if (tiers.length === 0) {
-    throw new Error('Tiered pricing requires at least one tier');
+    throw new Error('Metered pricing requires at least one tier');
   }
 
   const normalized = normalizeTiers(tiers);
 
   if (normalized[0]?.fromUnit !== 1) {
-    throw new Error('Tiered pricing must start from unit 1');
+    throw new Error('Metered pricing must start from unit 1');
   }
 
   for (let index = 0; index < normalized.length; index += 1) {

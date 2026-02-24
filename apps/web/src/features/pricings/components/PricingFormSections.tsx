@@ -262,12 +262,12 @@ export function PricingFormTypeSection(props: PricingFormTypeSectionProps): JSX.
           Fixed Price
         </PrimaryButton>
         <PrimaryButton
-          onClick={() => onChange('TIERED')}
+          onClick={() => onChange('METERED')}
           disabled={disabled}
-          variant={value === 'TIERED' ? 'contained' : 'text'}
+          variant={value === 'METERED' ? 'contained' : 'text'}
           sx={{
             borderRadius: 0,
-            ...(value === 'TIERED'
+            ...(value === 'METERED'
               ? {}
               : {
                   backgroundColor: 'transparent',
@@ -316,7 +316,7 @@ export function PricingFormFixedPriceSection(props: PricingFormFixedPriceSection
   );
 }
 
-type PricingFormTieredSectionProps = {
+type PricingFormMeteredSectionProps = {
   fieldRef: React.RefObject<HTMLDivElement>;
   tiers: TierDraft[];
   tierStartUnits: number[];
@@ -332,7 +332,7 @@ type PricingFormTieredSectionProps = {
   onNormalizeTierUnitPriceOnBlur: (tierId: string) => void;
 };
 
-export function PricingFormTieredSection(props: PricingFormTieredSectionProps): JSX.Element {
+export function PricingFormMeteredSection(props: PricingFormMeteredSectionProps): JSX.Element {
   const {
     fieldRef,
     tiers,

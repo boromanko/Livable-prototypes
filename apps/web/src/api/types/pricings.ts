@@ -1,6 +1,6 @@
 import type { PaginatedResponse, PaginationParams } from './common';
 
-export type PricingType = 'FIXED' | 'TIERED';
+export type PricingType = 'FIXED' | 'METERED';
 
 export type PricingTier = {
   id: string;

@@ -35,7 +35,7 @@ type PricingSeed =
       id: string;
       productId: string;
       internalName: string;
-      type: 'TIERED';
+      type: 'METERED';
       fixedUsd?: null;
       minimumUsd: number;
       tiers: TierSeed[];
@@ -46,7 +46,7 @@ const PRICINGS: PricingSeed[] = [
     id: 'prc-unit-pro-standard',
     productId: 'prod-unit-subscription-pro',
     internalName: 'Unit Subscription Pro - Standard',
-    type: 'TIERED',
+    type: 'METERED',
     minimumUsd: 6.0,
     tiers: [
       { fromUnit: 1, toUnit: 100, unitUsd: 9.5 },
@@ -60,7 +60,7 @@ const PRICINGS: PricingSeed[] = [
     id: 'prc-unit-pro-volume',
     productId: 'prod-unit-subscription-pro',
     internalName: 'Unit Subscription Pro - Volume',
-    type: 'TIERED',
+    type: 'METERED',
     minimumUsd: 5.5,
     tiers: [
       { fromUnit: 1, toUnit: 80, unitUsd: 8.9 },
@@ -75,7 +75,7 @@ const PRICINGS: PricingSeed[] = [
     id: 'prc-unit-appfolio-core',
     productId: 'prod-unit-subscription-appfolio',
     internalName: 'Unit Subscription Appfolio - Core',
-    type: 'TIERED',
+    type: 'METERED',
     minimumUsd: 6.5,
     tiers: [
       { fromUnit: 1, toUnit: 75, unitUsd: 10.2 },
@@ -89,7 +89,7 @@ const PRICINGS: PricingSeed[] = [
     id: 'prc-unit-appfolio-enterprise',
     productId: 'prod-unit-subscription-appfolio',
     internalName: 'Unit Subscription Appfolio - Enterprise',
-    type: 'TIERED',
+    type: 'METERED',
     minimumUsd: 6.0,
     tiers: [
       { fromUnit: 1, toUnit: 60, unitUsd: 9.4 },
@@ -104,7 +104,7 @@ const PRICINGS: PricingSeed[] = [
     id: 'prc-unit-cib-core',
     productId: 'prod-unit-subscription-cib',
     internalName: 'Unit Subscription CIB - Core',
-    type: 'TIERED',
+    type: 'METERED',
     minimumUsd: 5.0,
     tiers: [
       { fromUnit: 1, toUnit: 120, unitUsd: 8.7 },
@@ -118,7 +118,7 @@ const PRICINGS: PricingSeed[] = [
     id: 'prc-unit-cib-volume',
     productId: 'prod-unit-subscription-cib',
     internalName: 'Unit Subscription CIB - Volume',
-    type: 'TIERED',
+    type: 'METERED',
     minimumUsd: 4.5,
     tiers: [
       { fromUnit: 1, toUnit: 100, unitUsd: 8.2 },
@@ -436,7 +436,7 @@ async function main(): Promise<void> {
         id: pricing.id,
         productId: pricing.productId,
         internalName: pricing.internalName,
-        type: 'TIERED',
+        type: 'METERED',
         fixedAmountCents: null,
         minimumPriceCents: toCents(pricing.minimumUsd),
         currency: 'usd',

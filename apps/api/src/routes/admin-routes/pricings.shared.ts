@@ -92,7 +92,7 @@ export function toPricingResponse(pricing: PricingWithRelations) {
 
 export type PricingListQuery = {
   productId?: string;
-  type?: 'FIXED' | 'TIERED';
+  type?: 'FIXED' | 'METERED';
   search?: string;
 };
 

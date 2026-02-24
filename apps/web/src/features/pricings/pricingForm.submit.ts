@@ -14,7 +14,7 @@ export function buildPricingMutationPayload(
   tierValidation: TierValidation
 ): PricingMutationPayload {
   const minimumPriceCents =
-    formState.type === 'TIERED' ? parseUsdToCents(formState.minimumPriceUsd) : null;
+    formState.type === 'METERED' ? parseUsdToCents(formState.minimumPriceUsd) : null;
   const fixedAmountCents = parseUsdToCents(formState.fixedAmountUsd);
 
   return {
@@ -22,9 +22,9 @@ export function buildPricingMutationPayload(
     type: formState.type,
     fixedAmountCents: formState.type === 'FIXED' ? (fixedAmountCents ?? undefined) : null,
     minimumPriceCents:
-      formState.type === 'TIERED' && formState.minimumPriceUsd.trim() !== ''
+      formState.type === 'METERED' && formState.minimumPriceUsd.trim() !== ''
         ? minimumPriceCents
         : null,
-    tiers: formState.type === 'TIERED' ? tierValidation.payload : []
+    tiers: formState.type === 'METERED' ? tierValidation.payload : []
   };
 }

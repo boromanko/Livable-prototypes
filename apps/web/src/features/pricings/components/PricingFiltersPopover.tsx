@@ -66,7 +66,7 @@ export function PricingFiltersPopover(props: PricingFiltersPopoverProps): JSX.El
       >
         <MenuItem value="ALL">ALL</MenuItem>
         <MenuItem value="FIXED">FIXED</MenuItem>
-        <MenuItem value="TIERED">TIERED</MenuItem>
+        <MenuItem value="METERED">METERED</MenuItem>
       </TextField>
 
       <Autocomplete

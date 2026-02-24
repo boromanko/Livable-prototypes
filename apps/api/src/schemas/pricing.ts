@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const pricingTypeSchema = z.enum(['FIXED', 'TIERED']);
+export const pricingTypeSchema = z.enum(['FIXED', 'METERED']);
 
 export const pricingTierInputSchema = z
   .object({
@@ -22,7 +22,7 @@ function validateTierSequence(
   if (sorted[0]?.fromUnit !== 1) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Tiered pricing must start from unit 1',
+      message: 'Metered pricing must start from unit 1',
       path: ['tiers']
     });
   }
@@ -102,7 +102,7 @@ export const createPricingBodySchema = pricingBaseSchema
     if (!payload.tiers || payload.tiers.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'tiers are required for TIERED pricing',
+        message: 'tiers are required for METERED pricing',
         path: ['tiers']
       });
       return;
@@ -111,7 +111,7 @@ export const createPricingBodySchema = pricingBaseSchema
     if (payload.fixedAmountCents !== undefined && payload.fixedAmountCents !== null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'fixedAmountCents must be null for TIERED pricing',
+        message: 'fixedAmountCents must be null for METERED pricing',
         path: ['fixedAmountCents']
       });
     }

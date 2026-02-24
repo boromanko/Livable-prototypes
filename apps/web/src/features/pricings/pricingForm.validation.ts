@@ -10,7 +10,7 @@ export function getFormValidationState(
 
   const minimumPriceCents = parseUsdToCents(formState.minimumPriceUsd);
   const minimumPriceError =
-    formState.type === 'TIERED' &&
+    formState.type === 'METERED' &&
     formState.minimumPriceUsd.trim() !== '' &&
     minimumPriceCents === null;
 
@@ -18,7 +18,7 @@ export function getFormValidationState(
   const fixedAmountError = formState.type === 'FIXED' && fixedAmountCents === null;
 
   const tiersError =
-    formState.type === 'TIERED' && (formState.tiers.length === 0 || tierValidation.hasErrors);
+    formState.type === 'METERED' && (formState.tiers.length === 0 || tierValidation.hasErrors);
 
   const hasErrors =
     internalNameError || productError || minimumPriceError || fixedAmountError || tiersError;

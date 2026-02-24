@@ -9,7 +9,7 @@ datasource db {
 
 enum PricingType {
   FIXED
-  TIERED
+  METERED
 }
 
 enum BillingScope {

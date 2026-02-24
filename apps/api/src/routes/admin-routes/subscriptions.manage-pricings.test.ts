@@ -117,7 +117,7 @@ describe('buildManagePricingsPreviewItems', () => {
         pricing: {
           id: 'pricing-b',
           internalName: 'Beta',
-          type: 'TIERED',
+          type: 'METERED',
           fixedAmountCents: null,
           minimumPriceCents: 500,
           currency: 'usd',

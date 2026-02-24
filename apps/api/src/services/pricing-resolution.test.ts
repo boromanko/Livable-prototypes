@@ -19,7 +19,7 @@ const baseProperties: ResolutionPropertyInput[] = [
   { id: 'prop-3', accountId: account.id, address: 'Addr 3', billableUnits: 10 }
 ];
 
-function buildTieredPricing(
+function buildMeteredPricing(
   id: string,
   productId: string,
   subscriptions: PricingResolutionInput['subscriptions']
@@ -28,7 +28,7 @@ function buildTieredPricing(
     id,
     product: { id: productId, code: productId.toUpperCase(), name: productId },
     internalName: `Pricing ${id}`,
-    type: PricingType.TIERED,
+    type: PricingType.METERED,
     fixedAmountCents: null,
     minimumPriceCents: null,
     currency: 'usd',
@@ -89,7 +89,7 @@ function buildSubscription(input: {
 
 describe('resolvePricingTree', () => {
   it('propagates account pool tier to inherited properties', () => {
-    const pricing = buildTieredPricing('pricing-a', 'units', [
+    const pricing = buildMeteredPricing('pricing-a', 'units', [
       buildSubscription({
         id: 'sub-account',
         scope: 'ACCOUNT',
@@ -123,7 +123,7 @@ describe('resolvePricingTree', () => {
   });
 
   it('applies override by product and excludes overridden property from account pool', () => {
-    const parentPricing = buildTieredPricing('pricing-parent', 'units', [
+    const parentPricing = buildMeteredPricing('pricing-parent', 'units', [
       buildSubscription({
         id: 'sub-parent',
         scope: 'ACCOUNT',
@@ -131,7 +131,7 @@ describe('resolvePricingTree', () => {
         createdAt: '2026-02-12T00:00:00.000Z'
       })
     ]);
-    const overridePricing = buildTieredPricing('pricing-override', 'units', [
+    const overridePricing = buildMeteredPricing('pricing-override', 'units', [
       buildSubscription({
         id: 'sub-override',
         scope: 'PROPERTY',
@@ -175,7 +175,7 @@ describe('resolvePricingTree', () => {
   });
 
   it('chooses winner by status before createdAt', () => {
-    const draftPricing = buildTieredPricing('pricing-draft', 'units', [
+    const draftPricing = buildMeteredPricing('pricing-draft', 'units', [
       buildSubscription({
         id: 'sub-draft-new',
         scope: 'ACCOUNT',
@@ -183,7 +183,7 @@ describe('resolvePricingTree', () => {
         createdAt: '2026-02-15T00:00:00.000Z'
       })
     ]);
-    const activePricing = buildTieredPricing('pricing-active', 'units', [
+    const activePricing = buildMeteredPricing('pricing-active', 'units', [
       buildSubscription({
         id: 'sub-active-old',
         scope: 'ACCOUNT',
@@ -204,7 +204,7 @@ describe('resolvePricingTree', () => {
   });
 
   it('excludes canceled subscriptions from resolution', () => {
-    const canceledPricing = buildTieredPricing('pricing-canceled', 'units', [
+    const canceledPricing = buildMeteredPricing('pricing-canceled', 'units', [
       buildSubscription({
         id: 'sub-canceled',
         scope: 'ACCOUNT',
@@ -254,7 +254,7 @@ describe('resolvePricingTree', () => {
   });
 
   it('applies one property-level subscription to multiple properties', () => {
-    const parentPricing = buildTieredPricing('pricing-parent-multi', 'units', [
+    const parentPricing = buildMeteredPricing('pricing-parent-multi', 'units', [
       buildSubscription({
         id: 'sub-account-multi',
         scope: 'ACCOUNT',
@@ -262,7 +262,7 @@ describe('resolvePricingTree', () => {
         createdAt: '2026-02-12T00:00:00.000Z'
       })
     ]);
-    const overridePricing = buildTieredPricing('pricing-override-multi', 'units', [
+    const overridePricing = buildMeteredPricing('pricing-override-multi', 'units', [
       buildSubscription({
         id: 'sub-override-multi',
         scope: 'PROPERTY',
@@ -295,7 +295,7 @@ describe('resolvePricingTree', () => {
   });
 
   it('builds subscription summaries with scope-aware coverage labels', () => {
-    const pricing = buildTieredPricing('pricing-summary', 'units', [
+    const pricing = buildMeteredPricing('pricing-summary', 'units', [
       buildSubscription({
         id: 'sub-account-summary',
         scope: 'ACCOUNT',
@@ -339,7 +339,7 @@ describe('resolvePricingTree', () => {
   });
 
   it('deduplicates subscription summaries by subscription id', () => {
-    const pricing = buildTieredPricing('pricing-summary-dedupe', 'units', [
+    const pricing = buildMeteredPricing('pricing-summary-dedupe', 'units', [
       buildSubscription({
         id: 'sub-dup',
         scope: 'PROPERTY',
