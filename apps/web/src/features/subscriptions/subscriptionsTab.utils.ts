@@ -12,8 +12,6 @@ export type SubscriptionsSortField =
   | 'scope'
   | 'property'
   | 'units'
-  | 'startDate'
-  | 'endDate'
   | 'status'
   | 'pricings';
 export type SubscriptionsSortDirection = 'asc' | 'desc';
@@ -76,18 +74,6 @@ export function compareSubscriptionRows(
     const leftUnits = getSubscriptionUnitsCount(left, accountTotalBillableUnitsById);
     const rightUnits = getSubscriptionUnitsCount(right, accountTotalBillableUnitsById);
     return leftUnits - rightUnits;
-  }
-
-  if (field === 'startDate') {
-    const leftValue = Date.parse(left.startDate);
-    const rightValue = Date.parse(right.startDate);
-    return leftValue - rightValue;
-  }
-
-  if (field === 'endDate') {
-    const leftValue = left.endDate ? Date.parse(left.endDate) : Number.POSITIVE_INFINITY;
-    const rightValue = right.endDate ? Date.parse(right.endDate) : Number.POSITIVE_INFINITY;
-    return leftValue - rightValue;
   }
 
   if (field === 'status') {

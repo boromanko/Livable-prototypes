@@ -98,7 +98,7 @@ export function createSubscriptionFormActions(input: CreateSubscriptionFormActio
         startDate: formState.startDate,
         endDate: formState.endDate !== '' ? formState.endDate : null,
         status: formState.status,
-        paymentMethodId: formState.paymentMethodId || null,
+        paymentMethodId: null,
         pricingIds: formState.pricingIds
       };
 
@@ -122,8 +122,7 @@ export function createSubscriptionFormActions(input: CreateSubscriptionFormActio
     setFormState((prev) => ({
       ...prev,
       accountId,
-      propertyIds: [],
-      paymentMethodId: ''
+      propertyIds: []
     }));
   }
 
@@ -143,38 +142,10 @@ export function createSubscriptionFormActions(input: CreateSubscriptionFormActio
     }));
   }
 
-  function setStartDate(startDate: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      startDate
-    }));
-  }
-
   function setStatus(status: SubscriptionStatus): void {
     setFormState((prev) => ({
       ...prev,
       status
-    }));
-  }
-
-  function setEndDate(endDate: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      endDate
-    }));
-  }
-
-  function setCreateActive(enabled: boolean): void {
-    setFormState((prev) => ({
-      ...prev,
-      status: enabled ? 'ACTIVE' : 'DRAFT'
-    }));
-  }
-
-  function setPaymentMethodId(paymentMethodId: string): void {
-    setFormState((prev) => ({
-      ...prev,
-      paymentMethodId
     }));
   }
 
@@ -219,11 +190,7 @@ export function createSubscriptionFormActions(input: CreateSubscriptionFormActio
     setAccountId,
     setApplyAllProperties,
     setPropertyIds,
-    setStartDate,
     setStatus,
-    setEndDate,
-    setCreateActive,
-    setPaymentMethodId,
     setPricingIds,
     appendPricingId,
     dismissAutoPruneNotice,

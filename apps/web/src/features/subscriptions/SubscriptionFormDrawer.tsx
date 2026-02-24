@@ -7,9 +7,6 @@ import { AppFormDialog } from '../../components/layout';
 import { PricingFormDrawer as NestedPricingFormDrawer } from '../pricings/PricingFormDrawer';
 import {
   SubscriptionFormAccountSection,
-  SubscriptionFormCreateStatusSection,
-  SubscriptionFormDatesSection,
-  SubscriptionFormPaymentMethodSection,
   SubscriptionFormPricingsSection,
   SubscriptionFormPropertySection
 } from './components/SubscriptionFormSections';
@@ -167,22 +164,6 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
           onChange={controller.actions.setPropertyIds}
         />
 
-        <SubscriptionFormDatesSection
-          startDate={controller.formState.startDate}
-          endDate={controller.formState.endDate}
-          startDateError={controller.showValidation && controller.validation.startDateError}
-          onStartDateChange={controller.actions.setStartDate}
-          onEndDateChange={controller.actions.setEndDate}
-        />
-
-        <SubscriptionFormPaymentMethodSection
-          accountId={controller.formState.accountId}
-          value={controller.formState.paymentMethodId}
-          loading={controller.paymentMethodsLoading}
-          methods={controller.paymentMethods}
-          onChange={controller.actions.setPaymentMethodId}
-        />
-
         <SubscriptionFormPricingsSection
           value={controller.formState.pricingIds}
           pricings={controller.pricings}
@@ -199,13 +180,6 @@ export function SubscriptionFormDrawer(props: SubscriptionFormDrawerProps): JSX.
           onEditPricing={canEditPricings ? openEditPricing : undefined}
           onChange={controller.actions.setPricingIds}
         />
-
-        {!controller.isEdit ? (
-          <SubscriptionFormCreateStatusSection
-            checked={controller.isCreateActive}
-            onChange={controller.actions.setCreateActive}
-          />
-        ) : null}
       </AppFormDialog>
 
       {canEditPricings ? (

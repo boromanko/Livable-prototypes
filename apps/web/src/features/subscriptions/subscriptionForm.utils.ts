@@ -9,14 +9,12 @@ export type SubscriptionFormState = {
   startDate: string;
   endDate: string;
   status: SubscriptionStatus;
-  paymentMethodId: string;
   pricingIds: string[];
 };
 
 export type SubscriptionFormValidationState = {
   accountError: boolean;
   propertyError: boolean;
-  startDateError: boolean;
   pricingsError: boolean;
   hasErrors: boolean;
 };
@@ -35,7 +33,6 @@ export function buildInitialSubscriptionFormState(
     startDate: getTodayDateInputValue(),
     endDate: '',
     status: 'DRAFT',
-    paymentMethodId: '',
     pricingIds: defaultPricingIds ?? []
   };
 }
@@ -53,10 +50,9 @@ export function buildFormStateFromSubscription(
     accountId: subscription.account.id,
     scope: subscription.scope,
     propertyIds,
-    startDate: toDateInputValue(subscription.startDate),
+    startDate: toDateInputValue(subscription.startDate) || getTodayDateInputValue(),
     endDate: toDateInputValue(subscription.endDate),
     status: subscription.status,
-    paymentMethodId: subscription.paymentMethod?.id ?? '',
     pricingIds: subscription.pricings.map((pricing) => pricing.id)
   };
 }
@@ -69,15 +65,13 @@ export function getSubscriptionFormValidationState(
   formState: SubscriptionFormState
 ): SubscriptionFormValidationState {
   const accountError = formState.accountId.trim() === '';
-  const startDateError = formState.startDate.trim() === '';
   const propertyError = formState.scope === 'PROPERTY' && formState.propertyIds.length === 0;
   const pricingsError = formState.pricingIds.length === 0;
-  const hasErrors = accountError || startDateError || propertyError || pricingsError;
+  const hasErrors = accountError || propertyError || pricingsError;
 
   return {
     accountError,
     propertyError,
-    startDateError,
     pricingsError,
     hasErrors
   };

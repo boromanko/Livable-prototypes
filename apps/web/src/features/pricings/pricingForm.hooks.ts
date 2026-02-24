@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useBulkSubscriptionsMutation,
+  useCreateProductMutation,
   useCreatePricingMutation,
   usePricingsQuery,
   useProductsQuery,
@@ -9,6 +10,7 @@ import {
   type PricingItem,
   type PricingTreeSubscriptionSummary
 } from '../../api';
+import { getApiErrorMessage } from '../../lib/errors/getApiErrorMessage';
 import {
   buildDefaultPricingName,
   buildInitialState,
@@ -60,10 +62,12 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
 
   const productsQuery = useProductsQuery();
   const pricingsQuery = usePricingsQuery({ page: 1, pageSize: 100 });
+  const createProductMutation = useCreateProductMutation();
   const createMutation = useCreatePricingMutation();
   const updateMutation = useUpdatePricingMutation();
   const subscriptionsQuery = useSubscriptionsQuery({ page: 1, pageSize: 100 });
   const bulkSubscriptionsMutation = useBulkSubscriptionsMutation();
+  const productItems = productsQuery.data?.items ?? [];
 
   const isSaving =
     createMutation.isPending || updateMutation.isPending || bulkSubscriptionsMutation.isPending;
@@ -120,6 +124,35 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
     () => subscriptionIds.filter((id) => blockedSubscriptionIdSet.has(id)),
     [blockedSubscriptionIdSet, subscriptionIds]
   );
+
+  async function createProduct(productName: string): Promise<void> {
+    const normalizedProductName = productName.trim();
+    if (normalizedProductName === '') {
+      return;
+    }
+
+    const existingProduct = productItems.find(
+      (product) => product.name.trim().toLowerCase() === normalizedProductName.toLowerCase()
+    );
+    if (existingProduct) {
+      setFormState((previous) => ({ ...previous, productId: existingProduct.id }));
+      return;
+    }
+
+    setFormError(null);
+    try {
+      const response = await createProductMutation.mutateAsync({
+        name: normalizedProductName
+      });
+      setFormState((previous) => ({ ...previous, productId: response.item.id }));
+    } catch (errorObject) {
+      const message = getApiErrorMessage(errorObject, {
+        defaultMessage: 'Failed to create product'
+      });
+      setFormError(message);
+      throw new Error(message);
+    }
+  }
 
   useEffect(() => {
     if (!open) {
@@ -238,8 +271,9 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
     selectedSubscriptionConflictIds,
     formError,
     showValidation,
-    productItems: productsQuery.data?.items ?? [],
+    productItems,
     productsLoading: productsQuery.isPending,
+    productsCreating: createProductMutation.isPending,
     subscriptions: subscriptionOptions,
     subscriptionsLoading: subscriptionsQuery.isPending,
     subscriptionsError: subscriptionsQuery.isError,
@@ -256,6 +290,7 @@ export function usePricingFormController(input: UsePricingFormControllerInput) {
     actions: {
       onClose,
       onSubmit: actions.handleSubmit,
+      createProduct,
       setInternalName: actions.setInternalName,
       setProductId: actions.setProductId,
       setPricingType: actions.setPricingType,

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import {
   useAccountsQuery,
   useCreateSubscriptionMutation,
-  usePaymentMethodsQuery,
   usePricingsQuery,
   usePropertiesQuery,
   useSubscriptionAvailabilityPreviewQuery,
@@ -62,10 +61,6 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
 
   const propertiesQuery = usePropertiesQuery(
     { accountId: formState.accountId, page: 1, pageSize: 200 },
-    { enabled: Boolean(formState.accountId) }
-  );
-  const paymentMethodsQuery = usePaymentMethodsQuery(
-    { accountId: formState.accountId },
     { enabled: Boolean(formState.accountId) }
   );
   const pricingsQuery = usePricingsQuery({ page: 1, pageSize: 100 });
@@ -215,7 +210,6 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     isEdit,
     isSaving,
     showValidation,
-    isCreateActive: formState.status === 'ACTIVE',
     validation,
     formState,
     formError,
@@ -227,8 +221,6 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
     accountsLoading: accountsQuery.isPending || transferEligibilityQuery.isPending,
     properties,
     propertiesLoading: propertiesQuery.isPending,
-    paymentMethods: paymentMethodsQuery.data?.items ?? [],
-    paymentMethodsLoading: paymentMethodsQuery.isPending,
     pricings,
     pricingAvailabilityById,
     propertyAvailabilityById,
@@ -240,11 +232,7 @@ export function useSubscriptionFormController(input: UseSubscriptionFormControll
       setAccountId: actions.setAccountId,
       setApplyAllProperties: actions.setApplyAllProperties,
       setPropertyIds: actions.setPropertyIds,
-      setStartDate: actions.setStartDate,
       setStatus: actions.setStatus,
-      setEndDate: actions.setEndDate,
-      setCreateActive: actions.setCreateActive,
-      setPaymentMethodId: actions.setPaymentMethodId,
       setPricingIds: actions.setPricingIds,
       appendPricingId: actions.appendPricingId,
       dismissAutoPruneNotice: actions.dismissAutoPruneNotice,

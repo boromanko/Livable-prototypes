@@ -1,9 +1,7 @@
-import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { Checkbox, Stack, TableCell, TableRow, Tooltip, Typography } from '@mui/material';
 import type { SubscriptionItem } from '../../../api';
 import { AppIconButton } from '../../../components/buttons';
-import { formatDateLabel } from '../../../lib/format/date';
 import { formatMoneyCents } from '../../../lib/format/money';
 import {
   formatSubscriptionStatusLabel,
@@ -23,7 +21,6 @@ type SubscriptionsTableRowProps = {
   onToggleRowSelection: (subscriptionId: string) => void;
   onEditSubscription: (subscription: SubscriptionItem) => void;
   onEditPricing?: (pricing: SubscriptionItem['pricings'][number]) => void;
-  onDeleteSubscription: (subscription: SubscriptionItem) => void;
 };
 
 export function SubscriptionsTableRowItem(props: SubscriptionsTableRowProps): JSX.Element {
@@ -37,8 +34,7 @@ export function SubscriptionsTableRowItem(props: SubscriptionsTableRowProps): JS
     canOpenPricingEditor,
     onToggleRowSelection,
     onEditSubscription,
-    onEditPricing,
-    onDeleteSubscription
+    onEditPricing
   } = props;
 
   const subscriptionProperties = getSubscriptionProperties(subscription);
@@ -113,9 +109,6 @@ export function SubscriptionsTableRowItem(props: SubscriptionsTableRowProps): JS
         </Typography>
       </TableCell>
 
-      <TableCell>{formatDateLabel(subscription.startDate)}</TableCell>
-      <TableCell>{formatDateLabel(subscription.endDate, { fallback: '—' })}</TableCell>
-
       <TableCell>
         <Typography
           component="span"
@@ -157,31 +150,17 @@ export function SubscriptionsTableRowItem(props: SubscriptionsTableRowProps): JS
       <TableCell align="right">
         <Stack direction="row" justifyContent="flex-end" alignItems="flex-start" spacing={0.25}>
           {canManageSubscriptions ? (
-            <>
-              <Tooltip title="Edit subscription">
-                <AppIconButton
-                  tone="ghost"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onEditSubscription(subscription);
-                  }}
-                >
-                  <EditIcon fontSize="small" />
-                </AppIconButton>
-              </Tooltip>
-
-              <Tooltip title="Delete subscription">
-                <AppIconButton
-                  tone="ghost"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDeleteSubscription(subscription);
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </AppIconButton>
-              </Tooltip>
-            </>
+            <Tooltip title="Edit subscription">
+              <AppIconButton
+                tone="ghost"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEditSubscription(subscription);
+                }}
+              >
+                <EditIcon fontSize="small" />
+              </AppIconButton>
+            </Tooltip>
           ) : null}
         </Stack>
       </TableCell>

@@ -1,10 +1,13 @@
+import { useMemo, useState } from 'react';
 import {
+  Autocomplete,
   Box,
   InputAdornment,
   MenuItem,
   Stack,
   TextField
 } from '@mui/material';
+import { createFilterOptions } from '@mui/material/Autocomplete';
 import type { ProductItem, PricingType } from '../../../api';
 import { PrimaryButton } from '../../../components/buttons';
 import { prototypeTokens } from '../../../theme/tokens';
@@ -30,7 +33,7 @@ export function PricingFormNameSection(props: PricingFormNameSectionProps): JSX.
 
   return (
     <Stack spacing={2} ref={fieldRef}>
-      {sectionTitle('Pricing name')}
+      {sectionTitle('Pricing Name (internal use)')}
       <TextField
         placeholder="Add pricing name"
         value={value}
@@ -47,51 +50,175 @@ export function PricingFormNameSection(props: PricingFormNameSectionProps): JSX.
 type PricingFormProductSectionProps = {
   fieldRef: React.RefObject<HTMLDivElement>;
   value: string;
+  pricingType: PricingType;
   productItems: ProductItem[];
   productsLoading: boolean;
+  productsCreating?: boolean;
   error: boolean;
   disabled?: boolean;
+  onCreateProduct?: (name: string) => Promise<void>;
   onChange: (value: string) => void;
 };
 
 export function PricingFormProductSection(props: PricingFormProductSectionProps): JSX.Element {
-  const { fieldRef, value, productItems, productsLoading, error, disabled = false, onChange } = props;
+  const {
+    fieldRef,
+    value,
+    pricingType,
+    productItems,
+    productsLoading,
+    productsCreating = false,
+    error,
+    disabled = false,
+    onCreateProduct,
+    onChange
+  } = props;
+  const [createError, setCreateError] = useState<string | null>(null);
+  const isEditableProductPicker = pricingType === 'FIXED';
+  const selectedProduct = useMemo(
+    () => productItems.find((product) => product.id === value) ?? null,
+    [productItems, value]
+  );
+
+  async function handleProductSelection(
+    selectedOption: ProductItem | CreateProductOption | null
+  ): Promise<void> {
+    setCreateError(null);
+
+    if (!selectedOption) {
+      onChange('');
+      return;
+    }
+
+    if (isCreateProductOption(selectedOption)) {
+      if (!onCreateProduct) {
+        return;
+      }
+
+      try {
+        await onCreateProduct(selectedOption.inputValue);
+      } catch (errorObject) {
+        setCreateError(
+          errorObject instanceof Error
+            ? errorObject.message
+            : 'Failed to create product. Please try again.'
+        );
+      }
+      return;
+    }
+
+    onChange(selectedOption.id);
+  }
 
   return (
     <Stack spacing={2} ref={fieldRef}>
-      {sectionTitle('Product')}
-      <TextField
-        select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={productsLoading || disabled}
-        error={error}
-        SelectProps={{
-          displayEmpty: true,
-          renderValue: (selected) => {
-            if (typeof selected !== 'string' || selected === '') {
-              return (
-                <Box component="span" sx={{ color: prototypeTokens.color.text.secondary }}>
-                  Select product
-                </Box>
-              );
+      {sectionTitle('Product (invoice line item name)')}
+      {isEditableProductPicker ? (
+        <Autocomplete<ProductItem | CreateProductOption, false, false, false>
+          disablePortal
+          openOnFocus
+          options={productItems}
+          value={selectedProduct}
+          disabled={productsLoading || productsCreating || disabled}
+          onChange={(_event, selectedOption) => {
+            void handleProductSelection(selectedOption);
+          }}
+          getOptionLabel={(option) => option.name}
+          isOptionEqualToValue={(option, selected) =>
+            !isCreateProductOption(option) &&
+            !isCreateProductOption(selected) &&
+            option.id === selected.id
+          }
+          filterOptions={(options, params) => {
+            const filtered = productAutocompleteFilterOptions(options, params);
+            const normalizedInput = params.inputValue.trim();
+            if (!normalizedInput) {
+              return filtered;
             }
 
-            return productItems.find((product) => product.id === selected)?.name ?? selected;
-          }
-        }}
-        helperText={error ? 'Product is required.' : undefined}
-        sx={getFormFieldSx(error)}
-      >
-        <MenuItem value="" disabled>
-          Select product
-        </MenuItem>
-        {productItems.map((product) => (
-          <MenuItem key={product.id} value={product.id}>
-            {product.name}
+            const hasExactMatch = options.some(
+              (option) => option.name.trim().toLowerCase() === normalizedInput.toLowerCase()
+            );
+            if (!hasExactMatch) {
+              filtered.push({
+                id: '__create__',
+                name: `+ Add "${normalizedInput}"`,
+                inputValue: normalizedInput
+              });
+            }
+
+            return filtered;
+          }}
+          noOptionsText={productsLoading ? 'Loading products...' : 'No products found'}
+          renderOption={(optionProps, option) => (
+            <Box
+              component="li"
+              {...optionProps}
+              key={isCreateProductOption(option) ? `create-${option.inputValue}` : option.id}
+              sx={{
+                minHeight: 46,
+                px: 1.5,
+                py: 0.75,
+                alignItems: 'center'
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  color: isCreateProductOption(option)
+                    ? prototypeTokens.color.brand.teal500
+                    : prototypeTokens.color.text.primary,
+                  fontWeight: isCreateProductOption(option) ? 600 : 500
+                }}
+              >
+                {option.name}
+              </Box>
+            </Box>
+          )}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder="Select or add product"
+              error={error || Boolean(createError)}
+              helperText={error ? 'Product is required.' : createError ?? undefined}
+              sx={getFormFieldSx(error || Boolean(createError))}
+            />
+          )}
+        />
+      ) : (
+        <TextField
+          select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={productsLoading || disabled}
+          error={error}
+          SelectProps={{
+            displayEmpty: true,
+            renderValue: (selected) => {
+              if (typeof selected !== 'string' || selected === '') {
+                return (
+                  <Box component="span" sx={{ color: prototypeTokens.color.text.secondary }}>
+                    Select product
+                  </Box>
+                );
+              }
+
+              return productItems.find((product) => product.id === selected)?.name ?? selected;
+            }
+          }}
+          helperText={error ? 'Product is required.' : undefined}
+          sx={getFormFieldSx(error)}
+        >
+          <MenuItem value="" disabled>
+            Select product
           </MenuItem>
-        ))}
-      </TextField>
+          {productItems.map((product) => (
+            <MenuItem key={product.id} value={product.id}>
+              {product.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
     </Stack>
   );
 }
@@ -132,7 +259,7 @@ export function PricingFormTypeSection(props: PricingFormTypeSectionProps): JSX.
                 })
           }}
         >
-          Fixed price
+          Fixed Price
         </PrimaryButton>
         <PrimaryButton
           onClick={() => onChange('TIERED')}
@@ -149,7 +276,7 @@ export function PricingFormTypeSection(props: PricingFormTypeSectionProps): JSX.
                 })
           }}
         >
-          Tiered price
+          Metered Price
         </PrimaryButton>
       </Stack>
     </Stack>
@@ -224,7 +351,7 @@ export function PricingFormTieredSection(props: PricingFormTieredSectionProps): 
 
   return (
     <Stack spacing={2} ref={fieldRef}>
-      {sectionTitle('Tiered pricing', 'Define quantity tiers and pricing')}
+      {sectionTitle('Metered pricing', 'Define quantity tiers and pricing')}
       <PricingTierEditor
         tiers={tiers}
         tierStartUnits={tierStartUnits}
@@ -261,7 +388,7 @@ export function PricingFormMinimumPriceSection(
     <Stack spacing={2} ref={fieldRef}>
       {sectionTitle(
         'Minimum price',
-        'Minimum total charge per billing period for this tiered pricing.'
+        'Minimum total charge per billing period for this metered pricing.'
       )}
       <TextField
         placeholder="0.00"
@@ -280,3 +407,22 @@ export function PricingFormMinimumPriceSection(
     </Stack>
   );
 }
+
+type CreateProductOption = {
+  id: '__create__';
+  name: string;
+  inputValue: string;
+};
+
+function isCreateProductOption(
+  option: ProductItem | CreateProductOption
+): option is CreateProductOption {
+  return option.id === '__create__';
+}
+
+const productAutocompleteFilterOptions = createFilterOptions<ProductItem | CreateProductOption>({
+  stringify: (option) =>
+    isCreateProductOption(option)
+      ? option.inputValue
+      : `${option.name} ${option.code} ${option.description ?? ''}`
+});

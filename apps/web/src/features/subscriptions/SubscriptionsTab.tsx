@@ -121,7 +121,6 @@ export function SubscriptionsTab(): JSX.Element {
             }}
             onEditSubscription={controller.drawer.openEditDrawer}
             onEditPricing={canEditSubscriptions ? controller.pricingDrawer.openEditPricing : undefined}
-            onDeleteSubscription={controller.table.onDeleteSubscription}
             onCreateSubscription={controller.drawer.openCreateDrawer}
             onPageChange={controller.table.onPageChange}
             onPageSizeChange={controller.table.onPageSizeChange}

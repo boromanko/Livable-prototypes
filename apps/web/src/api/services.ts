@@ -2,6 +2,7 @@ import { apiRequest } from './http';
 import type {
   AccountsQueryParams,
   AccountsResponse,
+  CreateProductPayload,
   CreatePricingPayload,
   CreateSubscriptionPayload,
   DeletePricingResponse,
@@ -31,6 +32,7 @@ import type {
   UpdatePricingPayload,
   UpdateSubscriptionPayload,
   UpsertPricingResponse,
+  UpsertProductResponse,
   UpsertSubscriptionResponse
 } from './types';
 
@@ -56,6 +58,12 @@ export const api = {
     apiRequest('/api/admin/payment-methods', { query: params }),
 
   getProducts: (): Promise<ProductsResponse> => apiRequest('/api/admin/products'),
+
+  createProduct: (payload: CreateProductPayload): Promise<UpsertProductResponse> =>
+    apiRequest('/api/admin/products', {
+      method: 'POST',
+      body: payload
+    }),
 
   getPricings: (params: PricingsQueryParams): Promise<PricingsResponse> =>
     apiRequest('/api/admin/pricings', { query: params }),

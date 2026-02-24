@@ -11,3 +11,13 @@ export type ProductItem = {
 export type ProductsResponse = {
   items: ProductItem[];
 };
+
+export type CreateProductPayload = {
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+};
+
+export type UpsertProductResponse = {
+  item: ProductItem;
+};

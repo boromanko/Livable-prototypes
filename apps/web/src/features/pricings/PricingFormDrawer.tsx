@@ -116,10 +116,13 @@ export function PricingFormDrawer(props: PricingFormDrawerProps): JSX.Element {
         <PricingFormProductSection
           fieldRef={controller.refs.productFieldRef}
           value={controller.formState.productId}
+          pricingType={controller.formState.type}
           productItems={controller.productItems}
           productsLoading={controller.productsLoading}
+          productsCreating={controller.productsCreating}
           error={controller.validation.productError}
           disabled={isSubscriptionsOnlyEdit}
+          onCreateProduct={controller.actions.createProduct}
           onChange={controller.actions.setProductId}
         />
 

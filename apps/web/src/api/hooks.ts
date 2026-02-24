@@ -10,6 +10,7 @@ import { api } from './services';
 import type {
   AccountsQueryParams,
   AccountsResponse,
+  CreateProductPayload,
   CreatePricingPayload,
   CreateSubscriptionPayload,
   DeletePricingResponse,
@@ -35,6 +36,7 @@ import type {
   UpdatePricingPayload,
   UpdateSubscriptionPayload,
   UpsertPricingResponse,
+  UpsertProductResponse,
   UpsertSubscriptionResponse
 } from './types';
 
@@ -69,6 +71,20 @@ export function useProductsQuery(): UseQueryResult<ProductsResponse, Error> {
   return useQuery({
     queryKey: queryKeys.admin.productsAll,
     queryFn: api.getProducts
+  });
+}
+
+export function useCreateProductMutation(): UseMutationResult<
+  UpsertProductResponse,
+  Error,
+  CreateProductPayload
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.createProduct,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.admin.productsAll });
+    }
   });
 }
 

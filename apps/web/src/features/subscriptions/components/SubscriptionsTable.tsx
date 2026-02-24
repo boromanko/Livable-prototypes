@@ -41,7 +41,6 @@ type SubscriptionsTableProps = {
   onToggleRowSelection: (subscriptionId: string) => void;
   onEditSubscription: (subscription: SubscriptionItem) => void;
   onEditPricing?: (pricing: SubscriptionItem['pricings'][number]) => void;
-  onDeleteSubscription: (subscription: SubscriptionItem) => void;
   onCreateSubscription: () => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
@@ -64,8 +63,6 @@ const sortHeaderCells: SortHeaderCell[] = [
     sx: { width: 92, minWidth: 92, maxWidth: 92, whiteSpace: 'nowrap' }
   },
   { field: 'units', label: 'Units' },
-  { field: 'startDate', label: 'Start' },
-  { field: 'endDate', label: 'End' },
   { field: 'status', label: 'Status' },
   { field: 'pricings', label: 'Pricings' }
 ];
@@ -104,7 +101,6 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
     onToggleRowSelection,
     onEditSubscription,
     onEditPricing,
-    onDeleteSubscription,
     onCreateSubscription,
     onPageChange,
     onPageSizeChange,
@@ -153,7 +149,7 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
           <TableBody>
             {isPending ? (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={8}>
                   <Typography variant="body2" color="text.secondary">
                     Loading subscriptions...
                   </Typography>
@@ -173,12 +169,11 @@ export function SubscriptionsTable(props: SubscriptionsTableProps): JSX.Element 
                   onToggleRowSelection={onToggleRowSelection}
                   onEditSubscription={onEditSubscription}
                   onEditPricing={onEditPricing}
-                  onDeleteSubscription={onDeleteSubscription}
                 />
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={10}>
+                <TableCell colSpan={8}>
                   <EmptyState
                     title="No subscriptions found"
                     description="Adjust filters or create your first subscription."

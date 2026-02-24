@@ -11,7 +11,7 @@ import {
   Typography
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import type { PaymentMethodItem, PricingItem } from '../../../api';
+import type { PricingItem } from '../../../api';
 import { prototypeTokens } from '../../../theme/tokens';
 import { formatMoneyCents } from '../../../lib/format/money';
 import { PricingValueCard } from './PricingValueCard';
@@ -19,63 +19,8 @@ import {
   AUTOCOMPLETE_LISTBOX_SX,
   AUTOCOMPLETE_PAPER_ANIMATED_SX,
   getAutocompleteFieldSx,
-  getFormFieldSx,
   sectionTitle
 } from './SubscriptionFormSections.shared';
-
-type SubscriptionFormPaymentMethodSectionProps = {
-  accountId: string;
-  value: string;
-  loading: boolean;
-  methods: PaymentMethodItem[];
-  onChange: (paymentMethodId: string) => void;
-};
-
-export function SubscriptionFormPaymentMethodSection(
-  props: SubscriptionFormPaymentMethodSectionProps
-): JSX.Element {
-  const { accountId, value, loading, methods, onChange } = props;
-
-  return (
-    <Stack spacing={2}>
-      {sectionTitle('Payment method')}
-      <TextField
-        select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        disabled={!accountId || loading}
-        SelectProps={{
-          displayEmpty: true,
-          renderValue: (selected) => {
-            if (typeof selected !== 'string' || selected === '') {
-              return (
-                <Box component="span" sx={{ color: prototypeTokens.color.text.secondary }}>
-                  Use fallback/default behavior
-                </Box>
-              );
-            }
-
-            const selectedMethod = methods.find((method) => method.id === selected);
-            if (!selectedMethod) {
-              return selected;
-            }
-
-            return `${selectedMethod.label}${selectedMethod.isDefault ? ' (default)' : ''}`;
-          }
-        }}
-        sx={getFormFieldSx()}
-      >
-        <MenuItem value="">Use fallback/default behavior</MenuItem>
-        {methods.map((method) => (
-          <MenuItem key={method.id} value={method.id}>
-            {method.label}
-            {method.isDefault ? ' (default)' : ''}
-          </MenuItem>
-        ))}
-      </TextField>
-    </Stack>
-  );
-}
 
 type SubscriptionFormPricingsSectionProps = {
   value: string[];

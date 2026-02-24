@@ -98,8 +98,7 @@ export function useSubscriptionFormEffects(input: UseSubscriptionFormEffectsInpu
       return {
         ...prev,
         accountId: '',
-        propertyIds: [],
-        paymentMethodId: ''
+        propertyIds: []
       };
     });
   }, [isEdit, open, selectableAccountIds, setFormState, transferEligibilityItems]);

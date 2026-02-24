@@ -7,14 +7,12 @@ import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import KeyRoundedIcon from '@mui/icons-material/KeyRounded';
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import { Box, MenuItem, Stack, TextField } from '@mui/material';
+import { Box, Stack } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import livableLogo from '../assets/livable-logo.svg';
 import { AppIconButton } from './buttons';
 import { prototypeTokens } from '../theme/tokens';
-import { DEMO_ROLE_LABELS, useDemoRole, type DemoRole } from '../demoRole';
 
 type RailItemProps = {
   active?: boolean;
@@ -40,8 +38,6 @@ function RailItem({ active = false, children }: RailItemProps): JSX.Element {
 }
 
 export function AppShell(): JSX.Element {
-  const { role, setRole } = useDemoRole();
-
   return (
     <Box
       sx={{
@@ -129,29 +125,6 @@ export function AppShell(): JSX.Element {
           <Box sx={{ flex: 1 }} />
 
           <Stack direction="row" spacing={0.5} alignItems="center">
-            <TextField
-              size="small"
-              select
-              label="Demo roles"
-              value={role}
-              onChange={(event) => setRole(event.target.value as DemoRole)}
-              sx={{
-                minWidth: 130,
-                '& .MuiInputBase-root': {
-                  height: 36,
-                  backgroundColor: '#FFFFFF'
-                }
-              }}
-            >
-              {(Object.keys(DEMO_ROLE_LABELS) as DemoRole[]).map((value) => (
-                <MenuItem key={value} value={value}>
-                  {DEMO_ROLE_LABELS[value]}
-                </MenuItem>
-              ))}
-            </TextField>
-            <AppIconButton tone="plain" size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
-              <NotificationsRoundedIcon />
-            </AppIconButton>
             <AppIconButton tone="plain" size="small" sx={{ color: prototypeTokens.color.text.secondary }}>
               <PersonRoundedIcon />
             </AppIconButton>
